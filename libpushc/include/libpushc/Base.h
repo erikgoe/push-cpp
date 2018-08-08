@@ -12,11 +12,27 @@
 // limitations under the License.
 
 #pragma once
+#include "libpushc/stdafx.h"
 
-#include <thread>
-#include <list>
-#include <filesystem>
-#include <string>
-#include <fstream>
-#include <vector>
-#include <iostream>
+using u8 = unsigned char;
+using u16 = unsigned short;
+using u32 = unsigned int;
+using u64 = unsigned long long;
+
+using i8 = signed char;
+using i16 = signed short;
+using i32 = signed int;
+using i64 = signed long long;
+
+using f32 = float;
+using f64 = double;
+
+using String = std::string;
+using StringW = std::wstring;
+using std::to_string;
+
+#if defined( _WIN32 )
+namespace fs = std::experimental::filesystem;
+#elif
+namespace fs = sf::filesystem;
+#endif
