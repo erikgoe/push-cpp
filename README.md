@@ -18,7 +18,7 @@ Make sure the development source(dev) and vcpkg(src/vcpkg) directories are right
 
 ### Windows
     mkdir build && cd build
-    cmake .. -DDEV_SOURCE_DIR=C:/dev -DVCPKG_SOURCE_DIR=C:/src/vcpkg    -DVCPKG_TARGET_TRIPLET=x86-windows-static
+    cmake .. -DDEV_SOURCE_DIR=C:/dev -DVCPKG_SOURCE_DIR=C:/src/vcpkg -DVCPKG_TARGET_TRIPLET=x86-windows-static
 Compile the .sln file.
 
 ### Linux
