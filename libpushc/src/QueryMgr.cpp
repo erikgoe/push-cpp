@@ -13,3 +13,18 @@
 
 #include "libpushc/stdafx.h"
 #include "libpushc/QueryMgr.h"
+
+std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
+    if ( thread_count < 1 ) {
+        std::cerr << "error: must be at least one worker.";
+    }
+    // TODO
+}
+
+void QueryMgr::wait_finished() {
+    // TODO
+}
+
+std::shared_ptr<BasicJob> get_free_job() {
+    // TODO
+}

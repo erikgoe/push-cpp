@@ -17,8 +17,8 @@
 #include "libpushc/Job.h"
 
 // Manages compilation queries, jobs and workers.
-class QueryMgr {
-    template <typename FuncT, typename... Args> // TODO impl
+class QueryMgr : std::enable_shared_from_this<QueryMgr> {
+    template <typename FuncT, typename... Args>
     std::shared_ptr<JobCollection> query_impl( std::function<FuncT> fn, bool volatile_query, const Args &... args );
 
     // Current state and settings
@@ -34,7 +34,7 @@ class QueryMgr {
 
 public:
     // Initialize the query manager and the whole compiler infrastructure and return the main worker. \param
-    // thread_count is the total amount of workers (including this thread). TODO impl
+    // thread_count is the total amount of workers (including this thread).
     std::shared_ptr<Worker> setup( size_t thread_count );
 
     // Creates a new query with the function of \param fn
@@ -51,17 +51,20 @@ public:
         query_impl( fn, true, args... );
     }
 
+    // Waits until all workers have finished. Call this method only from the main thread.
+    void wait_finished();
+
     // Returns a free job or nullptr if no free job exist. First searches open_jobs and then in reserved_jobs.
     // It will reserve the free job and thus a returned job will always have the "reserved" state.
     std::shared_ptr<BasicJob> get_free_job();
 };
 
-
+#include "libpushc/QueryMgr.inl"
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // Conceptional section TODO delete
 //////////////////////////////////////////////////////////////////////////////////////////////
-/*
+/**/
 
 void get_line_list( const String &file, JobsBuilder &jb, QueryMgr &qm ) {
     jb.add_job( []() {
