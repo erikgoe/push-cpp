@@ -58,6 +58,7 @@ public:
 
     // Returns a free job or nullptr if no free job exist. First searches open_jobs and then in reserved_jobs.
     // The returned job will always have the "executing" status.
+    // NOTE: nullptr is returned if no free or reserved jobs where found.
     std::shared_ptr<BasicJob> get_free_job();
 };
 

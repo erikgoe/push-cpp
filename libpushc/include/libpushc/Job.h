@@ -19,7 +19,7 @@ class BasicJob {
 public:
     virtual ~BasicJob() {}
     virtual void run() = 0;
-    
+
     std::atomic_int status; // 0=free, 1=reserved, 2=executing, 3=finished
 };
 
@@ -51,16 +51,13 @@ public:
     // a list of jobs for the query. The first job in the list is reserved by default (see QueryMgr::query).
     std::list<std::shared_ptr<BasicJob>> jobs;
 
-    // returns true if all jobs are done TODO impl
+    // returns true if all jobs are done
     bool is_finished();
-
-    // blocks until all jobs are done TODO impl
-    void wait_finished();
 
     // Work on open jobs until finished. Other workers may already handle jobs for the query
     // If no free jobs remain (expect the first, which may be reserved), is_finished() will return false.
-    // if prevent_idle is true other jobs from the QueryMgr are executed when there are no free jobs left.
-    // Returns a reference to itself. TODO impl
+    // If \param prevent_idle is true other jobs from the QueryMgr are executed when there are no free jobs left. If
+    // there are no free or reserved jobs left, the function will return. Returns a reference to itself.
     JobCollection &execute( bool execut_reserved_first = true, bool prevent_idle = true );
 
     friend class QueryMgr;

@@ -58,7 +58,6 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
             LOG_WARN( "Found executing job in open_jobs stack." );
         } else if ( open_jobs.top()->status == 3 ) { // found a finished job => delete
             open_jobs.pop();
-            LOG_WARN( "Found finished job in open_jobs stack." );
         }
     }
     if ( !ret_job ) { // nothing found in open_jobs
@@ -78,7 +77,6 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
                 LOG_WARN( "Found executing job in reserved_jobs stack." );
             } else if ( reserved_jobs.top()->status == 3 ) { // found a finished job => delete
                 reserved_jobs.pop();
-                LOG_WARN( "Found finished job in reserved_jobs stack." );
             }
         }
     }
