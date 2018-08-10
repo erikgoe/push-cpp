@@ -31,6 +31,16 @@ using String = std::string;
 using StringW = std::wstring;
 using std::to_string;
 
+using Mutex = std::recursive_mutex;
+using Lock = std::lock_guard<Mutex>;
+
+static void log( const String &msg ) {
+    std::cout << msg << std::endl;
+}
+#define LOG( msg ) log( String( "MSG: " ) + msg )
+#define LOG_ERR( msg ) log( String( "ERROR: " ) + msg + " (l." + to_string( __LINE__ ) + " f.\"" + __FILE__ + "\")" )
+#define LOG_WARN( msg ) log( String( "WARNING: " ) + msg + " (l." + to_string( __LINE__ ) + " f.\"" + __FILE__ + "\")" )
+
 #if defined( _WIN32 )
 namespace fs = std::experimental::filesystem;
 #elif
