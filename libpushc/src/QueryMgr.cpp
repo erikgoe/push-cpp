@@ -13,18 +13,77 @@
 
 #include "libpushc/stdafx.h"
 #include "libpushc/QueryMgr.h"
+#include "libpushc/Worker.h"
 
 std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
     if ( thread_count < 1 ) {
-        std::cerr << "error: must be at least one worker.";
+        LOG_ERR( "Must be at least one worker." );
     }
-    // TODO
+
+    std::shared_ptr<Worker> main_worker = std::make_shared<Worker>();
+    worker.push_back( main_worker );
+
+    for ( size_t i = 1; i < thread_count; i++ ) {
+        std::shared_ptr<Worker> w = std::make_shared<Worker>();
+        w->work( shared_from_this() );
+        worker.push_back( w );
+    }
+
+    return main_worker;
 }
 
 void QueryMgr::wait_finished() {
-    // TODO
+    for ( auto w : worker ) {
+        w->stop();
+    }
 }
 
-std::shared_ptr<BasicJob> get_free_job() {
-    // TODO
+std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
+    std::shared_ptr<BasicJob> ret_job;
+
+    Lock lock( job_mtx );
+    while ( !open_jobs.empty() ) {
+        int test_val = 0;
+        if ( open_jobs.top()->status.compare_exchange_strong( test_val, 2 ) ) { // found free job
+            ret_job = open_jobs.top();
+            open_jobs.pop();
+            break;
+        } else if ( open_jobs.top()->status == 1 ) { // found a reserved job => move into reserved_jobs
+            reserved_jobs.push( open_jobs.top() );
+            open_jobs.pop();
+            LOG_WARN( "Found reserved job in open_jobs stack." );
+        } else if ( open_jobs.top()->status == 2 ) { // found a executing job => move into running_jobs
+            running_jobs.push_back( open_jobs.top() );
+            open_jobs.pop();
+            LOG_WARN( "Found executing job in open_jobs stack." );
+        } else if ( open_jobs.top()->status == 3 ) { // found a finished job => delete
+            open_jobs.pop();
+            LOG_WARN( "Found finished job in open_jobs stack." );
+        }
+    }
+    if ( !ret_job ) { // nothing found in open_jobs
+        while ( !reserved_jobs.empty() ) {
+            int test_val = 1;
+            if ( reserved_jobs.top()->status.compare_exchange_strong( test_val, 2 ) ) { // found reserved job
+                ret_job = reserved_jobs.top();
+                reserved_jobs.pop();
+                break;
+            } else if ( reserved_jobs.top()->status == 0 ) { // found a free job => move into open_jobs
+                open_jobs.push( reserved_jobs.top() );
+                reserved_jobs.pop();
+                LOG_WARN( "Found free job in reserved_jobs stack." );
+            } else if ( reserved_jobs.top()->status == 2 ) { // found a executing job => move into running_jobs
+                running_jobs.push_back( reserved_jobs.top() );
+                reserved_jobs.pop();
+                LOG_WARN( "Found executing job in reserved_jobs stack." );
+            } else if ( reserved_jobs.top()->status == 3 ) { // found a finished job => delete
+                reserved_jobs.pop();
+                LOG_WARN( "Found finished job in reserved_jobs stack." );
+            }
+        }
+    }
+
+    if ( ret_job )
+        running_jobs.push_back( ret_job );
+    return ret_job;
 }

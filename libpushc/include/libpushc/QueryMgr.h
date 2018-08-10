@@ -24,11 +24,13 @@ class QueryMgr : std::enable_shared_from_this<QueryMgr> {
     // Current state and settings
     std::shared_ptr<Context> context;
     // Handles access to open_jobs and reserved_jobs from multiple threads
-    std::recursive_mutex job_mtx;
-    // all jobs which have to be executed (excluding those in reserved_jobs).
+    Mutex job_mtx;
+    // All jobs which have to be executed (excluding those in reserved_jobs).
     std::stack<std::shared_ptr<BasicJob>> open_jobs;
     // Includes jobs which have been reserved. Gets checked when open_jobs is empty
     std::stack<std::shared_ptr<BasicJob>> reserved_jobs;
+    // All jobs which are currently running (as if returned by get_free_job())
+    std::list<std::shared_ptr<BasicJob>> running_jobs;
     // Stores a list of all worker threads including the main thread
     std::list<std::shared_ptr<Worker>> worker;
 
@@ -55,7 +57,7 @@ public:
     void wait_finished();
 
     // Returns a free job or nullptr if no free job exist. First searches open_jobs and then in reserved_jobs.
-    // It will reserve the free job and thus a returned job will always have the "reserved" state.
+    // The returned job will always have the "executing" status.
     std::shared_ptr<BasicJob> get_free_job();
 };
 
@@ -64,7 +66,7 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////
 // Conceptional section TODO delete
 //////////////////////////////////////////////////////////////////////////////////////////////
-/**/
+/*
 
 void get_line_list( const String &file, JobsBuilder &jb, QueryMgr &qm ) {
     jb.add_job( []() {
