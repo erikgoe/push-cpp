@@ -11,16 +11,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <thread>
-#include <list>
-#include <filesystem>
-#include <string>
-#include <fstream>
-#include <vector>
-#include <iostream>
-#include <functional>
-#include <stack>
-#include <atomic>
-#include <future>
+#include "libpushc/stdafx.h"
+#include "libpushc/QueryMgr.h"

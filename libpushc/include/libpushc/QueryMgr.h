@@ -13,9 +13,110 @@
 
 #pragma once
 #include "libpushc/Base.h"
+#include "libpushc/Context.h"
+#include "libpushc/Job.h"
 
-// Manages compilation queries and jobs.
+// Manages compilation queries, jobs and workers.
 class QueryMgr {
+    template <typename FuncT, typename... Args> // TODO impl
+    std::shared_ptr<JobCollection> query_impl( std::function<FuncT> fn, bool volatile_query, const Args &... args );
+
+    // Current state and settings
+    std::shared_ptr<Context> context;
+    // Handles access to open_jobs and reserved_jobs from multiple threads
+    std::recursive_mutex job_mtx;
+    // all jobs which have to be executed (excluding those in reserved_jobs).
+    std::stack<std::shared_ptr<BasicJob>> open_jobs;
+    // Includes jobs which have been reserved. Gets checked when open_jobs is empty
+    std::stack<std::shared_ptr<BasicJob>> reserved_jobs;
+    // Stores a list of all worker threads including the main thread
+    std::list<std::shared_ptr<Worker>> worker;
+
 public:
-    
+    // Initialize the query manager and the whole compiler infrastructure and return the main worker. \param
+    // thread_count is the total amount of workers (including this thread). TODO impl
+    std::shared_ptr<Worker> setup( size_t thread_count );
+
+    // Creates a new query with the function of \param fn
+    // \param args defines the argument provided for the query implementation. The first job from the query is reserved
+    // for the calling worker and must be manually freed if the worker will not handle it.
+    template <typename FuncT, typename... Args>
+    std::shared_ptr<JobCollection> query( std::function<FuncT> fn, const Args &... args ) {
+        query_impl( fn, false, args... );
+    }
+    // The same as query() but ensures that a query gets updated/checked even when the result for this input was
+    // calculated earlier and cached.
+    template <typename FuncT, typename... Args>
+    std::shared_ptr<JobCollection> query_volatile( std::function<FuncT> fn, const Args &... args ) {
+        query_impl( fn, true, args... );
+    }
+
+    // Returns a free job or nullptr if no free job exist. First searches open_jobs and then in reserved_jobs.
+    // It will reserve the free job and thus a returned job will always have the "reserved" state.
+    std::shared_ptr<BasicJob> get_free_job();
+};
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// Conceptional section TODO delete
+//////////////////////////////////////////////////////////////////////////////////////////////
+/*
+
+void get_line_list( const String &file, JobsBuilder &jb, QueryMgr &qm ) {
+    jb.add_job( []() {
+        std::list<String> lines;
+        std::ifstream stream( file );
+        String line;
+        while ( line = std::getline( stream ) ) {
+            lines.push_back( line );
+        }
+        return lines;
+    }
 }
+void get_binary_from_source( std::list<const String &> files, JobsBuilder &jb, QueryMgr &qm ) {
+    for ( auto file : files ) {
+        jb.add_job( []() {
+            BinaryStream b;
+            auto jc = qm.query( get_line_list, file ).execute();
+            // do sth with the data
+            for ( auto line : jc.jobs.front()->result.get() )
+                b << line;
+            return b;
+        } );
+    }
+}
+void compile_binary( std::list<const String &> files, JobsBuilder &jb, QueryMgr &qm ) {
+    jb.add_job( []() {
+        auto jc = qm.query( get_binary_from_source, files ).execute();
+        std::ofstream stream( "magic_file.exe" );
+        for ( auto jobs : jc.jobs ) {
+            stream << jobs->result.get(); // stream the BinaryStream into ofstream
+        }
+    } );
+}
+void test_function() {
+    QueryMgr qm;
+    qm.setup( 4 );
+    qm.query( compile_binary, { "somefile.push", "another.push", "last.push" } ).execute();
+    qm.wait_finished();
+}
+
+// using a variable parameter length
+void compile_binary_with_parameterlist( const String &file1, const String &file2, JobsBuilder &jb, QueryMgr &qm ) {
+    jb.add_job( []() {
+          auto jc = qm.query( get_binary_from_source, file1 ).execute();
+          std::ofstream stream( "magic_file.exe" );
+          for ( auto jobs : jc.jobs ) {
+              stream << jobs->result.get(); // stream the BinaryStream into ofstream
+          }
+      } )
+        .add_job( []() {
+            auto jc = qm.query( get_binary_from_source, file2 ).execute();
+            std::ofstream stream( "magic_file.exe" );
+            for ( auto jobs : jc.jobs ) {
+                stream << jobs->result.get(); // stream the BinaryStream into ofstream
+            }
+        } );
+}
+/**/

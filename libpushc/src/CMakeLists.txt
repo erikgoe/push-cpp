@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 # add files
 set(LIB_NAME lib${PROJECT_NAME})
 add_library(${LIB_NAME}
-    main.cpp
+    QueryMgr.cpp
 )
 
 # includes

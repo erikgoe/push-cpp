@@ -36,3 +36,6 @@ namespace fs = std::experimental::filesystem;
 #elif
 namespace fs = sf::filesystem;
 #endif
+
+class Worker;
+class QueryMgr;

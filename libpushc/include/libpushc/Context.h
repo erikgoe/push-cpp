@@ -12,15 +12,10 @@
 // limitations under the License.
 
 #pragma once
+#include "libpushc/Base.h"
 
-#include <thread>
-#include <list>
-#include <filesystem>
-#include <string>
-#include <fstream>
-#include <vector>
-#include <iostream>
-#include <functional>
-#include <stack>
-#include <atomic>
-#include <future>
+// Stores the current state and the settings for a compilation pass (or a incremental build)
+class Context {
+public:
+
+};
