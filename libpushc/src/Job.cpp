@@ -16,7 +16,7 @@
 #include "libpushc/Job.h"
 
 bool JobCollection::is_finished() {
-    for ( auto job : jobs ) {
+    for ( auto &job : jobs ) {
         if ( job->status != 3 )
             return false;
     }
@@ -28,7 +28,7 @@ JobCollection &JobCollection::execute( bool execute_reserved_first, bool prevent
         jobs.front()->run();
     }
     // handle open jobs
-    for ( auto job : jobs ) {
+    for ( auto &job : jobs ) {
         int test_val = 0;
         if ( job->status.compare_exchange_strong( test_val, 2 ) ) {
             job->run();

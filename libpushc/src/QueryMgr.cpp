@@ -33,7 +33,7 @@ std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
 }
 
 void QueryMgr::wait_finished() {
-    for ( auto w : worker ) {
+    for ( auto &w : worker ) {
         w->stop();
     }
 }
