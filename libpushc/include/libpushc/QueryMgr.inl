@@ -31,6 +31,13 @@ std::shared_ptr<JobCollection> QueryMgr::query_impl( std::function<FuncT> fn, bo
             auto itr = ++jb.jobs.begin();
             open_jobs.push( *itr );
         }
+
+        if( no_jobs ) { // wake threads
+            no_jobs = false;
+            for ( auto w : worker ) {
+                w->notify();
+            }
+        }
     }
 
     return jc;

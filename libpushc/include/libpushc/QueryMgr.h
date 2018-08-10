@@ -15,6 +15,7 @@
 #include "libpushc/Base.h"
 #include "libpushc/Context.h"
 #include "libpushc/Job.h"
+#include "libpushc/Worker.h"
 
 // Manages compilation queries, jobs and workers.
 class QueryMgr : std::enable_shared_from_this<QueryMgr> {
@@ -23,7 +24,7 @@ class QueryMgr : std::enable_shared_from_this<QueryMgr> {
 
     // Current state and settings
     std::shared_ptr<Context> context;
-    // Handles access to open_jobs and reserved_jobs from multiple threads
+    // Handles access to open_jobs, reserved_jobs, running_jobs, no_jobs from multiple threads
     Mutex job_mtx;
     // All jobs which have to be executed (excluding those in reserved_jobs).
     std::stack<std::shared_ptr<BasicJob>> open_jobs;
@@ -33,6 +34,9 @@ class QueryMgr : std::enable_shared_from_this<QueryMgr> {
     std::list<std::shared_ptr<BasicJob>> running_jobs;
     // Stores a list of all worker threads including the main thread
     std::list<std::shared_ptr<Worker>> worker;
+
+    // Is true if no open or reserved jobs exist. Helps to wake up threads when new jobs occur.
+    bool no_jobs = false;
 
 public:
     // Initialize the query manager and the whole compiler infrastructure and return the main worker. \param

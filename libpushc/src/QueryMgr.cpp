@@ -83,5 +83,7 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
 
     if ( ret_job )
         running_jobs.push_back( ret_job );
+    else
+        no_jobs = true;
     return ret_job;
 }

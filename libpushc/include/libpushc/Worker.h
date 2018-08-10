@@ -13,7 +13,6 @@
 
 #pragma once
 #include "libpushc/Base.h"
-#include "libpushc/QueryMgr.h"
 
 // Executes a job on its thread
 class Worker {
@@ -21,10 +20,16 @@ class Worker {
     std::atomic_bool finish; // will stop if is set to true
     std::shared_ptr<QueryMgr> qm;
 
+    std::mutex mtx;
+    std::condition_variable cv;
+
 public:
     // starts a new thread and executes free jobs from the QueryMgr
-    void work(std::shared_ptr<QueryMgr> qm);
+    void work( std::shared_ptr<QueryMgr> qm );
 
     // The thread will wait for new jobs until this method is called
     void stop();
+
+    // notifies the thread when new jobs occur
+    void notify();
 };
