@@ -18,9 +18,9 @@
 #include "libpushc/Worker.h"
 
 // Manages compilation queries, jobs and workers.
-class QueryMgr : std::enable_shared_from_this<QueryMgr> {
+class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
     template <typename FuncT, typename... Args>
-    std::shared_ptr<JobCollection> query_impl( std::function<FuncT> fn, bool volatile_query, const Args &... args );
+    std::shared_ptr<JobCollection> query_impl( FuncT fn, bool volatile_query, const Args &... args );
 
     // Current state and settings
     std::shared_ptr<Context> context;
@@ -39,6 +39,8 @@ class QueryMgr : std::enable_shared_from_this<QueryMgr> {
     bool no_jobs = false;
 
 public:
+    ~QueryMgr() { wait_finished(); }
+
     // Initialize the query manager and the whole compiler infrastructure and return the main worker. \param
     // thread_count is the total amount of workers (including this thread).
     std::shared_ptr<Worker> setup( size_t thread_count );
@@ -47,21 +49,21 @@ public:
     // \param args defines the argument provided for the query implementation. The first job from the query is reserved
     // for the calling worker and must be manually freed if the worker will not handle it.
     template <typename FuncT, typename... Args>
-    std::shared_ptr<JobCollection> query( std::function<FuncT> fn, const Args &... args ) {
-        query_impl( fn, false, args... );
+    std::shared_ptr<JobCollection> query( FuncT fn, const Args &... args ) {
+        return query_impl( fn, false, args... );
     }
     // The same as query() but ensures that a query gets updated/checked even when the result for this input was
     // calculated earlier and cached.
     template <typename FuncT, typename... Args>
-    std::shared_ptr<JobCollection> query_volatile( std::function<FuncT> fn, const Args &... args ) {
-        query_impl( fn, true, args... );
+    std::shared_ptr<JobCollection> query_volatile( FuncT fn, const Args &... args ) {
+        return query_impl( fn, true, args... );
     }
 
     // Waits until all workers have finished. Call this method only from the main thread.
     void wait_finished();
 
     // Returns a free job or nullptr if no free job exist. First searches open_jobs and then in reserved_jobs.
-    // The returned job will always have the "executing" status.
+    // The returned job will always have the "reserved" status.
     // NOTE: nullptr is returned if no free or reserved jobs where found.
     std::shared_ptr<BasicJob> get_free_job();
 };

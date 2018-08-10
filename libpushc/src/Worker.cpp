@@ -32,13 +32,15 @@ void Worker::work( std::shared_ptr<QueryMgr> qm ) {
     } );
 }
 void Worker::stop() {
-    {
-        std::lock_guard<std::mutex> lk( mtx );
-        finish = true;
-    }
-    cv.notify_all();
+    if ( thread && thread->joinable() ) { // the main thread has not explicit thread object
+        {
+            std::lock_guard<std::mutex> lk( mtx );
+            finish = true;
+        }
+        cv.notify_all();
 
-    thread->join();
+        thread->join();
+    }
 }
 
 void Worker::notify() {

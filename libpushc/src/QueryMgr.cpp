@@ -44,7 +44,7 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
     Lock lock( job_mtx );
     while ( !open_jobs.empty() ) {
         int test_val = 0;
-        if ( open_jobs.top()->status.compare_exchange_strong( test_val, 2 ) ) { // found free job
+        if ( open_jobs.top()->status.compare_exchange_strong( test_val, 1 ) ) { // found free job
             ret_job = open_jobs.top();
             open_jobs.pop();
             break;
@@ -63,7 +63,7 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
     if ( !ret_job ) { // nothing found in open_jobs
         while ( !reserved_jobs.empty() ) {
             int test_val = 1;
-            if ( reserved_jobs.top()->status.compare_exchange_strong( test_val, 2 ) ) { // found reserved job
+            if ( reserved_jobs.top()->status == 1 ) { // found reserved job
                 ret_job = reserved_jobs.top();
                 reserved_jobs.pop();
                 break;

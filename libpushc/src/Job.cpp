@@ -24,14 +24,18 @@ bool JobCollection::is_finished() {
 }
 
 JobCollection &JobCollection::execute( bool execute_reserved_first, bool prevent_idle ) {
-    if ( execute_reserved_first ) { // first job is reserved
-        jobs.front()->run();
-    }
     // handle open jobs
     for ( auto &job : jobs ) {
-        int test_val = 0;
-        if ( job->status.compare_exchange_strong( test_val, 2 ) ) {
-            job->run();
+        if ( execute_reserved_first ) { // the first job is reserved
+            int test_val = 0; // reserve if it is free
+            job->status.compare_exchange_strong( test_val, 1 );
+            jobs.front()->run();
+            execute_reserved_first = false;
+        } else {
+            int test_val = 0;
+            if ( job->status.compare_exchange_strong( test_val, 1 ) ) {
+                job->run();
+            }
         }
     }
 
@@ -39,7 +43,7 @@ JobCollection &JobCollection::execute( bool execute_reserved_first, bool prevent
     if ( prevent_idle ) {
         while ( !is_finished() ) {
             auto tmp_job = query_mgr->get_free_job();
-            if ( tmp_job)
+            if ( tmp_job )
                 tmp_job->run();
             else
                 break; // Return because there are no more free jobs

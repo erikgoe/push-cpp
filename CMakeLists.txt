@@ -31,7 +31,7 @@ if(BUILD_COTIRE_PROJ)
 endif()
 
 # packages
-find_package(Catch2 CONFIG QUIET)
+find_path(CATCH_INCLUDE_DIR NAMES catch.hpp PATH_SUFFIXES Catch2 QUIET)
 
 # subdirectories
 add_subdirectory(libpushc/src)

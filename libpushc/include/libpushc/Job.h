@@ -14,6 +14,9 @@
 #pragma once
 #include "libpushc/Base.h"
 
+template<typename R>
+class Job;
+
 // Enables polymorphism over class Job
 class BasicJob {
 public:
@@ -21,26 +24,39 @@ public:
     virtual void run() = 0;
 
     std::atomic_int status; // 0=free, 1=reserved, 2=executing, 3=finished
+
+    BasicJob() { status = 0; }
+    BasicJob( const BasicJob &other ) { this->status.store( other.status.load() ); }
+
+    // Cast into any Job
+    template <typename T>
+    Job<T> &as() {
+        return *static_cast<Job<T> *>( this );
+    }
 };
 
 // Stores a function which has to be executed to fulfill a query.
 template <typename R>
-class Job : BasicJob {
-    std::packaged_task<R()> task; // the function which should be executed for this job
+class Job : public BasicJob {
+    std::shared_ptr<std::packaged_task<R()>> task; // the function which should be executed for this job
+    std::shared_future<R> result; // the job stores the result in this variable
 
 public:
     Job( std::function<R()> function ) {
-        task = std::packaged_task<R()>( function );
-        result = task.get_future();
-    }
-    // executes the job
-    void run() {
-        status = 2;
-        task();
-        status = 3;
+        task = std::make_shared<std::packaged_task<R()>>( function );
+        result = task->get_future().share();
     }
 
-    std::future<R> result; // the job stores the result in this variable
+    // executes the job
+    void run() {
+        int test_val = 1;
+        if ( status.compare_exchange_strong( test_val, 2 ) ) {
+            (*task)();
+            status = 3;
+        }
+    }
+
+    const R get() { return result.get(); }
 };
 
 // Stores the jobs for a specific query
@@ -68,12 +84,11 @@ class JobsBuilder {
     std::list<std::shared_ptr<BasicJob>> jobs;
 
 public:
-    // Add a new job body WITH a return value
+    // Add a new job body with a return value
     template <typename R>
     JobsBuilder &add_job( std::function<R()> fn ) {
-        jobs.push_back( std::make_shared<Job<R>>( fn ) );
+        jobs.push_back( std::static_pointer_cast<BasicJob>( std::make_shared<Job<R>>( fn ) ) );
         return *this;
     }
-
     friend class QueryMgr;
 };

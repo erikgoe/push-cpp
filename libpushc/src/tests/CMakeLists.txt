@@ -9,7 +9,7 @@ add_executable(${TEST_NAME}
 # incudes
 target_include_directories(${TEST_NAME}
     PUBLIC
-        ${Catch_INCLUDE_DIRS}
+        ${CATCH_INCLUDE_DIR}
 
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}
@@ -18,7 +18,6 @@ target_include_directories(${TEST_NAME}
 
 # linking
 target_link_libraries(${TEST_NAME}
-    ${Catch_LIBRARIES}
     
 	${LIB_NAME}
 	${CMAKE_THREAD_LIBS_INIT}
