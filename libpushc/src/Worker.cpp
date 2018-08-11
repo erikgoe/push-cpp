@@ -26,16 +26,14 @@ void Worker::work() {
         std::shared_ptr<BasicJob> job = qm->get_free_job();
         while ( !finish ) {
             while ( job ) { // handle open jobs
-                if ( job->run( *this ) )
-                    LOG( "Thread " + to_string( id ) + " (extern) executed job(" + to_string( job->id ) + ")." );
+                job->run( *this );
+                // LOG( "Thread " + to_string( id ) + " (extern) executed job(" + to_string( job->id ) + ")." );
                 job = qm->get_free_job();
             }
 
             {
-                LOG( "Thread " + to_string( id ) + " idle." );
                 std::unique_lock<std::mutex> lk( mtx );
                 cv.wait( lk, [this, &job] { return finish || ( job = qm->get_free_job() ); } );
-                LOG( "Thread " + to_string( id ) + " continue." );
             }
         }
     } );

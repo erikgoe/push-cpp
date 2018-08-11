@@ -37,7 +37,6 @@ void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, Que
             for ( auto &line : job.get() )
                 b.push_back( line + "_token" );
 
-            //Sleep( 1. );
             return b;
         } );
     }
@@ -60,7 +59,7 @@ void compile_binary( const std::list<String> files, JobsBuilder &jb, QueryMgr &q
 TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
     auto qm = std::make_shared<QueryMgr>();
 
-    LOG( "Start pass" );
+    // LOG( "Start pass" );
     std::shared_ptr<Worker> w_ctx;
     std::shared_ptr<JobCollection> jc;
     String check_result;
@@ -72,19 +71,22 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
             "somefile_token ._token push_token another_token ._token push_token last_token ._token push_token ";
     }
     SECTION( "multi files" ) {
-        //SECTION( "single threaded" ) { w_ctx = qm->setup( 1 ); }
+        // SECTION( "single threaded" ) { w_ctx = qm->setup( 1 ); }
         SECTION( "multithreaded" ) { w_ctx = qm->setup( 16 ); }
         auto filelist = std::list<String>();
-        for ( char c = 'a'; c <= 'z'; c++ ) {
-            for ( char c2 = 'a'; c2 <= 'z'; c2++ ) {
-                for ( char c3 = 'a'; c3 <= 'z'; c3++ ) {
-                    String str;
-                    str += c;
-                    str += c2;
-                    str += c3;
-                    filelist.push_back( str + ".push" );
-                    check_result += str + "_token ._token push_token ";
-                }
+        for ( char c = '@'; c <= 'Z'; c++ ) {
+            for ( char c2 = '@'; c2 <= 'Z'; c2++ ) {
+                // for ( char c3 = '@'; c3 <= 'Z'; c3++ ) { // use this additional loops for stress testing
+                // for ( char c4 = '@'; c4 <= 'Z'; c4++ ) {
+                String str;
+                str += c;
+                str += c2;
+                // str += c3;
+                // str += c4;
+                filelist.push_back( str + ".push" );
+                check_result += str + "_token ._token push_token ";
+                //}
+                //}
             }
         }
         jc = qm->query( compile_binary, filelist );

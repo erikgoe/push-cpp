@@ -36,7 +36,7 @@ using Lock = std::lock_guard<Mutex>;
 
 static Mutex log_mtx;
 
-#define SCILENT_LOG 1
+#define SCILENT_LOG 0
 
 static void log( const String &msg ) {
     #if ! SCILENT_LOG
