@@ -46,10 +46,8 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
         if ( open_jobs.top()->status == BasicJob::STATUS_FREE ) { // found free job
             ret_job = open_jobs.top();
             open_jobs.pop();
-            running_jobs.push_back( ret_job );
             break;
-        } else if ( open_jobs.top()->status == BasicJob::STATUS_EXE ) { // found a executing job => move into running_jobs
-            running_jobs.push_back( open_jobs.top() );
+        } else if ( open_jobs.top()->status == BasicJob::STATUS_EXE ) { // found a executing job => remove
             LOG_WARN( "Found executing job(" + to_string( open_jobs.top()->id ) + ") in open_jobs stack." );
             open_jobs.pop();
         } else if ( open_jobs.top()->status == BasicJob::STATUS_FIN ) { // found a finished job => delete

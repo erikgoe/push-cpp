@@ -28,8 +28,6 @@ class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
     Mutex job_mtx;
     // All jobs which have to be executed
     std::stack<std::shared_ptr<BasicJob>> open_jobs;
-    // All jobs which are currently running (as if returned by get_free_job())
-    std::list<std::shared_ptr<BasicJob>> running_jobs;
     // Stores a list of all worker threads including the main thread
     std::list<std::shared_ptr<Worker>> worker;
 
