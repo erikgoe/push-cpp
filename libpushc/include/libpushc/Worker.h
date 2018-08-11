@@ -24,10 +24,16 @@ class Worker {
     std::condition_variable cv;
 
 public:
-    // starts a new thread and executes free jobs from the QueryMgr
-    void work( std::shared_ptr<QueryMgr> qm );
+    // Context data
+    size_t id; // id of this worker
 
-    // The thread will wait for new jobs until this method is called
+    // Basic constructor
+    Worker( std::shared_ptr<QueryMgr> qm, size_t id );
+
+    // starts a new thread and executes free jobs from the QueryMgr
+    void work();
+
+    // The thread will wait for new jobs until this method is called. Blocks until the thread finished.
     void stop();
 
     // notifies the thread when new jobs occur

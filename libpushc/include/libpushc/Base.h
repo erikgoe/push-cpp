@@ -34,18 +34,30 @@ using std::to_string;
 using Mutex = std::recursive_mutex;
 using Lock = std::lock_guard<Mutex>;
 
+static Mutex log_mtx;
+
+#define SCILENT_LOG 1
+
 static void log( const String &msg ) {
+    #if ! SCILENT_LOG
+    log_mtx.lock();
     std::cout << msg << std::endl;
+    log_mtx.unlock();
+    #endif
 }
 #define LOG( msg ) log( String( "MSG: " ) + msg )
-#define LOG_ERR( msg ) log( String( "ERROR: " ) + msg + " (l." + to_string( __LINE__ ) + " f.\"" + __FILE__ + "\")" )
-#define LOG_WARN( msg ) log( String( "WARNING: " ) + msg + " (l." + to_string( __LINE__ ) + " f.\"" + __FILE__ + "\")" )
+#define LOG_ERR( msg ) log( String( "ERROR: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
+#define LOG_WARN( msg ) log( String( "WARNING: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
 
 #if defined( _WIN32 )
 namespace fs = std::experimental::filesystem;
 #elif
 namespace fs = sf::filesystem;
 #endif
+
+inline void Sleep( f64 ms_duration ) {
+    std::this_thread::sleep_for( std::chrono::duration<f64, std::milli>( ms_duration ) );
+}
 
 class Worker;
 class QueryMgr;

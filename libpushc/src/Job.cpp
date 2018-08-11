@@ -23,22 +23,25 @@ bool JobCollection::is_finished() {
     return true;
 }
 
-JobCollection &JobCollection::execute( bool prevent_idle ) {
+std::shared_ptr<JobCollection> JobCollection::execute( Worker &w_ctx, bool prevent_idle ) {
     // handle open jobs
     for ( auto &job : jobs ) {
-        job->run(); // the job which check if he is free itself
+        if ( job->run( w_ctx ) ) // the job which check if he is free itself
+            LOG( "Thread " + to_string( w_ctx.id ) + " (linear) executed job(" + to_string( job->id ) + ")." );
     }
 
     // prevent idle when jobs are still executed
     if ( prevent_idle ) {
         while ( !is_finished() ) {
             auto tmp_job = query_mgr->get_free_job();
-            if ( tmp_job )
-                tmp_job->run();
-            else
+            if ( tmp_job ) {
+                if ( tmp_job->run( w_ctx ) )
+                    LOG( "Thread " + to_string( w_ctx.id ) + " (prevent_idle) executed job(" +
+                         to_string( tmp_job->id ) + ")." );
+            } else
                 break; // Return because there are no more free jobs
         }
     }
 
-    return *this;
+    return shared_from_this();
 }

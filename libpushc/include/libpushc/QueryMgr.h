@@ -36,6 +36,8 @@ class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
     // Is true if no free jobs exist. Helps to wake up threads when new jobs occur.
     bool no_jobs = false;
 
+	size_t job_ctr = 0; // used to give every job a new id
+
 public:
     ~QueryMgr() { wait_finished(); }
 

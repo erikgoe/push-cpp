@@ -15,18 +15,27 @@
 #include "libpushc/QueryMgr.h"
 #include "libpushc/Worker.h"
 
-void Worker::work( std::shared_ptr<QueryMgr> qm ) {
+Worker::Worker( std::shared_ptr<QueryMgr> qm, size_t id ) {
+    finish = false;
     this->qm = qm;
+    this->id = id;
+}
 
-    thread = std::make_unique<std::thread>( [this, qm]() {
+void Worker::work() {
+    thread = std::make_unique<std::thread>( [this]() {
+        std::shared_ptr<BasicJob> job = qm->get_free_job();
         while ( !finish ) {
-            auto job = qm->get_free_job();
-            if ( job )
-                job->run();
+            while ( job ) { // handle open jobs
+                if ( job->run( *this ) )
+                    LOG( "Thread " + to_string( id ) + " (extern) executed job(" + to_string( job->id ) + ")." );
+                job = qm->get_free_job();
+            }
 
             {
+                LOG( "Thread " + to_string( id ) + " idle." );
                 std::unique_lock<std::mutex> lk( mtx );
-                cv.wait( lk, [this, qm] { return finish || qm->get_free_job(); } );
+                cv.wait( lk, [this, &job] { return finish || ( job = qm->get_free_job() ); } );
+                LOG( "Thread " + to_string( id ) + " continue." );
             }
         }
     } );

@@ -20,12 +20,12 @@ std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
         LOG_ERR( "Must be at least one worker." );
     }
 
-    std::shared_ptr<Worker> main_worker = std::make_shared<Worker>();
+    std::shared_ptr<Worker> main_worker = std::make_shared<Worker>( shared_from_this(), 0 );
     worker.push_back( main_worker );
 
     for ( size_t i = 1; i < thread_count; i++ ) {
-        std::shared_ptr<Worker> w = std::make_shared<Worker>();
-        w->work( shared_from_this() );
+        std::shared_ptr<Worker> w = std::make_shared<Worker>( shared_from_this(), i );
+        w->work();
         worker.push_back( w );
     }
 
@@ -50,11 +50,11 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
             break;
         } else if ( open_jobs.top()->status == BasicJob::STATUS_EXE ) { // found a executing job => move into running_jobs
             running_jobs.push_back( open_jobs.top() );
+            LOG_WARN( "Found executing job(" + to_string( open_jobs.top()->id ) + ") in open_jobs stack." );
             open_jobs.pop();
-            LOG_WARN( "Found executing job in open_jobs stack." );
         } else if ( open_jobs.top()->status == BasicJob::STATUS_FIN ) { // found a finished job => delete
+            LOG_WARN( "Found finished job(" + to_string( open_jobs.top()->id ) + ") in open_jobs stack." );
             open_jobs.pop();
-            LOG_WARN( "Found finished job in open_jobs stack." );
         }
     }
 

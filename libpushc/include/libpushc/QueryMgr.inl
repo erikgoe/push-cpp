@@ -21,13 +21,17 @@ std::shared_ptr<JobCollection> QueryMgr::query_impl( FuncT fn, bool volatile_que
     auto jc = std::make_shared<JobCollection>();
     jc->jobs = jb.jobs;
     jc->query_mgr = shared_from_this();
+    if ( !jb.jobs.empty() )
+        jb.jobs.front()->id = job_ctr++;
 
     if ( jb.jobs.size() > 0 ) {
         {
             Lock lock( job_mtx );
-            if ( jb.jobs.size() > 1 ) {
-                auto itr = ++jb.jobs.begin();
-                open_jobs.push( *itr );
+            if ( jb.jobs.size() > 1 ) { // add all jobs (but the first) into the open_jobs list
+                for ( auto itr = ++jb.jobs.begin(); itr != jb.jobs.end(); itr++ ) {
+                    open_jobs.push( *itr );
+                    ( *itr )->id = job_ctr++;
+                }
             }
         }
 
