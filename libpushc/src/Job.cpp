@@ -17,26 +17,16 @@
 
 bool JobCollection::is_finished() {
     for ( auto &job : jobs ) {
-        if ( job->status != 3 )
+        if ( job->status != BasicJob::STATUS_FIN )
             return false;
     }
     return true;
 }
 
-JobCollection &JobCollection::execute( bool execute_reserved_first, bool prevent_idle ) {
+JobCollection &JobCollection::execute( bool prevent_idle ) {
     // handle open jobs
     for ( auto &job : jobs ) {
-        if ( execute_reserved_first ) { // the first job is reserved
-            int test_val = 0; // reserve if it is free
-            job->status.compare_exchange_strong( test_val, 1 );
-            jobs.front()->run();
-            execute_reserved_first = false;
-        } else {
-            int test_val = 0;
-            if ( job->status.compare_exchange_strong( test_val, 1 ) ) {
-                job->run();
-            }
-        }
+        job->run(); // the job which check if he is free itself
     }
 
     // prevent idle when jobs are still executed

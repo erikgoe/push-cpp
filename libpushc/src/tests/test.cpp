@@ -55,9 +55,13 @@ void compile_binary( const std::list<String> &files, JobsBuilder &jb, QueryMgr &
 
 TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
     auto qm = std::make_shared<QueryMgr>();
-    qm->setup( 1 );
+
+    SECTION( "single threaded" ) { qm->setup( 1 ); }
+    SECTION( "multithreaded" ) { qm->setup( 4 ); }
+
     auto jc = qm->query( compile_binary, std::list<String>{ "somefile.push", "another.push", "last.push" } )->execute();
     String result = jc.jobs.front()->as<String>().get();
-    CHECK( result == "somefile_token ._token push_token another_token ._token push_token last_token ._token push_token " );
+    CHECK( result ==
+           "somefile_token ._token push_token another_token ._token push_token last_token ._token push_token " );
     qm->wait_finished();
 }

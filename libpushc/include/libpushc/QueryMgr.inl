@@ -12,10 +12,9 @@
 // limitations under the License.
 
 template <typename FuncT, typename... Args>
-std::shared_ptr<JobCollection> QueryMgr::query_impl( FuncT fn, bool volatile_query,
-                                                     const Args &... args ) {
+std::shared_ptr<JobCollection> QueryMgr::query_impl( FuncT fn, bool volatile_query, const Args &... args ) {
     // TODO impl volatile_query with caching of querries
-    
+
     JobsBuilder jb;
     fn( args..., jb, *this );
 
@@ -24,15 +23,15 @@ std::shared_ptr<JobCollection> QueryMgr::query_impl( FuncT fn, bool volatile_que
     jc->query_mgr = shared_from_this();
 
     if ( jb.jobs.size() > 0 ) {
-        jb.jobs.front()->status = 1;
-        reserved_jobs.push( jb.jobs.front() );
-        Lock lock( job_mtx );
-        if( jb.jobs.size() > 1 ) {
-            auto itr = ++jb.jobs.begin();
-            open_jobs.push( *itr );
+        {
+            Lock lock( job_mtx );
+            if ( jb.jobs.size() > 1 ) {
+                auto itr = ++jb.jobs.begin();
+                open_jobs.push( *itr );
+            }
         }
 
-        if( no_jobs ) { // wake threads
+        if ( no_jobs ) { // wake threads
             no_jobs = false;
             for ( auto &w : worker ) {
                 w->notify();

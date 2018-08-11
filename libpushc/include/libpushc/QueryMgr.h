@@ -26,16 +26,14 @@ class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
     std::shared_ptr<Context> context;
     // Handles access to open_jobs, reserved_jobs, running_jobs, no_jobs from multiple threads
     Mutex job_mtx;
-    // All jobs which have to be executed (excluding those in reserved_jobs).
+    // All jobs which have to be executed
     std::stack<std::shared_ptr<BasicJob>> open_jobs;
-    // Includes jobs which have been reserved. Gets checked when open_jobs is empty
-    std::stack<std::shared_ptr<BasicJob>> reserved_jobs;
     // All jobs which are currently running (as if returned by get_free_job())
     std::list<std::shared_ptr<BasicJob>> running_jobs;
     // Stores a list of all worker threads including the main thread
     std::list<std::shared_ptr<Worker>> worker;
 
-    // Is true if no open or reserved jobs exist. Helps to wake up threads when new jobs occur.
+    // Is true if no free jobs exist. Helps to wake up threads when new jobs occur.
     bool no_jobs = false;
 
 public:
@@ -47,7 +45,7 @@ public:
 
     // Creates a new query with the function of \param fn
     // \param args defines the argument provided for the query implementation. The first job from the query is reserved
-    // for the calling worker and must be manually freed if the worker will not handle it.
+    // for the calling worker and is thus not in the open_jobs list.
     template <typename FuncT, typename... Args>
     std::shared_ptr<JobCollection> query( FuncT fn, const Args &... args ) {
         return query_impl( fn, false, args... );
@@ -62,9 +60,9 @@ public:
     // Waits until all workers have finished. Call this method only from the main thread.
     void wait_finished();
 
-    // Returns a free job or nullptr if no free job exist. First searches open_jobs and then in reserved_jobs.
-    // The returned job will always have the "reserved" status.
-    // NOTE: nullptr is returned if no free or reserved jobs where found.
+    // Returns a free job or nullptr if no free job exist.
+    // The returned job will always have the "free" status.
+    // NOTE: nullptr is returned if no free jobs where found.
     std::shared_ptr<BasicJob> get_free_job();
 };
 

@@ -23,9 +23,12 @@ public:
     virtual ~BasicJob() {}
     virtual void run() = 0;
 
-    std::atomic_int status; // 0=free, 1=reserved, 2=executing, 3=finished
+    static const int STATUS_FREE = 0;
+    static const int STATUS_EXE = 1;
+    static const int STATUS_FIN = 2;
+    std::atomic_int status; // 0=free, 1=executing, 2=finished
 
-    BasicJob() { status = 0; }
+    BasicJob() { status = STATUS_FREE; }
     BasicJob( const BasicJob &other ) { this->status.store( other.status.load() ); }
 
     // Cast into any Job
@@ -49,10 +52,10 @@ public:
 
     // executes the job
     void run() {
-        int test_val = 1;
-        if ( status.compare_exchange_strong( test_val, 2 ) ) {
+        int test_val = BasicJob::STATUS_FREE;
+        if ( status.compare_exchange_strong( test_val, BasicJob::STATUS_EXE ) ) {
             (*task)();
-            status = 3;
+            status = BasicJob::STATUS_FIN;
         }
     }
 
@@ -73,8 +76,8 @@ public:
     // Work on open jobs until finished. Other workers may already handle jobs for the query
     // If no free jobs remain (expect the first, which may be reserved), is_finished() will return false.
     // If \param prevent_idle is true other jobs from the QueryMgr are executed when there are no free jobs left. If
-    // there are no free or reserved jobs left, the function will return. Returns a reference to itself.
-    JobCollection &execute( bool execut_reserved_first = true, bool prevent_idle = true );
+    // there are no free jobs left, the function will return. Returns a reference to itself.
+    JobCollection &execute( bool prevent_idle = true );
 
     friend class QueryMgr;
 };
