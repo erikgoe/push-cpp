@@ -6,6 +6,8 @@ add_library(${LIB_NAME}
     Job.cpp
     QueryMgr.cpp
     Worker.cpp
+    input/FileInput.cpp
+    input/SourceInput.cpp
 )
 
 # includes

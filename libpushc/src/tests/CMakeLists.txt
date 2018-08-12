@@ -3,7 +3,9 @@ cmake_minimum_required(VERSION 3.5)
 # add files
 set(TEST_NAME ${LIB_NAME}_test)
 add_executable(${TEST_NAME}
-    test.cpp
+    Lexer.cpp
+    Test.cpp
+    Workflow.cpp
 )
 
 # incudes

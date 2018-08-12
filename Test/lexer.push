@@ -1,0 +1,7 @@
+// testing the lexer (SourceInput)
+
+main {
+    let a= 4;
+    let b =3.2; // commenting
+    c = a+b - 2; /*other comment*/
+}

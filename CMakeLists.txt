@@ -25,6 +25,8 @@ if (MSVC)
 	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MTd")
 endif()
 
+add_definitions(-DCMAKE_PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}")
+
 # scripts
 if(BUILD_COTIRE_PROJ)
 	include(${DEV_SOURCE_DIR}/.extlib/cotire/cotire.cmake)
