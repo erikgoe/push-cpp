@@ -1,7 +1,8 @@
 // testing the lexer (SourceInput)
 
 main {
-    let a= 4;
+    letlet a= 4;
     let b =3.2; // commenting
-    c = a+b - 2; /*other comment*/
+    c = a+b - 2; /*other /*comment /*with*/*/ nested*/
+	c -+=-+=----objletlet.letletdo();
 }

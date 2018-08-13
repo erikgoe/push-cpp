@@ -58,21 +58,39 @@ std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, boo
         // TODO print error
     }
 
-    // NOTE better approach to check elements: hashmaps for each operator size. Would be faster and not need all the size
-    // checks and substr etc.
-    if ( back == ' ' || back == '\n' || back == '\r' || back == '\t' ) // whitespace
-        return std::make_pair( Token::Type::ws, 1 );
-    else {
+    // NOTE better approach to check elements: hashmaps for each operator size. Would be faster and not need all the
+    // size checks and substr etc.
+    if ( back == ' ' || back == '\n' || back == '\r' || back == '\t' ) {
+        // first check if comments or strings are terminated by this token
+        if ( in_comment ) {
+            for ( auto &tc : cfg.comment ) { // comment delimiter
+                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
+                    return std::make_pair( Token::Type::comment_end, tc.second.size() );
+            }
+        } else if ( in_string ) {
+            for ( auto &tc : cfg.string ) { // comment delimiter
+                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
+                    return std::make_pair( Token::Type::string_end, tc.second.size() );
+            }
+        }
+        return std::make_pair( Token::Type::ws, 1 ); // whitespace
+    } else {
         for ( auto &tc : cfg.stat_divider ) { // statement divider
             if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
                 return std::make_pair( Token::Type::stat_divider, tc.size() );
         }
         for ( auto &tc : cfg.comment ) { // comment delimiter
-            if ( str.size() >= tc.first.size() && ( !in_comment || cfg.nested_comments ) &&
-                 str.slice( str.size() - tc.first.size() ) == tc.first )
-                return std::make_pair( Token::Type::comment_begin, tc.first.size() );
-            if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                return std::make_pair( Token::Type::comment_end, tc.second.size() );
+            if ( in_comment && !cfg.nested_comments ) { // first check comment end
+                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
+                    return std::make_pair( Token::Type::comment_end, tc.second.size() );
+                if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
+                    return std::make_pair( Token::Type::comment_begin, tc.first.size() );
+            } else {
+                if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
+                    return std::make_pair( Token::Type::comment_begin, tc.first.size() );
+                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
+                    return std::make_pair( Token::Type::comment_end, tc.second.size() );
+            }
         }
         for ( auto &tc : cfg.block ) { // block delimiter
             if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
@@ -129,12 +147,22 @@ std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, boo
             if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
                 return std::make_pair( Token::Type::op, tc.size() );
         }
+        for ( auto &tc : cfg.keywords ) { // keywords
+            if ( str == tc )
+                return std::make_pair( Token::Type::keyword, tc.size() );
+        }
         for ( auto &tc : cfg.string ) { // string delimiter
-            if ( str.size() >= tc.first.size() && ( !in_string || cfg.nested_strings ) &&
-                 str.slice( str.size() - tc.first.size() ) == tc.first )
-                return std::make_pair( Token::Type::string_begin, tc.first.size() );
-            if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                return std::make_pair( Token::Type::string_end, tc.second.size() );
+            if ( in_string && !cfg.nested_strings ) { // first check string end
+                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
+                    return std::make_pair( Token::Type::string_end, tc.second.size() );
+                if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
+                    return std::make_pair( Token::Type::string_begin, tc.first.size() );
+            } else {
+                if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
+                    return std::make_pair( Token::Type::string_begin, tc.first.size() );
+                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
+                    return std::make_pair( Token::Type::string_end, tc.second.size() );
+            }
         }
         return std::make_pair( Token::Type::identifier, 1 ); // anything different
     }

@@ -48,6 +48,11 @@ struct Token {
     size_t column = 0;
     size_t length = 0;
     bool leading_ws = false; // whether a whitspace char is in front of this token (also with \param original set)
+
+    static bool is_sticky( Type type ) {
+        return type == Type::number || type == Type::number_float || type == Type::keyword ||
+               type == Type::identifier || type == Type::ws;
+    }
 };
 
 // Very basic set of rules to define how strings are divided into token lists

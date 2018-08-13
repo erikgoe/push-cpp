@@ -18,23 +18,120 @@
 TEST_CASE( "Basic lexing", "[lexer]" ) {
     FileInput fin( CMAKE_PROJECT_ROOT "/Test/lexer.push", 5000, 4096 );
     auto cfg = TokenConfig::get_prelude_cfg();
+    cfg.operators.push_back( "+=-" );
+    cfg.operators.push_back( "--" );
     cfg.operators.push_back( "=" );
     cfg.operators.push_back( "+" );
     cfg.operators.push_back( "-" );
+    cfg.operators.push_back( "." );
     cfg.keywords.push_back( "let" );
+    cfg.nested_comments = true;
     fin.configure( cfg );
 
-    std::list<String> token_list;
+    std::list<String> token_content_list;
+    std::list<Token::Type> token_type_list;
+    auto start = std::chrono::steady_clock::now();
     while ( true ) {
         auto token = fin.get_token( false );
         if ( token.type == Token::Type::eof )
             break;
-        token_list.push_back( token.content );
+        token_content_list.push_back( token.content );
+        token_type_list.push_back( token.type );
     }
-    std::list<String> check_list{ "//",  "testing", "the",        "lexer", "(",       "SourceInput", ")", "main", "{",
-                                  "let", "a",       "=",          "4",     ";",       "let",         "b", "=",    "3.2",
-                                  ";",   "//",      "commenting", "c",     "=",       "a",           "+", "b",    "-",
-                                  "2",   ";",       "/*",         "other", "comment", "*/",          "}" };
+    auto duration = std::chrono::steady_clock::now() - start;
+    LOG( "Lexer took " + to_string( std::chrono::duration_cast<std::chrono::microseconds>( duration ).count() ) +
+         " microseconds." );
 
-    CHECK( token_list == check_list );
+    std::list<String> content_check_list{
+        "//",  "testing", "the", "lexer",  "(",   "SourceInput", ")",      "\n",  "main", "{",  "letlet",
+        "a",   "=",       "4",   ";",      "let", "b",           "=",      "3.2", ";",    "//", "commenting",
+        "\n",  "c",       "=",   "a",      "+",   "b",           "-",      "2",   ";",    "/*", "other",
+        "/*",  "comment", "/*",  "with",   "*/",  "*/",          "nested", "*/",  "c",    "-",  "+=-",
+        "+=-", "--",      "-",   "objletlet", ".",   "letletdo",       "(",      ")",   ";",    "}"
+    };
+    std::list<Token::Type> type_check_list{ Token::Type::comment_begin,
+                                            Token::Type::identifier,
+                                            Token::Type::identifier,
+                                            Token::Type::identifier,
+                                            Token::Type::term_begin,
+                                            Token::Type::identifier,
+                                            Token::Type::term_end,
+                                            Token::Type::comment_end,
+                                            Token::Type::identifier,
+                                            Token::Type::block_begin,
+                                            Token::Type::identifier,
+                                            Token::Type::identifier,
+                                            Token::Type::op,
+                                            Token::Type::number,
+                                            Token::Type::stat_divider,
+                                            Token::Type::keyword,
+                                            Token::Type::identifier,
+                                            Token::Type::op,
+                                            Token::Type::number_float,
+                                            Token::Type::stat_divider,
+                                            Token::Type::comment_begin,
+                                            Token::Type::identifier,
+                                            Token::Type::comment_end,
+                                            Token::Type::identifier,
+                                            Token::Type::op,
+                                            Token::Type::identifier,
+                                            Token::Type::op,
+                                            Token::Type::identifier,
+                                            Token::Type::op,
+                                            Token::Type::number,
+                                            Token::Type::stat_divider,
+                                            Token::Type::comment_begin,
+                                            Token::Type::identifier,
+                                            Token::Type::comment_begin,
+                                            Token::Type::identifier,
+                                            Token::Type::comment_begin,
+                                            Token::Type::identifier,
+                                            Token::Type::comment_end,
+                                            Token::Type::comment_end,
+                                            Token::Type::identifier,
+                                            Token::Type::comment_end,
+                                            Token::Type::identifier,
+                                            Token::Type::op,
+                                            Token::Type::op,
+                                            Token::Type::op,
+                                            Token::Type::op,
+                                            Token::Type::op,
+                                            Token::Type::identifier,
+                                            Token::Type::op,
+                                            Token::Type::identifier,
+                                            Token::Type::term_begin,
+                                            Token::Type::term_end,
+                                            Token::Type::stat_divider,
+                                            Token::Type::block_end };
+
+    CHECK( token_content_list == content_check_list );
+    CHECK( token_type_list == type_check_list );
 }
+
+#ifndef _DEBUG
+TEST_CASE( "Stress test lexing", "[lexer]" ) {
+    FileInput fin( CMAKE_PROJECT_ROOT "/Test/gibberish.txt", 50, 30 );
+    auto cfg = TokenConfig::get_prelude_cfg();
+    cfg.operators.push_back( "." );
+    fin.configure( cfg );
+
+    size_t token_count = 0, identifier_count = 0;
+    auto start = std::chrono::steady_clock::now();
+    while ( true ) {
+        auto token = fin.get_token( false );
+        if ( token.type == Token::Type::eof )
+            break;
+        token_count++;
+        if ( token.type == Token::Type::identifier )
+            identifier_count++;
+    }
+    auto duration = std::chrono::steady_clock::now() - start;
+    LOG( "Lexer stress test took " +
+         to_string( std::chrono::duration_cast<std::chrono::microseconds>( duration ).count() ) +
+         " microseconds. With " + to_string( token_count ) + " tokens including " + to_string( identifier_count ) +
+         " identifiers " );
+
+    CHECK( token_count == 1001000 );
+    CHECK( identifier_count == 1000000 );
+}
+#endif
