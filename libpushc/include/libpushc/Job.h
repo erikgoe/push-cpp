@@ -13,6 +13,7 @@
 
 #pragma once
 #include "libpushc/Base.h"
+#include "libpushc/util/String.h"
 
 template <typename R>
 class Job;

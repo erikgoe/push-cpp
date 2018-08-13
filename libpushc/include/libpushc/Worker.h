@@ -13,6 +13,7 @@
 
 #pragma once
 #include "libpushc/Base.h"
+#include "libpushc/util/String.h"
 
 // Executes a job on its thread
 class Worker {

@@ -8,6 +8,7 @@ add_library(${LIB_NAME}
     Worker.cpp
     input/FileInput.cpp
     input/SourceInput.cpp
+    util/String.cpp
 )
 
 # includes

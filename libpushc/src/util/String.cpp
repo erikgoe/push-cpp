@@ -11,12 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "libpushc/Base.h"
+#include "libpushc/stdafx.h"
 #include "libpushc/util/String.h"
 
-// Stores the current state and the settings for a compilation pass (or a incremental build)
-class Context {
-public:
-
-};
+const StringSlice &String::slice( size_t pos, size_t size ) {
+    if ( last_slice == nullptr ) {
+        return *(last_slice = new StringSlice( *this, pos, size ));
+    } else
+        return last_slice->reslice( *this, pos, size );
+}
+StringSlice String::slice( size_t pos, size_t size ) const {
+    return StringSlice( *this, pos, size );
+}

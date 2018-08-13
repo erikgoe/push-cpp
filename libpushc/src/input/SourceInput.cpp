@@ -58,32 +58,32 @@ std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, boo
         // TODO print error
     }
 
-    // NOTE better approach to check elements: hasmaps for each operator size. Would be faster and not need all the size
+    // NOTE better approach to check elements: hashmaps for each operator size. Would be faster and not need all the size
     // checks and substr etc.
     if ( back == ' ' || back == '\n' || back == '\r' || back == '\t' ) // whitespace
         return std::make_pair( Token::Type::ws, 1 );
     else {
         for ( auto &tc : cfg.stat_divider ) { // statement divider
-            if ( str.size() >= tc.size() && str.substr( str.size() - tc.size() ) == tc )
+            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
                 return std::make_pair( Token::Type::stat_divider, tc.size() );
         }
         for ( auto &tc : cfg.comment ) { // comment delimiter
             if ( str.size() >= tc.first.size() && ( !in_comment || cfg.nested_comments ) &&
-                 str.substr( str.size() - tc.first.size() ) == tc.first )
+                 str.slice( str.size() - tc.first.size() ) == tc.first )
                 return std::make_pair( Token::Type::comment_begin, tc.first.size() );
-            if ( str.size() >= tc.second.size() && str.substr( str.size() - tc.second.size() ) == tc.second )
+            if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
                 return std::make_pair( Token::Type::comment_end, tc.second.size() );
         }
         for ( auto &tc : cfg.block ) { // block delimiter
-            if ( str.size() >= tc.first.size() && str.substr( str.size() - tc.first.size() ) == tc.first )
+            if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
                 return std::make_pair( Token::Type::block_begin, tc.first.size() );
-            if ( str.size() >= tc.second.size() && str.substr( str.size() - tc.second.size() ) == tc.second )
+            if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
                 return std::make_pair( Token::Type::block_end, tc.second.size() );
         }
         for ( auto &tc : cfg.term ) { // term delimiter
-            if ( str.size() >= tc.first.size() && str.substr( str.size() - tc.first.size() ) == tc.first )
+            if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
                 return std::make_pair( Token::Type::term_begin, tc.first.size() );
-            if ( str.size() >= tc.second.size() && str.substr( str.size() - tc.second.size() ) == tc.second )
+            if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
                 return std::make_pair( Token::Type::term_end, tc.second.size() );
         }
         if ( curr_tt == Token::Type::encoded_char && ( back >= '0' && back <= '9' || back >= 'A' && back <= 'Z' ||
@@ -100,40 +100,40 @@ std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, boo
                 return std::make_pair( Token::Type::number, 1 );
         }
         for ( auto &tc : cfg.integer_prefix ) { // integer prefix
-            if ( str.size() >= tc.size() && str.substr( str.size() - tc.size() ) == tc )
+            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
                 return std::make_pair( Token::Type::number, tc.size() );
         }
         for ( auto &tc : cfg.float_prefix ) { // float prefix
-            if ( str.size() >= tc.size() && str.substr( str.size() - tc.size() ) == tc )
+            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
                 return std::make_pair( Token::Type::number_float, tc.size() );
         }
         if ( curr_tt == Token::Type::number ) {
             for ( auto &tc : cfg.integer_delimiter ) { // integer delimiter
                 if ( str.size() >= tc.size() &&
-                     str.substr( str.size() - tc.size() ) == tc ) // FIXME can only handle single character delimiter
+                     str.slice( str.size() - tc.size() ) == tc ) // FIXME can only handle single character delimiter
                     return std::make_pair( Token::Type::number, tc.size() );
             }
         }
         if ( curr_tt == Token::Type::number_float || curr_tt == Token::Type::number ) {
             for ( auto &tc : cfg.float_delimiter ) { // float delimiter
                 if ( str.size() >= tc.size() &&
-                     str.substr( str.size() - tc.size() ) == tc ) // FIXME can only handle single character delimiter
+                     str.slice( str.size() - tc.size() ) == tc ) // FIXME can only handle single character delimiter
                     return std::make_pair( Token::Type::number_float, tc.size() );
             }
         }
         for ( auto &tc : cfg.char_encodings ) { // encoded characters
-            if ( str.size() >= tc.size() && str.substr( str.size() - tc.size() ) == tc )
+            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
                 return std::make_pair( Token::Type::encoded_char, tc.size() );
         }
         for ( auto &tc : cfg.operators ) { // operators
-            if ( str.size() >= tc.size() && str.substr( str.size() - tc.size() ) == tc )
+            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
                 return std::make_pair( Token::Type::op, tc.size() );
         }
         for ( auto &tc : cfg.string ) { // string delimiter
             if ( str.size() >= tc.first.size() && ( !in_string || cfg.nested_strings ) &&
-                 str.substr( str.size() - tc.first.size() ) == tc.first )
+                 str.slice( str.size() - tc.first.size() ) == tc.first )
                 return std::make_pair( Token::Type::string_begin, tc.first.size() );
-            if ( str.size() >= tc.second.size() && str.substr( str.size() - tc.second.size() ) == tc.second )
+            if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
                 return std::make_pair( Token::Type::string_end, tc.second.size() );
         }
         return std::make_pair( Token::Type::identifier, 1 ); // anything different

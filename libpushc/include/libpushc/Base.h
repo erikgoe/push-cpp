@@ -27,8 +27,15 @@ using i64 = signed long long;
 using f32 = float;
 using f64 = double;
 
-using String = std::string;
 using StringW = std::wstring;
+using std::stod;
+using std::stof;
+using std::stoi;
+using std::stol;
+using std::stold;
+using std::stoll;
+using std::stoul;
+using std::stoull;
 using std::to_string;
 
 using Mutex = std::recursive_mutex;
@@ -38,16 +45,17 @@ static Mutex log_mtx;
 
 #define SCILENT_LOG 0
 
-static void log( const String &msg ) {
-    #if ! SCILENT_LOG
+static void log( const std::string &msg ) {
+#if !SCILENT_LOG
     log_mtx.lock();
     std::cout << msg << std::endl;
     log_mtx.unlock();
-    #endif
+#endif
 }
-#define LOG( msg ) log( String( "MSG: " ) + msg )
-#define LOG_ERR( msg ) log( String( "ERROR: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
-#define LOG_WARN( msg ) log( String( "WARNING: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
+#define LOG( msg ) log( std::string( "MSG: " ) + msg )
+#define LOG_ERR( msg ) log( std::string( "ERROR: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
+#define LOG_WARN( msg ) \
+    log( std::string( "WARNING: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
 
 #if defined( _WIN32 )
 namespace fs = std::experimental::filesystem;
