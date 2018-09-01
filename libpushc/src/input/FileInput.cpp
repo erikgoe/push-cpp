@@ -140,7 +140,7 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
 
                 t.content = ( original ? curr_ws + curr : curr );
                 t.line = curr_line;
-                t.column = curr_column;
+                t.column = curr_column + curr_ws.trim_leading_lines().length_grapheme();
                 t.length = curr.length_cp();
                 t.leading_ws = !curr_ws.empty();
 
@@ -161,7 +161,7 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
                     }
                 }
 
-                curr_column += curr.length_cp() + ( original ? 0 : curr_ws.length_grapheme() );
+                curr_column += curr.length_cp() + ( original ? 0 : curr_ws.trim_leading_lines().length_grapheme() );
                 return t;
             }
         }

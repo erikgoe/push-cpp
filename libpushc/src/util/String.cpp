@@ -31,13 +31,12 @@ size_t length_of_string_cp( const T &str ) {
 template <typename T>
 size_t length_of_string_grapheme( const T &str ) {
     size_t length = 0;
-    const char *c_str = str.c_str();
 
     for ( size_t i = 0; i < str.size(); i++ ) {
-        if ( ( c_str[i] & 0xC0 ) != 0x80 ) {
-            if ( c_str[i] == '\t' )
+        if ( ( str[i] & 0xC0 ) != 0x80 ) {
+            if ( str[i] == '\t' )
                 length += String::TAB_WIDTH;
-            else if ( c_str[i] != '\n' && c_str[i] != '\r' )
+            else if ( str[i] != '\n' && str[i] != '\r' )
                 length++;
         }
     }
@@ -59,6 +58,17 @@ size_t String::length_cp() const {
 }
 size_t String::length_grapheme() const {
     return length_of_string_grapheme( *this );
+}
+StringSlice String::trim_leading_lines() const {
+    if ( !empty() ) {
+        for ( size_t i = size() - 1;; i-- ) {
+            if ( ( *this )[i] == '\n' || ( *this )[i] == '\r' )
+                return slice( i + 1 );
+            if ( i == 0 )
+                break;
+        }
+    }
+    return slice( 0 );
 }
 
 

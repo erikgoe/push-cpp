@@ -21,8 +21,8 @@ class String : public std::string {
     StringSlice *last_slice = nullptr; // last returned slice
 
 public:
-	// Constants
-    static const size_t TAB_WIDTH = 4;// used to translate tabs into spaces
+    // Constants
+    static const size_t TAB_WIDTH = 4; // used to translate tabs into spaces
 
 
     // Inherit base class constructors
@@ -48,7 +48,7 @@ public:
         return replace_all( *this, search_for, replace_with );
     }
 
-    // Like substr() but returns a StringSlice instead of a substr. Earlier results of this method are invalidated.
+    // Like substr() but returns a StringSlice instead of a substr.
     const StringSlice &slice( size_t pos, size_t size = String::npos );
 
     // Like substr() but returns a StringSlice instead of a substr. Earlier results of this method are still valid.
@@ -59,6 +59,9 @@ public:
 
     // Returns the lenght of the string in grapheme-blocks. This method takes only simple characters into account.
     size_t length_grapheme() const;
+
+    // Retruns a slice with only the last line
+    StringSlice trim_leading_lines() const;
 };
 
 // Temporary slice of a string. Operations on the original string may INVALIDATE this slice.
@@ -89,7 +92,7 @@ public:
 
     // Set a new source string, offset and size
     StringSlice &reslice( const String &str, size_t pos, size_t size ) {
-        if ( str.size() <= pos ) {
+        if ( str.size() < pos ) {
             LOG_ERR( "String is to small for this slice [" + to_string( pos ) + ".." + to_string( pos + size ) +
                      "] in " + to_string( str.size() ) + " string." );
             m_ref = str.c_str();
@@ -116,4 +119,6 @@ public:
         }
         return true;
     }
+
+    char operator[]( const size_t index ) const { return m_ref[index]; }
 };
