@@ -21,6 +21,7 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.term.push_back( std::make_pair( "(", ")" ) );
     cfg.comment.push_back( std::make_pair( "/*", "*/" ) );
     cfg.comment.push_back( std::make_pair( "//", "\n" ) );
+    cfg.comment.push_back( std::make_pair( "//", "\r" ) );
     cfg.nested_comments = false;
     cfg.allowed_chars = std::make_pair<u32, u32>( 0, 0xffffffff );
     cfg.nested_strings = false;

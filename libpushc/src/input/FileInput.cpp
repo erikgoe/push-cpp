@@ -113,7 +113,8 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
             }
         }
 
-        // TODO rewrite the code to be easier, less self-repeating and faster
+        // NOTE TODO: rewrite the code to be easier, less self-repeating and faster.
+        // Make the code more stage-based
         if ( !eof )
             curr += *ptr;
         auto e_pair =
@@ -167,6 +168,7 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
         }
 
         // token not finished
+        // NOTE: use this method to check for newlines and request e. g. a comment_end instead of the current approach
         curr_tt = e_pair.first; // set the type if ending_token() used the whole string
         if ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' ||
              *ptr == '\r' ) { // advance one line. Possible because revert_size is at least 1
