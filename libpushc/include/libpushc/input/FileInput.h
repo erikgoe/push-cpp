@@ -22,6 +22,7 @@ class FileInput : public SourceInput {
     char *buff, *buff_end, *fill, *ptr, *prev_ptr; // buffer ptrs
     size_t max_read; // max amount of data to read in one buffer fill
     bool eof; // stream reached end of file
+    bool checked_bom; // already checked for BOM
 
     Token::Type curr_tt = Token::Type::count, prev_curr_tt = curr_tt;
 

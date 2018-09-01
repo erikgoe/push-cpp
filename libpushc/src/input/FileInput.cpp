@@ -28,6 +28,7 @@ FileInput::FileInput( const String &file, size_t buffer_size, size_t max_read ) 
         LOG_ERR( "max_read cannot be zero!" );
 
     eof = fstream.bad() || fstream.eof();
+    checked_bom = false;
 
     in_string = prev_in_string = false;
     in_comment = prev_in_comment = false;
@@ -103,6 +104,12 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
                     if ( ptr < buff )
                         ptr += buff_end - buff;
                 }
+            } else if ( !checked_bom && fill - ptr >= 3 ) { // check for BOM
+                if ( ptr[0] == (char) 0xEF && ptr[1] == (char) 0xBB && ptr[2] == (char) 0xBF ) { // found a BOM
+                    this->ptr += 3;
+                    this->prev_ptr += 3;
+                }
+                checked_bom = true;
             }
         }
 
@@ -154,8 +161,7 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
                     }
                 }
 
-                curr_column += curr.length_cp() +
-                               ( original ? 0 : curr_ws.length_cp() );
+                curr_column += curr.length_cp() + ( original ? 0 : curr_ws.length_cp() );
                 return t;
             }
         }
