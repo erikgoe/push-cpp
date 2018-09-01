@@ -16,7 +16,7 @@
 
 class StringSlice;
 
-// Better implementation of a string TODO add string conversations (utf-8-16-32, wstring) + to_lower/to_upper
+// Better implementation of a string TODO add string conversions (utf-8-16-32, wstring) + to_lower/to_upper
 class String : public std::string {
     StringSlice *last_slice = nullptr; // last returned slice
 
@@ -49,6 +49,9 @@ public:
 
     // Like substr() but returns a StringSlice instead of a substr. Earlier results of this method are still valid.
     StringSlice slice( size_t pos, size_t size = String::npos ) const;
+
+    // Returns the length of the string in code points
+    size_t length_cp() const;
 };
 
 // Temporary slice of a string. Operations on the original string may INVALIDATE this slice.
@@ -59,11 +62,14 @@ class StringSlice {
 public:
     StringSlice( const String &str, size_t pos, size_t size ) { reslice( str, pos, size ); }
 
-    // Returns the size of the slice
-    size_t size() { return m_size; }
+    // Returns the size of the slice in bytes
+    size_t size() const { return m_size; }
+
+    // Returns the length of the string in code points
+    size_t length_cp() const;
 
     // Return a not null-terminated pointer to the slice string.
-    const char *c_str() { return m_ref; }
+    const char *c_str() const { return m_ref; }
 
     // This method does not check the size of the original string!
     StringSlice &resize( size_t size ) {
