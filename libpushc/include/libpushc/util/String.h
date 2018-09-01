@@ -21,11 +21,15 @@ class String : public std::string {
     StringSlice *last_slice = nullptr; // last returned slice
 
 public:
+	// Constants
+    static const size_t TAB_WIDTH = 4;// used to translate tabs into spaces
+
+
     // Inherit base class constructors
     using basic_string::basic_string;
 
     String() {}
-    String( const std::string &other ) { *static_cast<std::string*>( this ) = other; }
+    String( const std::string &other ) { *static_cast<std::string *>( this ) = other; }
 
     // Replace all occurrences in the string
     static String replace_all( String &search_in, const String &search_for, const String &replace_with ) {
@@ -52,6 +56,9 @@ public:
 
     // Returns the length of the string in code points
     size_t length_cp() const;
+
+    // Returns the lenght of the string in grapheme-blocks. This method takes only simple characters into account.
+    size_t length_grapheme() const;
 };
 
 // Temporary slice of a string. Operations on the original string may INVALIDATE this slice.
@@ -67,6 +74,9 @@ public:
 
     // Returns the length of the string in code points
     size_t length_cp() const;
+
+    // Returns the lenght of the string in grapheme-blocks. This method takes only simple characters into account.
+    size_t length_grapheme() const;
 
     // Return a not null-terminated pointer to the slice string.
     const char *c_str() const { return m_ref; }

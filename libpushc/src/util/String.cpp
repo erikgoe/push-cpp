@@ -16,15 +16,32 @@
 
 // Returns the length of the string in code points
 template <typename T>
-size_t length_of_string( const T &str ) {
+size_t length_of_string_cp( const T &str ) {
     size_t code_points = 0;
     const char *c_str = str.c_str();
 
-    for ( size_t i = 0 ; i < str.size() ; i++ ) {
+    for ( size_t i = 0; i < str.size(); i++ ) {
         if ( ( c_str[i] & 0xC0 ) != 0x80 )
             code_points++;
     }
     return code_points;
+}
+
+// Returns the lenght of the string in grapheme-blocks. This method takes only simple characters into account.
+template <typename T>
+size_t length_of_string_grapheme( const T &str ) {
+    size_t length = 0;
+    const char *c_str = str.c_str();
+
+    for ( size_t i = 0; i < str.size(); i++ ) {
+        if ( ( c_str[i] & 0xC0 ) != 0x80 ) {
+            if ( c_str[i] == '\t' )
+                length += String::TAB_WIDTH;
+            else if ( c_str[i] != '\n' && c_str[i] != '\r' )
+                length++;
+        }
+    }
+    return length;
 }
 
 
@@ -38,9 +55,16 @@ StringSlice String::slice( size_t pos, size_t size ) const {
     return StringSlice( *this, pos, size );
 }
 size_t String::length_cp() const {
-    return length_of_string( *this );
+    return length_of_string_cp( *this );
+}
+size_t String::length_grapheme() const {
+    return length_of_string_grapheme( *this );
 }
 
+
 size_t StringSlice::length_cp() const {
-    return length_of_string( *this );
+    return length_of_string_cp( *this );
+}
+size_t StringSlice::length_grapheme() const {
+    return length_of_string_grapheme( *this );
 }
