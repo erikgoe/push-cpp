@@ -29,7 +29,7 @@ void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, Que
             std::list<String> b;
             auto jc = qm.query( get_token_list, file )->execute( w_ctx );
             // do sth with the data
-            auto job = jc->jobs.front()->as<std::list<String>>();
+            auto job = jc->jobs.front()->to<std::list<String>>();
             for ( auto &line : job.get() )
                 b.push_back( line + "_token" );
 
@@ -44,7 +44,7 @@ void compile_binary( const std::list<String> files, JobsBuilder &jb, QueryMgr &q
         jc->execute( w_ctx );
         String stream;
         for ( auto &job : jc->jobs ) {
-            for ( auto &t : job->as<std::list<String>>().get() ) {
+            for ( auto &t : job->to<std::list<String>>().get() ) {
                 stream += t + " ";
             }
         }
@@ -89,7 +89,7 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
     }
     // Sleep( 1000. );
     jc->execute( *w_ctx );
-    String result = jc->jobs.front()->as<String>().get();
+    String result = jc->jobs.front()->to<String>().get();
     CHECK( result == check_result );
     qm->wait_finished();
 }

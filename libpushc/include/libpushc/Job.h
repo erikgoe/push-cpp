@@ -35,7 +35,7 @@ public:
 
     // Cast into any Job
     template <typename T>
-    Job<T> &as() {
+    Job<T> &to() {
         return *static_cast<Job<T> *>( this );
     }
 };
