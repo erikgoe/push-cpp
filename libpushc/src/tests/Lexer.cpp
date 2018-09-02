@@ -12,7 +12,6 @@
 // limitations under the License.
 
 #include "libpushc/tests/stdafx.h"
-#include "catch/catch.hpp"
 #include "libpushc/input/FileInput.h"
 
 namespace Catch {

@@ -12,7 +12,6 @@
 // limitations under the License.
 
 #include "libpushc/tests/stdafx.h"
-#include "catch/catch.hpp"
 #include "libpushc/QueryMgr.h"
 
 void get_token_list( const String file, JobsBuilder &jb, QueryMgr &qm ) {

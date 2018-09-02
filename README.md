@@ -35,4 +35,5 @@ NOTE: linux is currently not tested but may work ^^
     make
 
 ## Tests
-TODO
+Most of the test cases only check the basic functionality, which is required for the functions/modules to be usable.
+If you want to run the tests, build the project with Catch (so VCPKG_SOURCE_DIR must be set) and run the executable (either build/libpushc/src/tests/Debug/libpushc_test.exe or build/libpushc/src/tests/libpushc_test) from your shell.

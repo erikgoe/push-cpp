@@ -11,6 +11,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/tests/stdafx.h"
 #define CATCH_CONFIG_MAIN // Catch provides main()
 #include "catch/catch.hpp"

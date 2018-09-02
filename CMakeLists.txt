@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.6)
 
 # include toolchain file
 if(VCPKG_SOURCE_DIR)
@@ -36,5 +36,10 @@ endif()
 find_path(CATCH_INCLUDE_DIR NAMES catch.hpp PATH_SUFFIXES Catch2 QUIET)
 
 # subdirectories
+
+set(LIB_NAME lib${PROJECT_NAME})
+set(TEST_NAME ${LIB_NAME}_test)
 add_subdirectory(libpushc/src)
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${TEST_NAME}) # set startup project
+
 #add_subdirectory(tests)

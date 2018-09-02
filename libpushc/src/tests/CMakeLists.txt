@@ -1,7 +1,6 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.6)
 
 # add files
-set(TEST_NAME ${LIB_NAME}_test)
 add_executable(${TEST_NAME}
     Lexer.cpp
     Test.cpp
@@ -28,5 +27,6 @@ target_link_libraries(${TEST_NAME}
 # cotire speedup
 if(BUILD_COTIRE_PROJ)
     set_target_properties(${TEST_NAME} PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../../include/${LIB_NAME}/tests/stdafx.h")
+    set_source_files_properties(Test.cpp PROPERTIES COTIRE_EXCLUDED TRUE)
     cotire(${TEST_NAME})
 endif()
