@@ -127,7 +127,7 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
              !( curr_tt == Token::Type::number && e_pair.first == Token::Type::number_float ) &&
              !( curr_tt == Token::Type::keyword && e_pair.first == Token::Type::identifier ) ) {
             if ( e_pair.second != curr.size() || !Token::is_sticky( e_pair.first ) && curr_tt != Token::Type::count ||
-                 e_pair.first == Token::Type::comment_end && curr.back() == '\r' ) {
+                 e_pair.first == Token::Type::comment_end ) {
                 if ( e_pair.second != curr.size() ) {
                     // revert last token
                     ptr -= e_pair.second;
@@ -147,7 +147,7 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
                 t.leading_ws = !curr_ws.empty();
 
                 // increment line if needed
-                if ( e_pair.first == Token::Type::comment_end && curr.back() == '\r' ) {
+                if ( e_pair.first == Token::Type::comment_end && ( curr.back() == '\r' || curr.back() == '\n' ) ) {
                     curr_line++;
                     curr_column = 0;
                     // replace newline
