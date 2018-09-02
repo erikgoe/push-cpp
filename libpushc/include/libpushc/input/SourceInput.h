@@ -49,9 +49,26 @@ struct Token {
     size_t length = 0;
     bool leading_ws = false; // whether a whitspace char is in front of this token (also with \param original set)
 
+    Token() {}
+    Token( Type type, const String &content, std::shared_ptr<String> file, size_t line, size_t column, size_t length,
+           bool leading_ws ) {
+        this->type = type;
+        this->content = content;
+        this->file = file;
+        this->line = line;
+        this->column = column;
+        this->length = length;
+        this->leading_ws = leading_ws;
+    }
     static bool is_sticky( Type type ) {
         return type == Type::number || type == Type::number_float || type == Type::keyword ||
                type == Type::identifier || type == Type::ws;
+    }
+
+    bool operator==( const Token &other ) const {
+        return type == other.type && content == other.content &&
+               ( file == other.file || file && other.file && *file == *other.file ) && line == other.line &&
+               column == other.column && length == other.length && leading_ws == other.leading_ws;
     }
 };
 
