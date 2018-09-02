@@ -61,6 +61,9 @@ std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, boo
 
     // NOTE better approach to check elements: hashmaps for each operator size. Would be faster and not need all the
     // size checks and substr etc.
+    // FIXME wrong comment ending rules may be applied: 
+    // "// foo */ bar" ends line comment
+    // "/* foo \nbar*/" ends comment on newline
     if ( back == ' ' || back == '\n' || back == '\r' || back == '\t' ) {
         // first check if comments or strings are terminated by this token
         if ( in_comment ) {

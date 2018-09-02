@@ -126,7 +126,8 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
         if ( ( e_pair.first != curr_tt || !Token::is_sticky( e_pair.first ) && e_pair.second == curr.size() ) &&
              !( curr_tt == Token::Type::number && e_pair.first == Token::Type::number_float ) &&
              !( curr_tt == Token::Type::keyword && e_pair.first == Token::Type::identifier ) ) {
-            if ( e_pair.second != curr.size() || !Token::is_sticky( e_pair.first ) && curr_tt != Token::Type::count ) {
+            if ( e_pair.second != curr.size() || !Token::is_sticky( e_pair.first ) && curr_tt != Token::Type::count ||
+                 e_pair.first == Token::Type::comment_end && curr.back() == '\r' ) {
                 if ( e_pair.second != curr.size() ) {
                     // revert last token
                     ptr -= e_pair.second;
@@ -144,6 +145,15 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
                 t.column = curr_column + curr_ws.trim_leading_lines().length_grapheme();
                 t.length = curr.length_cp();
                 t.leading_ws = !curr_ws.empty();
+
+                // increment line if needed
+                if ( e_pair.first == Token::Type::comment_end && curr.back() == '\r' ) {
+                    curr_line++;
+                    curr_column = 0;
+                    // replace newline
+                    t.content.pop_back();
+                    t.content.push_back( '\n' );
+                }
 
                 // comment rules
                 if ( in_string == 0 ) { // only if not in string
