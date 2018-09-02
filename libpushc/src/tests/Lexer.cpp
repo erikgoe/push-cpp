@@ -31,6 +31,7 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     std::list<String> token_content_list;
     std::list<Token::Type> token_type_list;
     std::list<size_t> token_column_list;
+    std::list<size_t> token_line_list;
     auto start = std::chrono::steady_clock::now();
     while ( true ) {
         auto token = fin.get_token( false );
@@ -39,6 +40,7 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
         token_content_list.push_back( token.content );
         token_type_list.push_back( token.type );
         token_column_list.push_back( token.column );
+        token_line_list.push_back( token.line );
     }
     auto duration = std::chrono::steady_clock::now() - start;
     LOG( "Lexer took " + to_string( std::chrono::duration_cast<std::chrono::microseconds>( duration ).count() ) +
@@ -170,9 +172,14 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
         7,  8,  11, 14, 16, 17, 26, 27, 35, 36, 37,
         1 // 8 line
     };
+    std::list<size_t> line_check_list{ 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5,
+                                       5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+                                       6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8 };
     CHECK( token_content_list == content_check_list );
     CHECK( token_type_list == type_check_list );
     CHECK( token_column_list == column_check_list );
+    CHECK( token_line_list == line_check_list );
+    // TODO optimize test to test whole token instead of individual parts
 }
 
 #ifndef _DEBUG
