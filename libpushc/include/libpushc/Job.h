@@ -14,6 +14,7 @@
 #pragma once
 #include "libpushc/Base.h"
 #include "libpushc/util/String.h"
+#include "libpushc/util/AnyResultWrapper.h"
 
 template <typename R>
 class Job;
@@ -48,7 +49,7 @@ class Job : public BasicJob {
 
 public:
     Job( std::function<R( Worker &w_ctx )> function ) {
-        task = std::make_shared<std::packaged_task<R( Worker &w_ctx )>>( function );
+        task = std::make_shared<std::packaged_task<R( Worker & w_ctx )>>( function );
         result = task->get_future().share();
     }
 
@@ -67,8 +68,10 @@ public:
 };
 
 // Stores the jobs for a specific query
-class JobCollection : public std::enable_shared_from_this<JobCollection> {
+template <typename T>
+class JobCollection : public std::enable_shared_from_this<JobCollection<T>> {
     std::shared_ptr<QueryMgr> query_mgr; // internally needed for exectue()
+    AnyResultWrapper<T> result; // stores the result of the query (not a job)
 
 public:
     // a list of jobs for the query. The first job in the list is reserved by default (see QueryMgr::query).
@@ -81,7 +84,9 @@ public:
     // If no free jobs remain (expect the first, which may be reserved), is_finished() will return false.
     // If \param prevent_idle is true other jobs from the QueryMgr are executed when there are no free jobs left. If
     // there are no free jobs left, the function will return. Returns a reference to itself.
-    std::shared_ptr<JobCollection> execute( Worker &w_ctx, bool prevent_idle = true );
+    std::shared_ptr<JobCollection<T>> execute( Worker &w_ctx, bool prevent_idle = true );
+
+    decltype( result.get() ) get() { return result.get(); }
 
     friend class QueryMgr;
 };
@@ -99,3 +104,5 @@ public:
     }
     friend class QueryMgr;
 };
+
+#include "libpushc/Job.inl"

@@ -11,11 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/QueryMgr.h"
-#include "libpushc/Job.h"
-
-bool JobCollection::is_finished() {
+template<typename T>
+bool JobCollection<T>::is_finished() {
     for ( auto &job : jobs ) {
         if ( job->status != BasicJob::STATUS_FIN )
             return false;
@@ -23,7 +20,8 @@ bool JobCollection::is_finished() {
     return true;
 }
 
-std::shared_ptr<JobCollection> JobCollection::execute( Worker &w_ctx, bool prevent_idle ) {
+template <typename T>
+std::shared_ptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool prevent_idle ) {
     // handle open jobs
     for ( auto &job : jobs ) {
         job->run( w_ctx ); // the job itself will check if it's free

@@ -12,13 +12,14 @@
 // limitations under the License.
 
 template <typename FuncT, typename... Args>
-std::shared_ptr<JobCollection> QueryMgr::query_impl( FuncT fn, bool volatile_query, const Args &... args ) {
+auto QueryMgr::query_impl( FuncT fn, bool volatile_query, const Args &... args ) -> decltype( auto ) {
     // TODO impl volatile_query with caching of querries
 
     JobsBuilder jb;
-    fn( args..., jb, *this );
+    auto jc = std::make_shared<JobCollection<decltype( fn( args..., JobsBuilder(), QueryMgr() ) )>>();
 
-    auto jc = std::make_shared<JobCollection>();
+    jc->result.wrap( fn, args..., jb, *this );
+
     jc->jobs = jb.jobs;
     jc->query_mgr = shared_from_this();
     if ( !jb.jobs.empty() )

@@ -37,7 +37,7 @@ void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, Que
         } );
     }
 }
-void compile_binary( const std::list<String> files, JobsBuilder &jb, QueryMgr &qm ) {
+u32 compile_binary( const std::list<String> files, JobsBuilder &jb, QueryMgr &qm ) {
     jb.add_job<String>( [&, files]( Worker &w_ctx ) {
         auto jc = qm.query( get_binary_from_source, files );
         Sleep( 10. );
@@ -50,6 +50,7 @@ void compile_binary( const std::list<String> files, JobsBuilder &jb, QueryMgr &q
         }
         return stream;
     } );
+    return 0xD42;
 }
 
 TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
@@ -57,7 +58,7 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
 
     // LOG( "Start pass" );
     std::shared_ptr<Worker> w_ctx;
-    std::shared_ptr<JobCollection> jc;
+    std::shared_ptr<JobCollection<u32>> jc;
     String check_result;
     SECTION( "simple files" ) {
         SECTION( "single threaded" ) { w_ctx = qm->setup( 1 ); }
@@ -91,5 +92,6 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
     jc->execute( *w_ctx );
     String result = jc->jobs.front()->to<String>().get();
     CHECK( result == check_result );
+    CHECK( jc->get() == 0xD42 );
     qm->wait_finished();
 }

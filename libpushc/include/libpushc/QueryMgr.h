@@ -19,9 +19,6 @@
 
 // Manages compilation queries, jobs and workers.
 class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
-    template <typename FuncT, typename... Args>
-    std::shared_ptr<JobCollection> query_impl( FuncT fn, bool volatile_query, const Args &... args );
-
     // Current state and settings
     std::shared_ptr<Context> context;
     // Handles access to open_jobs, reserved_jobs, running_jobs, no_jobs from multiple threads
@@ -34,7 +31,10 @@ class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
     // Is true if no free jobs exist. Helps to wake up threads when new jobs occur.
     bool no_jobs = false;
 
-	size_t job_ctr = 0; // used to give every job a new id
+    size_t job_ctr = 0; // used to give every job a new id
+
+    template <typename FuncT, typename... Args>
+    auto query_impl( FuncT fn, bool volatile_query, const Args &... args ) -> decltype( auto );
 
 public:
     ~QueryMgr() { wait_finished(); }
@@ -44,16 +44,16 @@ public:
     std::shared_ptr<Worker> setup( size_t thread_count );
 
     // Creates a new query with the function of \param fn
-    // \param args defines the argument provided for the query implementation. The first job from the query is reserved
-    // for the calling worker and is thus not in the open_jobs list.
+    // \param args defines the argument provided for the query implementation. The first job from the query is
+    // reserved for the calling worker and is thus not in the open_jobs list.
     template <typename FuncT, typename... Args>
-    std::shared_ptr<JobCollection> query( FuncT fn, const Args &... args ) {
+    auto query( FuncT fn, const Args &... args ) -> decltype( auto ) {
         return query_impl( fn, false, args... );
     }
     // The same as query() but ensures that a query gets updated/checked even when the result for this input was
     // calculated earlier and cached.
     template <typename FuncT, typename... Args>
-    std::shared_ptr<JobCollection> query_volatile( FuncT fn, const Args &... args ) {
+    auto query_volatile( FuncT fn, const Args &... args ) -> decltype( auto ) {
         return query_impl( fn, true, args... );
     }
 
