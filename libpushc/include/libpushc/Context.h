@@ -14,9 +14,23 @@
 #pragma once
 #include "libpushc/Base.h"
 #include "libpushc/util/String.h"
+#include "libpushc/Settings.h"
 
 // Stores the current state and the settings for a compilation pass (or a incremental build)
 class Context {
-public:
+    Mutex mtx; // used for all async manipulations
 
+    std::map<SettingType, std::unique_ptr<SettingValue>> settings; // store all the settings
+
+public:
+    template <typename ValT>
+    auto get_setting( const SettingType &setting_type ) -> decltype( auto ) {
+        Lock lock( mtx );
+        return settings[setting_type]->get<ValT>().value;
+    }
+    template <typename SettingT, typename ValT>
+    void set_setting( const SettingType &setting_type, const ValT &value ) {
+        Lock lock( mtx );
+        settings[setting_type] = std::make_unique<SettingT>( value );
+    }
 };
