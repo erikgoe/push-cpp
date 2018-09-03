@@ -19,8 +19,9 @@
 // NOTE: would be better with one abstract BufferInput for FileInput, StringInput, etc. and just provide the
 // fill_buffer() method
 // NOTE: better use a struct of ptr, in_string, etc. One for regular and one for prev_*
-// NOTE: in_string and in_comment should be stacks with the beginning type of comment or struct (otherwise a comment
+// NOTE BUG: in_string and in_comment should be stacks with the beginning type of comment or struct (otherwise a comment
 // like "int a;// comment */ not a comment" may be written).
+// NOTE BUG: The ">>" in "S<A<B>>" will be recognized as one operator
 class FileInput : public SourceInput {
     std::ifstream fstream;
     std::shared_ptr<String> filename;

@@ -21,7 +21,7 @@
 class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
     // Current state and settings
     std::shared_ptr<Context> context;
-    // Handles access to open_jobs, reserved_jobs, running_jobs, no_jobs from multiple threads
+    // Handles access to open_jobs, no_jobs from multiple threads
     Mutex job_mtx;
     // All jobs which have to be executed
     std::stack<std::shared_ptr<BasicJob>> open_jobs;
