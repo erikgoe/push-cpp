@@ -11,21 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+// Actual error declaration
+enum class MessageType {
+    error_lexer_char_not_allowed,
 
-#include <thread>
-#include <list>
-#include <filesystem>
-#include <string>
-#include <fstream>
-#include <vector>
-#include <iostream>
-#include <functional>
-#include <stack>
-#include <atomic>
-#include <future>
-#include <mutex>
-#include <condition_variable>
-#include <chrono>
-#include <map>
-#include <array>
+    count
+};
+
+// Actual error definitions. Strucure: <MessageType>, <message class>, "<message source symbol>", "<error message>", {"notes", ...}
+// The error message and the notes may contain additional data shipped by the GET_ARG(index) macro.
+MESSAGE_DEFINITION( MessageType::error_lexer_char_not_allowed, MessageClass::Error, "L",
+                    "Character is not in allowed set of characters.", { "not allowed character" } );
