@@ -101,7 +101,8 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
     for ( auto &n : notes ) {
         tmp += ";" + to_string( n.line_begin ) + ( n.line_begin != n.line_end ? ".." + to_string( n.line_end ) : "" ) +
                ":" + to_string( n.column ) +
-               ( n.column > 1 && n.line_begin == n.line_end ? ".." + to_string( n.column + n.length ) : "" );
+               ( n.column > 1 && n.line_begin == n.line_end ? ".." + to_string( n.column + n.length )
+                                                            : n.column > 1 ? "+" + to_string( n.length ) : "" );
     }
     result += FmtStr::Piece( tmp + "\n", regular_color );
 
@@ -198,8 +199,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                 }
             } else if ( i <= n_itr->line_end ) { // print further underlines
                 result += FmtStr::Piece(
-                    String( std::min<size_t>( remaining_chars, line_lengths[i - last_lower_bound] ),
-                            underline_char ),
+                    String( std::min<size_t>( remaining_chars, line_lengths[i - last_lower_bound] ), underline_char ),
                     n_itr->color );
                 remaining_chars -= std::min<size_t>( remaining_chars, line_lengths[i - last_lower_bound] );
             }
@@ -213,42 +213,70 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
 }
 
 void print_msg_to_stdout( FmtStr &str ) {
+// Configure console first
 #ifdef _WIN32
     HANDLE console_h = GetStdHandle( STD_OUTPUT_HANDLE );
     auto buff_info = CONSOLE_SCREEN_BUFFER_INFO();
     GetConsoleScreenBufferInfo( console_h, &buff_info );
-
+    SetConsoleOutputCP( CP_UTF8 );
     int previous_color = buff_info.wAttributes;
+#else
+    int previous_color = 8;
+#endif
+    setvbuf( stdout, nullptr, _IOFBF, 1000 );
+
     int att_color = previous_color;
+    String linux_prefix = "";
 
     while ( !str.empty() ) {
         auto piece = str.consume();
 
-        if ( piece.color == FmtStr::Color::Black )
+        if ( piece.color == FmtStr::Color::Black ) {
             att_color = previous_color;
-        else if ( piece.color == FmtStr::Color::Red )
+            linux_prefix = "\033[0;37m";
+        } else if ( piece.color == FmtStr::Color::Red ) {
             att_color = 4;
-        else if ( piece.color == FmtStr::Color::Green )
+            linux_prefix = "\033[0;31m";
+        } else if ( piece.color == FmtStr::Color::Green ) {
             att_color = 2;
-        else if ( piece.color == FmtStr::Color::Blue )
+            linux_prefix = "\033[0;32m";
+        } else if ( piece.color == FmtStr::Color::Blue ) {
             att_color = 1;
-        else if ( piece.color == FmtStr::Color::Yellow )
+            linux_prefix = "\033[0;34m";
+        } else if ( piece.color == FmtStr::Color::Yellow ) {
             att_color = 6;
-        else if ( piece.color == FmtStr::Color::BoldBlack )
+            linux_prefix = "\033[0;33m";
+        } else if ( piece.color == FmtStr::Color::BoldBlack ) {
             att_color = 15;
-        else if ( piece.color == FmtStr::Color::BoldRed )
+            linux_prefix = "\033[1;37m";
+        } else if ( piece.color == FmtStr::Color::BoldRed ) {
             att_color = 12;
-        else if ( piece.color == FmtStr::Color::BoldGreen )
+            linux_prefix = "\033[1;31m";
+        } else if ( piece.color == FmtStr::Color::BoldGreen ) {
             att_color = 10;
-        else if ( piece.color == FmtStr::Color::BoldBlue )
+            linux_prefix = "\033[1;32m";
+        } else if ( piece.color == FmtStr::Color::BoldBlue ) {
             att_color = 9;
-        else if ( piece.color == FmtStr::Color::BoldYellow )
+            linux_prefix = "\033[1;34m";
+        } else if ( piece.color == FmtStr::Color::BoldYellow ) {
             att_color = 14;
+            linux_prefix = "\033[1;33m";
+        }
 
+#ifdef _WIN32
         SetConsoleTextAttribute( console_h, att_color );
-
-        std::cout << piece.text;
-    }
-    SetConsoleTextAttribute( console_h, previous_color );
+#else
+        std::cout << linux_prefix;
 #endif
+
+        std::cout << piece.text << std::flush;
+    }
+
+    // Reset console settings
+#ifdef _WIN32
+    SetConsoleTextAttribute( console_h, previous_color );
+#else
+    std::cout << "\033[0m";
+#endif
+    setvbuf( stdout, nullptr, _IONBF, 0 );
 }

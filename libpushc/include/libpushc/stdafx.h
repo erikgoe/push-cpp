@@ -29,6 +29,7 @@
 #include <chrono>
 #include <map>
 #include <array>
+#include <sstream>
 
 
 #ifdef _WIN32 // Windows
