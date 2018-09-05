@@ -54,4 +54,6 @@ public:
     Token preview_token( bool original = false );
 
     Token preview_next_token( bool original = false );
+    
+    std::list<String> get_lines( size_t line_begin, size_t line_end );
 };

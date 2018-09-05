@@ -216,3 +216,37 @@ Token FileInput::preview_next_token( bool original ) {
     return get_token_impl( original, prev_ptr, prev_in_string, prev_in_comment, prev_curr_line, prev_curr_column,
                            prev_curr_tt );
 }
+
+std::list<String> FileInput::get_lines( size_t line_begin, size_t line_end ) {
+    size_t line_count = 1;
+    std::list<String> lines;
+    String curr_line;
+
+    while ( true ) {
+        ptr++;
+        if ( ptr == buff_end )
+            ptr = buff;
+
+        if ( ptr == fill ) { // buffer empty
+            if ( !fill_buffer() ) { // reached end of file or error
+                // TODO print error
+                break;
+            }
+        }
+
+        if ( line_count >= line_begin && *ptr != '\r' && *ptr != '\n' )
+            curr_line += *ptr;
+
+        if ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' ||
+             *ptr == '\r' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\n' ) { // found a newline
+            line_count++;
+            if ( line_count > line_begin )
+                lines.push_back( curr_line );
+            curr_line.clear();
+
+            if ( line_count > line_end )
+                break;
+        }
+    }
+    return lines;
+}

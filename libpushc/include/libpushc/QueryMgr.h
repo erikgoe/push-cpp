@@ -64,6 +64,9 @@ public:
     // The returned job will always have the "free" status.
     // NOTE: nullptr is returned if no free jobs where found.
     std::shared_ptr<BasicJob> get_free_job();
+
+    // Returns the application-global context
+    std::shared_ptr<Context> get_global_context() { return context; }
 };
 
 #include "libpushc/QueryMgr.inl"

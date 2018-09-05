@@ -15,15 +15,6 @@
 #include "libpushc/Base.h"
 #include "libpushc/util/String.h"
 
-// Contains all possible settings
-enum class SettingType {
-    release_optimization,
-    backend,
-    platform,
-
-    count
-};
-
 // Contains any possible value type for a setting
 class SettingValue {
 public:
@@ -47,3 +38,21 @@ using BoolSV = AnySV<bool>;
 using IntSV = AnySV<i32>;
 using FloatSV = AnySV<f64>;
 using StringSV = AnySV<String>;
+
+
+// Contains all possible settings
+enum class SettingType {
+    release_optimization,
+    backend,
+    platform,
+
+    input_source,
+
+    count
+};
+
+// Sets the default initial settings
+inline void set_default_settings( std::map<SettingType, std::unique_ptr<SettingValue>> &settings ) {
+    settings[SettingType::input_source] = std::make_unique<StringSV>( "file" );
+
+}

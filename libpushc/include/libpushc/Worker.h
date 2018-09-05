@@ -39,4 +39,7 @@ public:
 
     // notifies the thread when new jobs occur
     void notify();
+
+    // Returns the query manager used by this worker
+    std::shared_ptr<QueryMgr> get_query_mgr() { return qm; }
 };

@@ -126,4 +126,7 @@ public:
 
     // like preview_token but gives the next after a earlier preview
     virtual Token preview_next_token( bool original = false ) = 0;
+
+    // Returns a list of source lines from the range line_begin..=line_end
+    virtual std::list<String> get_lines( size_t line_begin, size_t line_end ) = 0;
 };

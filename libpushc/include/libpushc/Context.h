@@ -33,4 +33,6 @@ public:
         Lock lock( mtx );
         settings[setting_type] = std::make_unique<SettingT>( value );
     }
+
+    friend class QueryMgr;
 };

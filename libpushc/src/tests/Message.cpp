@@ -42,9 +42,10 @@ TEST_CASE( "Message body", "[message]" ) {
     std::shared_ptr<JobCollection<u32>> jc;
     auto file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
 
-    CHECK( get_message<MessageType::error_lexer_char_not_allowed>(
-               qm, MessageInfo( file, 4, 4, 12, 4, 0, FmtStr::Color::BoldRed ),
-               std::array<MessageInfo, 1>{ { MessageInfo( file, 4, 4, 12, 4, 0, FmtStr::Color::BoldRed ) } } ) ==
-           FmtStr::Piece( "error" ) + FmtStr::Piece( "error" ) );
+    auto output = get_message<MessageType::error_lexer_char_not_allowed>(
+        w_ctx, MessageInfo( file, 4, 5, 12, 17, 0, FmtStr::Color::BoldRed ),
+        std::array<MessageInfo, 1>{ { MessageInfo( file, 3, 4, 3, 18, 0, FmtStr::Color::BoldBlue ) } } );
 
+    print_msg_to_stdout( output );
+    CHECK( output == FmtStr::Piece( "error" ) + FmtStr::Piece( "error" ) );
 }

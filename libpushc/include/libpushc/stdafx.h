@@ -29,3 +29,15 @@
 #include <chrono>
 #include <map>
 #include <array>
+
+
+#ifdef _WIN32 // Windows
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#define WIN32_LEAN_AND_MEAN
+
+#include <Windows.h>
+
+#endif

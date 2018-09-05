@@ -20,6 +20,10 @@ std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
         LOG_ERR( "Must be at least one worker." );
     }
 
+    // Context and settings
+    context = std::make_shared<Context>();
+    set_default_settings( context->settings );
+
     std::shared_ptr<Worker> main_worker = std::make_shared<Worker>( shared_from_this(), 0 );
     worker.push_back( main_worker );
 
