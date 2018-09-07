@@ -62,7 +62,9 @@ constexpr const FmtStr get_message_head( Args... args ) {
 template <MessageType MesT, typename... Args>
 struct get_message_head_impl {
     constexpr static const FmtStr impl( Args... args ) {
-        return "fatal error I" + to_string( 0xffff ) + ": no error definition.";
+        static_assert( false,
+                       "No message head information was found for this MessageType. Implement it in \"Message.inl\"" );
+        return {};
     }
 };
 
@@ -74,7 +76,11 @@ constexpr const std::vector<String> get_message_notes( Args... args ) {
 
 template <MessageType MesT, typename... Args>
 struct get_message_notes_impl {
-    constexpr static const std::vector<String> impl( Args... args ) { return ""; }
+    constexpr static const std::vector<String> impl( Args... args ) {
+        static_assert( false,
+                       "No message note information was found for this MessageType. Implement it in \"Message.inl\"" );
+        return {};
+    }
 };
 
 #define MESSAGE_DEFINITION( id, classid, source_symbol, msg, notes_list )                                        \
