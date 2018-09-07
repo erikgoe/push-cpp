@@ -97,14 +97,16 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
 
     // Draw header
     result += FmtStr::Piece( "  --> ", note_color );
-    String tmp = file;
+    result += FmtStr::Piece( file, regular_color );
     for ( auto &n : notes ) {
-        tmp += ";" + to_string( n.line_begin ) + ( n.line_begin != n.line_end ? ".." + to_string( n.line_end ) : "" ) +
-               ":" + to_string( n.column ) +
-               ( n.column > 1 && n.line_begin == n.line_end ? ".." + to_string( n.column + n.length )
-                                                            : n.column > 1 ? "+" + to_string( n.length ) : "" );
+        result += FmtStr::Piece( ";", regular_color );
+        result += FmtStr::Piece(to_string( n.line_begin ) + ( n.line_begin != n.line_end ? ".." + to_string( n.line_end ) : "" ) +
+                ":" + to_string( n.column ) +
+                ( n.column > 1 && n.line_begin == n.line_end ? ".." + to_string( n.column + n.length )
+                                                             : n.column > 1 ? "+" + to_string( n.length ) : "" ),
+            n.color );
     }
-    result += FmtStr::Piece( tmp + "\n", regular_color );
+    result += FmtStr::Piece( "\n", regular_color );
 
     // Draw source code body
     size_t last_lower_bound = 0, last_upper_bound = 0; // used to calculate line bounds
