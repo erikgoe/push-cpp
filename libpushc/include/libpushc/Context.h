@@ -27,7 +27,7 @@ public:
 
     // Returns a previously saved setting. If it was not saved, returns the default value for the Setting type.
     template <typename ValT>
-    auto get_setting( const SettingType &setting_type ) -> decltype( auto ) {
+    auto get_setting( const SettingType &setting_type ) -> const decltype( ValT::value ) {
         Lock lock( mtx );
         if ( settings.find( setting_type ) == settings.end() )
             settings[setting_type] = std::make_unique<ValT>();
@@ -36,7 +36,7 @@ public:
     // Returns a setting value or if it doesn't exist, saves \param default_value for the setting and returns it.
     template <typename ValT>
     auto get_setting_or_set( const SettingType &setting_type,
-                             const decltype( ValT::value ) &default_value ) -> const decltype( ValT::value )& {
+                             const decltype( ValT::value ) &default_value ) -> const decltype( ValT::value ) {
         Lock lock( mtx );
         if ( settings.find( setting_type ) == settings.end() ) {
             settings[setting_type] = std::make_unique<ValT>( default_value );
