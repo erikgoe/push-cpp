@@ -18,10 +18,24 @@ namespace Catch {
 template <>
 struct StringMaker<Token> {
     static std::string convert( Token const &token ) {
-        return "type: " + to_string( static_cast<int>( token.type ) ) + ", \"" + token.content + "\", file: " +
-               ( token.file ? "\"" + *token.file + "\"" : "nullptr" ) + ", line: " + to_string( token.line ) +
-               ", column: " + to_string( token.column ) + ", length: " + to_string( token.length ) + ", " +
-               ( token.leading_ws ? "" : "!" ) + "leading_ws, ";
+        return "type: " + to_string( static_cast<int>( token.type ) ) + ", \"" + token.content +
+               "\", file: " + ( token.file ? "\"" + *token.file + "\"" : "nullptr" ) +
+               ", line: " + to_string( token.line ) + ", column: " + to_string( token.column ) +
+               ", length: " + to_string( token.length ) + ", leading_ws: \"" + escape_ws( token.leading_ws ) + "\"";
+    }
+    static std::string escape_ws( const String &str ) {
+        std::string result;
+        for ( auto &s : str ) {
+            if ( s == '\n' )
+                result += "\\n";
+            else if ( s == '\t' )
+                result += "\\t";
+            else if ( s == '\r' )
+                result += "\\r";
+            else
+                result += s;
+        }
+        return result;
     }
 };
 } // namespace Catch
@@ -42,7 +56,7 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     std::list<Token> token_list;
     auto start = std::chrono::steady_clock::now();
     while ( true ) {
-        auto token = fin.get_token( false );
+        auto token = fin.get_token();
         if ( token.type == Token::Type::eof )
             break;
         token_list.push_back( token );
@@ -53,61 +67,61 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
 
     auto test_file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
     std::list<Token> token_check_list{
-        Token( Token::Type::comment_begin, "//", test_file, 1, 1, 2, false ),
-        Token( Token::Type::identifier, "testing", test_file, 1, 4, 7, true ),
-        Token( Token::Type::identifier, "the", test_file, 1, 12, 3, true ),
-        Token( Token::Type::identifier, "lexer", test_file, 1, 16, 5, true ),
-        Token( Token::Type::term_begin, "(", test_file, 1, 22, 1, true ),
-        Token( Token::Type::identifier, "SourceInput", test_file, 1, 23, 11, false ),
-        Token( Token::Type::term_end, ")", test_file, 1, 34, 1, false ),
-        Token( Token::Type::comment_end, "\n", test_file, 1, 35, 1, false ),
-        Token( Token::Type::identifier, "main", test_file, 3, 1, 4, true ),
-        Token( Token::Type::block_begin, "{", test_file, 3, 6, 1, true ),
-        Token( Token::Type::identifier, "letlet", test_file, 4, 5, 6, true ),
-        Token( Token::Type::identifier, "a", test_file, 4, 12, 1, true ),
-        Token( Token::Type::op, "=", test_file, 4, 13, 1, false ),
-        Token( Token::Type::number, "4", test_file, 4, 15, 1, true ),
-        Token( Token::Type::stat_divider, ";", test_file, 4, 16, 1, false ),
-        Token( Token::Type::keyword, "let", test_file, 5, 5, 3, true ),
-        Token( Token::Type::identifier, "b", test_file, 5, 9, 1, true ),
-        Token( Token::Type::op, "=", test_file, 5, 11, 1, true ),
-        Token( Token::Type::number_float, "3.2", test_file, 5, 12, 3, false ),
-        Token( Token::Type::stat_divider, ";", test_file, 5, 15, 1, false ),
-        Token( Token::Type::comment_begin, "//", test_file, 5, 17, 2, true ),
-        Token( Token::Type::identifier, "commenting", test_file, 5, 20, 10, true ),
-        Token( Token::Type::identifier, "🦄🦓and🦌", test_file, 5, 31, 6, true ),
-        Token( Token::Type::comment_end, "\n", test_file, 5, 37, 1, false ),
-        Token( Token::Type::identifier, "c", test_file, 6, 5, 1, true ),
-        Token( Token::Type::op, "=", test_file, 6, 7, 1, true ),
-        Token( Token::Type::identifier, "a", test_file, 6, 9, 1, true ),
-        Token( Token::Type::op, "+", test_file, 6, 10, 1, false ),
-        Token( Token::Type::identifier, "b", test_file, 6, 11, 1, false ),
-        Token( Token::Type::op, "-", test_file, 6, 13, 1, true ),
-        Token( Token::Type::number, "2", test_file, 6, 15, 1, true ),
-        Token( Token::Type::stat_divider, ";", test_file, 6, 16, 1, false ),
-        Token( Token::Type::comment_begin, "/*", test_file, 6, 18, 2, true ),
-        Token( Token::Type::identifier, "other", test_file, 6, 20, 5, false ),
-        Token( Token::Type::comment_begin, "/*", test_file, 6, 26, 2, true ),
-        Token( Token::Type::identifier, "comment", test_file, 6, 28, 7, false ),
-        Token( Token::Type::comment_begin, "/*", test_file, 6, 36, 2, true ),
-        Token( Token::Type::identifier, "with", test_file, 6, 38, 4, false ),
-        Token( Token::Type::comment_end, "*/", test_file, 6, 42, 2, false ),
-        Token( Token::Type::comment_end, "*/", test_file, 6, 44, 2, false ),
-        Token( Token::Type::identifier, "nested", test_file, 6, 47, 6, true ),
-        Token( Token::Type::comment_end, "*/", test_file, 6, 53, 2, false ),
-        Token( Token::Type::identifier, "c", test_file, 7, 5, 1, true ),
-        Token( Token::Type::op, "-", test_file, 7, 7, 1, true ),
-        Token( Token::Type::op, "+=-", test_file, 7, 8, 3, false ),
-        Token( Token::Type::op, "+=-", test_file, 7, 11, 3, false ),
-        Token( Token::Type::op, "--", test_file, 7, 14, 2, false ),
-        Token( Token::Type::op, "-", test_file, 7, 16, 1, false ),
-        Token( Token::Type::identifier, "objletlet", test_file, 7, 17, 9, false ),
-        Token( Token::Type::op, ".", test_file, 7, 26, 1, false ),
-        Token( Token::Type::identifier, "letletdo", test_file, 7, 27, 8, false ),
-        Token( Token::Type::term_begin, "(", test_file, 7, 35, 1, false ),
-        Token( Token::Type::term_end, ")", test_file, 7, 36, 1, false ),
-        Token( Token::Type::stat_divider, ";", test_file, 7, 37, 1, false ),
-        Token( Token::Type::block_end, "}", test_file, 8, 1, 1, true ),
+        Token( Token::Type::comment_begin, "//", test_file, 1, 1, 2, "" ),
+        Token( Token::Type::identifier, "testing", test_file, 1, 4, 7, " " ),
+        Token( Token::Type::identifier, "the", test_file, 1, 12, 3, " " ),
+        Token( Token::Type::identifier, "lexer", test_file, 1, 16, 5, " " ),
+        Token( Token::Type::term_begin, "(", test_file, 1, 22, 1, " " ),
+        Token( Token::Type::identifier, "SourceInput", test_file, 1, 23, 11, "" ),
+        Token( Token::Type::term_end, ")", test_file, 1, 34, 1, "" ),
+        Token( Token::Type::comment_end, "\n", test_file, 1, 35, 1, "" ),
+        Token( Token::Type::identifier, "main", test_file, 3, 1, 4, "\n  \n" ),
+        Token( Token::Type::block_begin, "{", test_file, 3, 6, 1, " " ),
+        Token( Token::Type::identifier, "letlet", test_file, 4, 5, 6, "\n\t" ),
+        Token( Token::Type::identifier, "a", test_file, 4, 12, 1, " " ),
+        Token( Token::Type::op, "=", test_file, 4, 13, 1, "" ),
+        Token( Token::Type::number, "4", test_file, 4, 15, 1, " " ),
+        Token( Token::Type::stat_divider, ";", test_file, 4, 16, 1, "" ),
+        Token( Token::Type::keyword, "let", test_file, 5, 5, 3, " \n    " ),
+        Token( Token::Type::identifier, "b", test_file, 5, 9, 1, " " ),
+        Token( Token::Type::op, "=", test_file, 5, 11, 1, " " ),
+        Token( Token::Type::number_float, "3.2", test_file, 5, 12, 3, "" ),
+        Token( Token::Type::stat_divider, ";", test_file, 5, 15, 1, "" ),
+        Token( Token::Type::comment_begin, "//", test_file, 5, 17, 2, " " ),
+        Token( Token::Type::identifier, "commenting", test_file, 5, 20, 10, " " ),
+        Token( Token::Type::identifier, "🦄🦓and🦌", test_file, 5, 31, 6, " " ),
+        Token( Token::Type::comment_end, "\n", test_file, 5, 37, 1, "" ),
+        Token( Token::Type::identifier, "c", test_file, 6, 5, 1, "\n    " ),
+        Token( Token::Type::op, "=", test_file, 6, 7, 1, " " ),
+        Token( Token::Type::identifier, "a", test_file, 6, 9, 1, " " ),
+        Token( Token::Type::op, "+", test_file, 6, 10, 1, "" ),
+        Token( Token::Type::identifier, "b", test_file, 6, 11, 1, "" ),
+        Token( Token::Type::op, "-", test_file, 6, 13, 1, " " ),
+        Token( Token::Type::number, "2", test_file, 6, 15, 1, " " ),
+        Token( Token::Type::stat_divider, ";", test_file, 6, 16, 1, "" ),
+        Token( Token::Type::comment_begin, "/*", test_file, 6, 18, 2, " " ),
+        Token( Token::Type::identifier, "other", test_file, 6, 20, 5, "" ),
+        Token( Token::Type::comment_begin, "/*", test_file, 6, 26, 2, " " ),
+        Token( Token::Type::identifier, "comment", test_file, 6, 28, 7, "" ),
+        Token( Token::Type::comment_begin, "/*", test_file, 6, 36, 2, " " ),
+        Token( Token::Type::identifier, "with", test_file, 6, 38, 4, "" ),
+        Token( Token::Type::comment_end, "*/", test_file, 6, 42, 2, "" ),
+        Token( Token::Type::comment_end, "*/", test_file, 6, 44, 2, "" ),
+        Token( Token::Type::identifier, "nested", test_file, 6, 47, 6, " " ),
+        Token( Token::Type::comment_end, "*/", test_file, 6, 53, 2, "" ),
+        Token( Token::Type::identifier, "c", test_file, 7, 5, 1, "\n\t" ),
+        Token( Token::Type::op, "-", test_file, 7, 7, 1, " " ),
+        Token( Token::Type::op, "+=-", test_file, 7, 8, 3, "" ),
+        Token( Token::Type::op, "+=-", test_file, 7, 11, 3, "" ),
+        Token( Token::Type::op, "--", test_file, 7, 14, 2, "" ),
+        Token( Token::Type::op, "-", test_file, 7, 16, 1, "" ),
+        Token( Token::Type::identifier, "objletlet", test_file, 7, 17, 9, "" ),
+        Token( Token::Type::op, ".", test_file, 7, 26, 1, "" ),
+        Token( Token::Type::identifier, "letletdo", test_file, 7, 27, 8, "" ),
+        Token( Token::Type::term_begin, "(", test_file, 7, 35, 1, "" ),
+        Token( Token::Type::term_end, ")", test_file, 7, 36, 1, "" ),
+        Token( Token::Type::stat_divider, ";", test_file, 7, 37, 1, "" ),
+        Token( Token::Type::block_end, "}", test_file, 8, 1, 1, "\n" ),
     };
 
     REQUIRE( token_list.size() == token_check_list.size() );

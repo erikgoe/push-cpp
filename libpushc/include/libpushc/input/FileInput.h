@@ -39,7 +39,7 @@ class FileInput : public SourceInput {
     bool fill_buffer();
 
     // implementation of the *_token() methods
-    Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 &in_comment, size_t &curr_line,
+    Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, size_t &curr_line,
                                      size_t &curr_column, Token::Type &curr_tt );
 
 public:
@@ -49,11 +49,11 @@ public:
     std::shared_ptr<SourceInput> open_new_file( const String &file );
     bool file_exists( const String &file );
 
-    Token get_token( bool original = false );
+    Token get_token();
 
-    Token preview_token( bool original = false );
+    Token preview_token();
 
-    Token preview_next_token( bool original = false );
+    Token preview_next_token();
     
     std::list<String> get_lines( size_t line_begin, size_t line_end );
 };

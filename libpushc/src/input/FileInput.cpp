@@ -77,8 +77,8 @@ bool FileInput::file_exists( const String &file ) {
     return fs::exists( file );
 }
 
-Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 &in_comment, size_t &curr_line,
-                                 size_t &curr_column, Token::Type &curr_tt ) {
+Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, size_t &curr_line, size_t &curr_column,
+                                 Token::Type &curr_tt ) {
     Token t;
     t.file = filename;
     String curr;
@@ -140,11 +140,11 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
                     curr_tt = Token::Type::count;
                 }
 
-                t.content = ( original ? curr_ws + curr : curr );
+                t.content = curr;
                 t.line = curr_line;
                 t.column = curr_column + curr_ws.trim_leading_lines().length_grapheme();
                 t.length = curr.length_cp();
-                t.leading_ws = !curr_ws.empty();
+                t.leading_ws = curr_ws.replace_all( "\r\n", "\n" ).replace_all( "\r", "\n" );
 
                 // increment line if needed
                 if ( e_pair.first == Token::Type::comment_end && ( curr.back() == '\r' || curr.back() == '\n' ) ) {
@@ -172,7 +172,7 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
                     }
                 }
 
-                curr_column += curr.length_cp() + ( original ? 0 : curr_ws.trim_leading_lines().length_grapheme() );
+                curr_column += curr.length_cp() + curr_ws.trim_leading_lines().length_grapheme();
                 return t;
             }
         }
@@ -188,7 +188,7 @@ Token FileInput::get_token_impl( bool original, char *&ptr, u32 &in_string, u32 
     }
 }
 
-Token FileInput::get_token( bool original ) {
+Token FileInput::get_token() {
     // reset for next preview
     prev_ptr = ptr;
     prev_in_string = in_string;
@@ -197,10 +197,10 @@ Token FileInput::get_token( bool original ) {
     prev_curr_column = curr_column;
     prev_curr_tt = curr_tt;
 
-    return get_token_impl( original, ptr, in_string, in_comment, curr_line, curr_column, curr_tt );
+    return get_token_impl( ptr, in_string, in_comment, curr_line, curr_column, curr_tt );
 }
 
-Token FileInput::preview_token( bool original ) {
+Token FileInput::preview_token() {
     prev_ptr = ptr;
     prev_in_string = in_string;
     prev_in_comment = in_comment;
@@ -208,13 +208,11 @@ Token FileInput::preview_token( bool original ) {
     prev_curr_column = curr_column;
     prev_curr_tt = curr_tt;
 
-    return get_token_impl( original, prev_ptr, prev_in_string, prev_in_comment, prev_curr_line, prev_curr_column,
-                           prev_curr_tt );
+    return get_token_impl( prev_ptr, prev_in_string, prev_in_comment, prev_curr_line, prev_curr_column, prev_curr_tt );
 }
 
-Token FileInput::preview_next_token( bool original ) {
-    return get_token_impl( original, prev_ptr, prev_in_string, prev_in_comment, prev_curr_line, prev_curr_column,
-                           prev_curr_tt );
+Token FileInput::preview_next_token() {
+    return get_token_impl( prev_ptr, prev_in_string, prev_in_comment, prev_curr_line, prev_curr_column, prev_curr_tt );
 }
 
 std::list<String> FileInput::get_lines( size_t line_begin, size_t line_end ) {

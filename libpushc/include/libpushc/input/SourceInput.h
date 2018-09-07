@@ -47,11 +47,11 @@ struct Token {
     size_t line = 0;
     size_t column = 0;
     size_t length = 0;
-    bool leading_ws = false; // whether a whitspace char is in front of this token (also with \param original set)
+    String leading_ws; // contains the whitspace in front of this token
 
     Token() {}
     Token( Type type, const String &content, std::shared_ptr<String> file, size_t line, size_t column, size_t length,
-           bool leading_ws ) {
+           const String &leading_ws ) {
         this->type = type;
         this->content = content;
         this->file = file;
@@ -117,15 +117,14 @@ public:
     // Check whether a file exists in the source system.
     virtual bool file_exists( const String &file ) = 0;
 
-    // Get the next token from the stream. \param original: if true, don't trim leading whitespace, etc.
-    virtual Token get_token( bool original = false ) = 0;
+    // Get the next token from the stream.
+    virtual Token get_token() = 0;
 
-    // Get the next token, but don't move the stream head forward. \param original: if true, don't trim leading
-    // whitespace, etc.
-    virtual Token preview_token( bool original = false ) = 0;
+    // Get the next token, but don't move the stream head forward.
+    virtual Token preview_token() = 0;
 
     // like preview_token but gives the next after a earlier preview
-    virtual Token preview_next_token( bool original = false ) = 0;
+    virtual Token preview_next_token() = 0;
 
     // Returns a list of source lines from the range line_begin..=line_end
     virtual std::list<String> get_lines( size_t line_begin, size_t line_end ) = 0;
