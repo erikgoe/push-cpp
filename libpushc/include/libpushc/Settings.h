@@ -37,12 +37,15 @@ public:
 
 using BoolSV = AnySV<bool>;
 using IntSV = AnySV<i32>;
+using SizeSV = AnySV<size_t>;
 using FloatSV = AnySV<f64>;
 using StringSV = AnySV<String>;
 
 
 // Contains all possible settings
 enum class SettingType {
+    tab_size, // tab size in spaces
+
     release_optimization,
     backend,
     platform,

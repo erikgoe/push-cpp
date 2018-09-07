@@ -21,8 +21,8 @@ class String : public std::string {
     StringSlice *last_slice = nullptr; // last returned slice
 
 public:
-    // Constants
-    static const size_t TAB_WIDTH = 4; // used to translate tabs into spaces
+    // Globals
+    static size_t TAB_WIDTH; // Used to translate tabs into spaces. Defined through a cxt global setting
 
 
     // Inherit base class constructors

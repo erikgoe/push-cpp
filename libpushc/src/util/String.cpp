@@ -14,6 +14,8 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/util/String.h"
 
+size_t String::TAB_WIDTH = { 4 };
+
 // Returns the length of the string in code points
 template <typename T>
 size_t length_of_string_cp( const T &str ) {

@@ -23,6 +23,8 @@ class Context {
     std::map<SettingType, std::unique_ptr<SettingValue>> settings; // store all the settings
 
 public:
+    Context() { update_global_settings(); }
+
     // Returns a previously saved setting. If it was not saved, returns the default value for the Setting type.
     template <typename ValT>
     auto get_setting( const SettingType &setting_type ) -> decltype( auto ) {
@@ -34,7 +36,7 @@ public:
     // Returns a setting value or if it doesn't exist, saves \param default_value for the setting and returns it.
     template <typename ValT>
     auto get_setting_or_set( const SettingType &setting_type,
-                             const decltype( SettingValue::get<ValT>().value ) &default_value ) -> decltype( auto ) {
+                             const decltype( ValT::value ) &default_value ) -> const decltype( ValT::value )& {
         Lock lock( mtx );
         if ( settings.find( setting_type ) == settings.end() ) {
             settings[setting_type] = std::make_unique<ValT>( default_value );
@@ -48,6 +50,9 @@ public:
         Lock lock( mtx );
         settings[setting_type] = std::make_unique<SettingT>( value );
     }
+
+    // This method must be called to update some specific settings like tab length
+    void update_global_settings();
 
     friend class QueryMgr;
 };
