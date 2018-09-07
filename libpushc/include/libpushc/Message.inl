@@ -13,7 +13,14 @@
 
 // Actual error declaration
 enum class MessageType {
+    fatal_error = 0,
     error_lexer_char_not_allowed,
+
+    error = 100,
+
+    warning = 5000,
+
+    information = 10000,
 
     count
 };
