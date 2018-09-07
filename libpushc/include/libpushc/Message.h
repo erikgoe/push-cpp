@@ -36,6 +36,7 @@ struct MessageInfo {
     u32 message_id = 0;
     FmtStr::Color color = FmtStr::Color::Blue;
 
+    MessageInfo() {}
     MessageInfo( std::shared_ptr<String> file, u32 line_begin, u32 line_end, u32 column, u32 length, u32 message_id,
                  FmtStr::Color color = FmtStr::Color::Blue ) {
         this->file = file;
@@ -127,9 +128,9 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                 const std::vector<String> &note_messages, size_t line_offset, std::shared_ptr<Worker> w_ctx );
 
 // Returns a formatted message which can be shown to the user
-template <MessageType MesT, size_t NotesSize, typename... Args>
+template <MessageType MesT, typename... Args>
 constexpr const FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
-                                    const std::array<MessageInfo, NotesSize> &notes, Args... head_args ) {
+                                    const std::vector<MessageInfo> &notes, Args... head_args ) {
     FmtStr result = get_message_head<MesT>( head_args... );
     auto notes_list = get_message_notes<MesT>( head_args... );
 

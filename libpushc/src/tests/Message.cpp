@@ -33,7 +33,8 @@ struct StringMaker<FmtStr> {
 
 TEST_CASE( "Message head", "[message]" ) {
     CHECK( get_message_head<MessageType::error_lexer_char_not_allowed>() ==
-           FmtStr::Piece( "error L0", FmtStr::Color::BoldRed ) +
+           FmtStr::Piece( "error L" + to_string( static_cast<u32>( MessageType::error_lexer_char_not_allowed ) ),
+                          FmtStr::Color::BoldRed ) +
                FmtStr::Piece( ": Character is not in allowed set of characters.\n", FmtStr::Color::BoldBlack ) );
 }
 TEST_CASE( "Message body", "[message]" ) {
@@ -44,8 +45,8 @@ TEST_CASE( "Message body", "[message]" ) {
 
     auto output = get_message<MessageType::error_lexer_char_not_allowed>(
         w_ctx, MessageInfo( file, 4, 5, 12, 17, 0, FmtStr::Color::BoldRed ),
-        std::array<MessageInfo, 1>{ { MessageInfo( file, 3, 4, 3, 18, 0, FmtStr::Color::BoldBlue ) } } );
 
     print_msg_to_stdout( output );
+        { MessageInfo( file, 3, 4, 3, 18, 0, FmtStr::Color::BoldBlue ) } );
     CHECK( output == FmtStr::Piece( "error" ) + FmtStr::Piece( "error" ) );
 }

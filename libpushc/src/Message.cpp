@@ -187,7 +187,8 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
             if ( i < n_itr->line_begin ) { // line space
                 result += FmtStr::Piece( "*", n_itr->color );
             } else if ( i == n_itr->line_begin ) { // print first underlines
-                if ( line_lengths[i - last_lower_bound] > n_itr->column ) { // something bad happened
+                if ( line_lengths[i - last_lower_bound] > n_itr->column ) {
+                    // TODO enable messages with arbitrary caret position and size (~~^~~~ or ^^^^~~ or ~^^~~)
                     result += FmtStr::Piece(
                         String( n_itr->column - 1, ' ' ) + '^' +
                             String(
@@ -196,7 +197,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                         n_itr->color );
                     remaining_chars -=
                         std::min<size_t>( remaining_chars, line_lengths[i - last_lower_bound] - n_itr->column );
-                } else {
+                } else { // something bad happened
                     // TODO internel compiler error
                 }
             } else if ( i <= n_itr->line_end ) { // print further underlines
