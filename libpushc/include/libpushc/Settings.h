@@ -30,6 +30,7 @@ public:
 template<typename T>
 class AnySV : public SettingValue {
 public:
+    AnySV() { this->value = {}; }
     AnySV( const T &value ) { this->value = value; }
     T value;
 };

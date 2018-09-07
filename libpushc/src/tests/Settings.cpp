@@ -24,6 +24,8 @@ TEST_CASE( "Settings usage", "[settings]" ) {
     ctx.set_setting<IntSV>( SettingType::release_optimization, 3210 );
     CHECK( ctx.get_setting<IntSV>( SettingType::release_optimization ) == 3210 );
 
+    CHECK( ctx.get_setting<StringSV>( SettingType::platform ) == "" );
+    
     ctx.set_setting<StringSV>( SettingType::backend, "llvm" );
     ctx.set_setting<StringSV>( SettingType::platform, "pc" );
     CHECK( ctx.get_setting<StringSV>( SettingType::platform ) == "pc" );
