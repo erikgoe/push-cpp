@@ -80,3 +80,19 @@ size_t StringSlice::length_cp() const {
 size_t StringSlice::length_grapheme() const {
     return length_of_string_grapheme( *this );
 }
+
+StringSlice StringSlice::trim_leading_lines() const {
+    if ( !empty() ) {
+        for ( size_t i = size() - 1;; i-- ) {
+            if ( ( *this )[i] == '\n' || ( *this )[i] == '\r' )
+                return slice( i + 1 );
+            if ( i == 0 )
+                break;
+        }
+    }
+    return slice( 0 );
+}
+
+StringSlice StringSlice::slice( size_t pos, size_t size ) const {
+    return StringSlice( *this, pos, size );
+}

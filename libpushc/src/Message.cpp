@@ -102,8 +102,8 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
         result += FmtStr::Piece(
             to_string( n.line_begin ) + ( n.line_begin != n.line_end ? ".." + to_string( n.line_end ) : "" ) + ":" +
                 to_string( n.column ) +
-                ( n.column > 1 && n.line_begin == n.line_end ? ".." + to_string( n.column + n.length - 1 )
-                                                             : n.column > 1 ? "+" + to_string( n.length ) : "" ),
+                ( n.length > 1 && n.line_begin == n.line_end ? ".." + to_string( n.column + n.length - 1 )
+                                                             : n.length > 1 ? "+" + to_string( n.length ) : "" ),
             n.color );
     }
     result += FmtStr::Piece( "\n", regular_color );
@@ -161,12 +161,20 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                     }
                     if ( curr_color == tmp_color ) {
                         curr_piece += line[j];
+                        while ( line.size() > j + 1 && (line[j + 1] & 0xC0 ) == 0x80 ) {
+                            j++;
+                            curr_piece += line[j];
+                        }
                     } else {
                         if ( !curr_piece.empty() ) { // new substring
                             result += FmtStr::Piece( curr_piece, curr_color );
                             curr_piece.clear();
                         }
                         curr_piece += line[j];
+                        while ( line.size() > j + 1 && ( line[j + 1] & 0xC0 ) == 0x80 ) {
+                            j++;
+                            curr_piece += line[j];
+                        }
                         curr_color = tmp_color;
                     }
                 }
@@ -187,7 +195,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
             if ( i < n_itr->line_begin ) { // line space
                 result += FmtStr::Piece( "*", n_itr->color );
             } else if ( i == n_itr->line_begin ) { // print first underlines
-                if ( line_lengths[i - last_lower_bound] > n_itr->column ) {
+                if ( line_lengths[i - last_lower_bound] >= n_itr->column ) {
                     // TODO enable messages with arbitrary caret position and size (~~^~~~ or ^^^^~~ or ~^^~~)
                     result += FmtStr::Piece(
                         String( n_itr->column - 1, ' ' ) + '^' +

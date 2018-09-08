@@ -122,7 +122,8 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
             curr += *ptr;
         auto e_pair = ( eof ? std::make_pair( Token::Type::eof, 0 )
                             : ending_token( curr, in_string, in_comment, curr_tt, curr_line,
-                                            curr_column + curr_ws.trim_leading_lines().length_grapheme() ) );
+                                            curr_column + curr_ws.length_grapheme() +
+                                                curr.trim_leading_lines().length_grapheme() - 1 ) );
         if ( e_pair.first != curr_tt && curr_tt == Token::Type::ws ) { // trim and store leading whitespace
             curr_ws = curr.substr( 0, curr.size() - ( eof ? 0 : 1 ) );
             curr = curr.substr( curr.size() - ( eof ? 0 : 1 ) );

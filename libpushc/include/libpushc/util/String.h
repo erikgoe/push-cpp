@@ -71,15 +71,22 @@ class StringSlice {
 
 public:
     StringSlice( const String &str, size_t pos, size_t size ) { reslice( str, pos, size ); }
+    StringSlice( const StringSlice &str, size_t pos, size_t size ) { reslice( str.m_ref, str.m_size, pos, size ); }
 
     // Returns the size of the slice in bytes
     size_t size() const { return m_size; }
 
+    // Returns true if the slice size is zero
+    bool empty() const { return !m_size; }
+
     // Returns the length of the string in code points
     size_t length_cp() const;
 
-    // Returns the lenght of the string in grapheme-blocks. This method takes only simple characters into account.
+    // Returns the length of the string in grapheme-blocks. This method takes only simple characters into account.
     size_t length_grapheme() const;
+
+    // Retruns a slice with only the last line
+    StringSlice trim_leading_lines() const;
 
     // Return a not null-terminated pointer to the slice string.
     const char *c_str() const { return m_ref; }
@@ -90,18 +97,24 @@ public:
         return *this;
     }
 
+    // Returns a StringSlice relative to the current slice
+    StringSlice slice( size_t pos, size_t size = String::npos ) const;
+
     // Set a new source string, offset and size
     StringSlice &reslice( const String &str, size_t pos, size_t size ) {
-        if ( str.size() < pos ) {
+        return reslice( str.c_str(), str.size(), pos, size );
+    }
+    StringSlice &reslice( const char *c_str, size_t str_size, size_t pos, size_t size ) {
+        if ( str_size < pos ) {
             LOG_ERR( "String is to small for this slice [" + to_string( pos ) + ".." + to_string( pos + size ) +
-                     "] in " + to_string( str.size() ) + " string." );
-            m_ref = str.c_str();
+                     "] in " + to_string( str_size ) + " string." );
+            m_ref = c_str;
             m_size = 0;
-        } else if ( size == String::npos || str.size() < pos + size ) {
-            m_ref = str.c_str() + pos;
-            m_size = str.size() - pos;
+        } else if ( size == String::npos || str_size < pos + size ) {
+            m_ref = c_str + pos;
+            m_size = str_size - pos;
         } else {
-            m_ref = str.c_str() + pos;
+            m_ref = c_str + pos;
             m_size = size;
         }
         return *this;

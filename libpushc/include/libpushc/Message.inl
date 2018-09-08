@@ -28,7 +28,7 @@ enum class MessageType {
     notification = 10000,
 
     count,
-    test_message// used for testing
+    test_message // used for testing
 };
 
 // Actual error definitions. Strucure: <MessageType>, <message class>, "<message source symbol>", "<error message>",
@@ -49,9 +49,10 @@ MESSAGE_DEFINITION( MessageType::err_unexpected_eof_at_line_query, MessageClass:
                         to_string( GET_ARG( 3 ) ) + "\".",
                     {} );
 MESSAGE_DEFINITION( MessageType::err_lexer_char_not_allowed, MessageClass::Error, "L",
-                    "Character `" + String( GET_ARG( 0 ), 1 ) + "` is not in allowed set of characters.",
-                    { "not allowed character" } );
+                    "Character `" + String( 1, GET_ARG( 0 ) ) + "`(" + to_string( static_cast<u32>( GET_ARG( 0 ) ) ) +
+                        ") is not in allowed set of characters.",
+                    { "not allowed unit point`" + String( 1, GET_ARG( 0 ) ) + "`(" +
+                      to_string( static_cast<u32>( GET_ARG( 0 ) ) ) + ")" } );
 
-MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X",
-                    "Test error message.",
+MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.",
                     { "message for this" } );
