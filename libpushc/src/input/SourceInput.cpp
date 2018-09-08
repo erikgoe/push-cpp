@@ -13,6 +13,8 @@
 
 #include "libpushc/stdafx.h"
 #include "libpushc/input/SourceInput.h"
+#include "libpushc/Worker.h"
+#include "libpushc/QueryMgr.h"
 
 TokenConfig TokenConfig::get_prelude_cfg() {
     TokenConfig cfg;
@@ -48,7 +50,8 @@ TokenConfig TokenConfig::get_prelude_cfg() {
 }
 
 std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, bool in_string, bool in_comment,
-                                                          const Token::Type curr_tt ) {
+                                                          const Token::Type curr_tt, size_t curr_line,
+                                                          size_t curr_column ) {
     if ( str.empty() ) {
         LOG_ERR( "Passed empty string to ending_token()." );
         return std::make_pair( Token::Type::count, 0 ); // invalid
@@ -56,12 +59,13 @@ std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, boo
     u8 back = static_cast<u8>( str.back() );
 
     if ( back < cfg.allowed_chars.first || back > cfg.allowed_chars.second ) {
-        // TODO print error
+        w_ctx->print_msg<MessageType::err_lexer_char_not_allowed>(
+            MessageInfo( filename, curr_line, curr_line, curr_column, 1, 0, FmtStr::Color::BoldRed ), {}, back );
     }
 
     // NOTE better approach to check elements: hashmaps for each operator size. Would be faster and not need all the
     // size checks and substr etc.
-    // FIXME wrong comment ending rules may be applied: 
+    // FIXME wrong comment ending rules may be applied:
     // "// foo */ bar" ends line comment
     // "/* foo \nbar*/" ends comment on newline
     if ( back == ' ' || back == '\n' || back == '\r' || back == '\t' ) {

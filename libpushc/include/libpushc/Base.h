@@ -47,6 +47,7 @@ static Mutex log_mtx;
 
 #define SCILENT_LOG 0
 
+// TODO pipe directly to the user somehow (e. g. through compiler error messages)
 static void log( const std::string &msg ) {
 #if !SCILENT_LOG
     log_mtx.lock();

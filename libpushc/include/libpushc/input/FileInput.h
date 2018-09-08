@@ -24,7 +24,6 @@
 // NOTE BUG: The ">>" in "S<A<B>>" will be recognized as one operator
 class FileInput : public SourceInput {
     std::ifstream fstream;
-    std::shared_ptr<String> filename;
     char *buff, *buff_end, *fill, *ptr, *prev_ptr; // buffer ptrs
     size_t max_read; // max amount of data to read in one buffer fill
     bool eof; // stream reached end of file
@@ -43,10 +42,10 @@ class FileInput : public SourceInput {
                                      size_t &curr_column, Token::Type &curr_tt );
 
 public:
-    FileInput( const String &file, size_t buffer_size, size_t max_read );
+    FileInput( const String &file, size_t buffer_size, size_t max_read, std::shared_ptr<Worker> w_ctx );
     ~FileInput();
 
-    std::shared_ptr<SourceInput> open_new_file( const String &file );
+    std::shared_ptr<SourceInput> open_new_file( const String &file, std::shared_ptr<Worker> w_ctx );
     bool file_exists( const String &file );
 
     Token get_token();
@@ -55,5 +54,5 @@ public:
 
     Token preview_next_token();
     
-    std::list<String> get_lines( size_t line_begin, size_t line_end );
+    std::list<String> get_lines( size_t line_begin, size_t line_end, Worker &w_ctx );
 };

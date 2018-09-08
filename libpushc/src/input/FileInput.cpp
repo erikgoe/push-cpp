@@ -13,8 +13,11 @@
 
 #include "libpushc/stdafx.h"
 #include "libpushc/input/FileInput.h"
+#include "libpushc/Worker.h"
+#include "libpushc/QueryMgr.h"
 
-FileInput::FileInput( const String &file, size_t buffer_size, size_t max_read ) {
+FileInput::FileInput( const String &file, size_t buffer_size, size_t max_read, std::shared_ptr<Worker> w_ctx ) {
+    this->w_ctx = w_ctx;
     filename = std::make_shared<String>( file );
     fstream.open( file, std::ios_base::binary );
 
@@ -69,8 +72,8 @@ bool FileInput::fill_buffer() {
         return false;
 }
 
-std::shared_ptr<SourceInput> FileInput::open_new_file( const String &file ) {
-    return std::make_shared<FileInput>( file, buff_end - buff, max_read );
+std::shared_ptr<SourceInput> FileInput::open_new_file( const String &file, std::shared_ptr<Worker> w_ctx ) {
+    return std::make_shared<FileInput>( file, buff_end - buff, max_read, w_ctx );
 }
 
 bool FileInput::file_exists( const String &file ) {
@@ -117,8 +120,9 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
         // Make the code more stage-based
         if ( !eof )
             curr += *ptr;
-        auto e_pair =
-            ( eof ? std::make_pair( Token::Type::eof, 0 ) : ending_token( curr, in_string, in_comment, curr_tt ) );
+        auto e_pair = ( eof ? std::make_pair( Token::Type::eof, 0 )
+                            : ending_token( curr, in_string, in_comment, curr_tt, curr_line,
+                                            curr_column + curr_ws.trim_leading_lines().length_grapheme() ) );
         if ( e_pair.first != curr_tt && curr_tt == Token::Type::ws ) { // trim and store leading whitespace
             curr_ws = curr.substr( 0, curr.size() - ( eof ? 0 : 1 ) );
             curr = curr.substr( curr.size() - ( eof ? 0 : 1 ) );
@@ -215,7 +219,7 @@ Token FileInput::preview_next_token() {
     return get_token_impl( prev_ptr, prev_in_string, prev_in_comment, prev_curr_line, prev_curr_column, prev_curr_tt );
 }
 
-std::list<String> FileInput::get_lines( size_t line_begin, size_t line_end ) {
+std::list<String> FileInput::get_lines( size_t line_begin, size_t line_end, Worker &w_ctx ) {
     size_t line_count = 1;
     std::list<String> lines;
     String curr_line;
@@ -227,7 +231,8 @@ std::list<String> FileInput::get_lines( size_t line_begin, size_t line_end ) {
 
         if ( ptr == fill ) { // buffer empty
             if ( !fill_buffer() ) { // reached end of file or error
-                // TODO print error
+                w_ctx.print_msg<MessageType::err_unexpected_eof_at_line_query>( MessageInfo(), {}, filename, line_count,
+                                                                                line_begin, line_end );
                 break;
             }
         }

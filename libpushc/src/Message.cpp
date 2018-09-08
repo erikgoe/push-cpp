@@ -198,7 +198,8 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                     remaining_chars -=
                         std::min<size_t>( remaining_chars, line_lengths[i - last_lower_bound] - n_itr->column );
                 } else { // something bad happened
-                    // TODO internel compiler error
+                    LOG_ERR( "Line " + to_string( i ) + " is not long enough to reach column " +
+                             to_string( n_itr->column ) + "." );
                 }
             } else if ( i <= n_itr->line_end ) { // print further underlines
                 result += FmtStr::Piece(

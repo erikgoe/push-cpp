@@ -40,10 +40,10 @@ struct StringMaker<FmtStr::Piece> {
 
 
 TEST_CASE( "Message head", "[message]" ) {
-    CHECK( get_message_head<MessageType::err_lexer_char_not_allowed>() ==
-           FmtStr::Piece( "error L" + to_string( static_cast<u32>( MessageType::err_lexer_char_not_allowed ) ),
+    CHECK( get_message_head<MessageType::test_message>() ==
+           FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
                           FmtStr::Color::BoldRed ) +
-               FmtStr::Piece( ": Character is not in allowed set of characters.\n", FmtStr::Color::BoldBlack ) );
+               FmtStr::Piece( ": Test error message.\n", FmtStr::Color::BoldBlack ) );
 }
 
 TEST_CASE( "Message body", "[message]" ) {
@@ -52,11 +52,13 @@ TEST_CASE( "Message body", "[message]" ) {
     auto file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
 
     {
-        auto output = get_message<MessageType::err_lexer_char_not_allowed>(
+        auto output = get_message<MessageType::test_message>(
             w_ctx, MessageInfo( file, 4, 4, 12, 4, 0, FmtStr::Color::BoldRed ), {} );
         FmtStr check_result;
-        check_result += FmtStr::Piece( "error L101", FmtStr::Color::BoldRed );
-        check_result += FmtStr::Piece( ": Character is not in allowed set of characters.\n", FmtStr::Color::BoldBlack );
+        check_result +=
+            FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
+                           FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( ": Test error message.\n", FmtStr::Color::BoldBlack );
         check_result += FmtStr::Piece( "  --> ", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( CMAKE_PROJECT_ROOT "/Test/lexer.push", FmtStr::Color::Black );
         check_result += FmtStr::Piece( ";", FmtStr::Color::Black );
@@ -70,7 +72,7 @@ TEST_CASE( "Message body", "[message]" ) {
         check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
         check_result += FmtStr::Piece( "  |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "           ^~~~", FmtStr::Color::BoldRed );
-        check_result += FmtStr::Piece( " not allowed character\n", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( " message for this\n", FmtStr::Color::BoldRed );
 
         // Uncomment these lines to print the message to stdout
         // auto output_cp = output;
@@ -83,12 +85,14 @@ TEST_CASE( "Message body", "[message]" ) {
     }
 
     {
-        auto output = get_message<MessageType::err_lexer_char_not_allowed>(
+        auto output = get_message<MessageType::test_message>(
             w_ctx, MessageInfo( file, 4, 5, 12, 17, 0, FmtStr::Color::BoldRed ),
             { MessageInfo( file, 3, 4, 3, 18, 0, FmtStr::Color::BoldBlue ) } );
         FmtStr check_result;
-        check_result += FmtStr::Piece( "error L101", FmtStr::Color::BoldRed );
-        check_result += FmtStr::Piece( ": Character is not in allowed set of characters.\n", FmtStr::Color::BoldBlack );
+        check_result +=
+            FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
+                           FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( ": Test error message.\n", FmtStr::Color::BoldBlack );
         check_result += FmtStr::Piece( "  --> ", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( CMAKE_PROJECT_ROOT "/Test/lexer.push", FmtStr::Color::Black );
         check_result += FmtStr::Piece( ";", FmtStr::Color::Black );
@@ -114,7 +118,7 @@ TEST_CASE( "Message body", "[message]" ) {
         check_result += FmtStr::Piece( "\n", FmtStr::Color::BoldBlue );
         check_result += FmtStr::Piece( "  |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "--------------", FmtStr::Color::BoldBlue );
-        check_result += FmtStr::Piece( " not allowed character\n", FmtStr::Color::BoldBlue );
+        check_result += FmtStr::Piece( " message for this\n", FmtStr::Color::BoldBlue );
         check_result += FmtStr::Piece( "  |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "*", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "\n", FmtStr::Color::BoldRed );
@@ -123,7 +127,7 @@ TEST_CASE( "Message body", "[message]" ) {
         check_result += FmtStr::Piece( "\n", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "  |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "~~~~~~~~~~~", FmtStr::Color::BoldRed );
-        check_result += FmtStr::Piece( " not allowed character\n", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( " message for this\n", FmtStr::Color::BoldRed );
 
         // Uncomment these lines to print the message to stdout
         // auto output_cp = output;
@@ -140,10 +144,10 @@ TEST_CASE( "Message count", "[message]" ) {
     auto qm = std::make_shared<QueryMgr>();
     std::shared_ptr<Worker> w_ctx = qm->setup( 1 );
 
-    qm->get_global_context()->set_setting<SizeSV>( SettingType::max_errors, 10 );
+    qm->get_global_context()->set_setting<SizeSV>( SettingType::max_notifications, 10 );
     qm->get_global_context()->update_global_settings();
 
     for ( size_t i = 0; i < 10; i++ )
-        CHECK_NOTHROW( get_message<MessageType::err_lexer_char_not_allowed>( w_ctx, MessageInfo(), {} ) );
-    CHECK_THROWS( get_message<MessageType::err_lexer_char_not_allowed>( w_ctx, MessageInfo(), {} ) );
+        CHECK_NOTHROW( get_message<MessageType::test_message>( w_ctx, MessageInfo(), {} ) );
+    CHECK_THROWS( get_message<MessageType::test_message>( w_ctx, MessageInfo(), {} ) );
 }

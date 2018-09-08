@@ -17,14 +17,14 @@
 #include "libpushc/QueryMgr.h"
 
 // NOT A QUERY! Returns a source input defined by the current settings
-std::shared_ptr<SourceInput> get_source_input( const String file, QueryMgr &qm ) {
+std::shared_ptr<SourceInput> get_source_input( const String file, QueryMgr &qm, Worker &w_ctx ) {
     std::shared_ptr<SourceInput> source_input;
     auto input_setting = qm.get_global_context()->get_setting<StringSV>( SettingType::input_source );
     if ( input_setting == "file" ) {
-        source_input = std::make_shared<FileInput>( file, 8192, 4096 );
+        source_input = std::make_shared<FileInput>( file, 8192, 4096, w_ctx.shared_from_this() );
     } else {
         LOG_ERR( "Unknown input type setting." );
-        // TODO print error
+        qm.print_msg<MessageType::err_unknown_source_input_setting>( w_ctx.shared_from_this(), MessageInfo(), {}, input_setting, file );
     }
     return source_input;
 }
@@ -32,7 +32,7 @@ std::shared_ptr<SourceInput> get_source_input( const String file, QueryMgr &qm )
 // Returns
 void get_source_lines( const String file, size_t line_begin, size_t line_end, JobsBuilder &jb, QueryMgr &qm ) {
     jb.add_job<std::list<String>>( [&, file, line_begin, line_end]( Worker &w_ctx ) {
-        auto source = get_source_input( file, qm );
-        return source->get_lines( line_begin, line_end );
+        auto source = get_source_input( file, qm, w_ctx );
+        return source->get_lines( line_begin, line_end, w_ctx );
     } );
 }

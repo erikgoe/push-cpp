@@ -19,24 +19,39 @@ enum class MessageType {
     ferr_abort_too_many_notifications,
 
     error = 100,
+    err_unknown_source_input_setting,
+    err_unexpected_eof_at_line_query,
     err_lexer_char_not_allowed,
 
     warning = 5000,
 
     notification = 10000,
 
-    count
+    count,
+    test_message// used for testing
 };
 
 // Actual error definitions. Strucure: <MessageType>, <message class>, "<message source symbol>", "<error message>",
 // {"notes", ...} The error message and the notes may contain additional data shipped by the GET_ARG(index) macro.
 
 MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_errors, MessageClass::Error, "X",
-                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated errors", {} );
+                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated errors.", {} );
 MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_warnings, MessageClass::Error, "X",
-                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated warnings", {} );
+                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated warnings.", {} );
 MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_notifications, MessageClass::Error, "X",
-                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated notifications", {} );
+                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated notifications.", {} );
 
+MESSAGE_DEFINITION( MessageType::err_unknown_source_input_setting, MessageClass::Error, "L",
+                    "Unknown source input type `" + GET_ARG( 0 ) + "` for file `" + GET_ARG( 1 ) + "`.", {} );
+MESSAGE_DEFINITION( MessageType::err_unexpected_eof_at_line_query, MessageClass::Error, "L",
+                    "File `" + *GET_ARG( 0 ) + "` unexpectedly ended at line `" + to_string( GET_ARG( 1 ) ) +
+                        "` while attempting to read range \"" + to_string( GET_ARG( 2 ) ) + ".." +
+                        to_string( GET_ARG( 3 ) ) + "\".",
+                    {} );
 MESSAGE_DEFINITION( MessageType::err_lexer_char_not_allowed, MessageClass::Error, "L",
-                    "Character is not in allowed set of characters.", { "not allowed character" } );
+                    "Character `" + String( GET_ARG( 0 ), 1 ) + "` is not in allowed set of characters.",
+                    { "not allowed character" } );
+
+MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X",
+                    "Test error message.",
+                    { "message for this" } );

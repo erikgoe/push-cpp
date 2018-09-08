@@ -100,11 +100,13 @@ struct TokenConfig {
 class SourceInput {
 protected:
     TokenConfig cfg;
+    std::shared_ptr<Worker> w_ctx;
+    std::shared_ptr<String> filename;
     size_t revert_size; // max size of a operator, etc.
 
     // returns the type and (bounded) size of the last characters of a string
     std::pair<Token::Type, size_t> ending_token( const String &str, bool in_string, bool in_comment,
-                                                 const Token::Type curr_tt );
+                                                 const Token::Type curr_tt, size_t curr_line, size_t curr_column );
 
 public:
     virtual ~SourceInput() {}
@@ -113,7 +115,7 @@ public:
     virtual void configure( const TokenConfig &cfg );
 
     // Opens a new source input for the given file
-    virtual std::shared_ptr<SourceInput> open_new_file( const String &file ) = 0;
+    virtual std::shared_ptr<SourceInput> open_new_file( const String &file, std::shared_ptr<Worker> w_ctx ) = 0;
     // Check whether a file exists in the source system.
     virtual bool file_exists( const String &file ) = 0;
 
@@ -127,5 +129,5 @@ public:
     virtual Token preview_next_token() = 0;
 
     // Returns a list of source lines from the range line_begin..=line_end
-    virtual std::list<String> get_lines( size_t line_begin, size_t line_end ) = 0;
+    virtual std::list<String> get_lines( size_t line_begin, size_t line_end, Worker &w_ctx ) = 0;
 };

@@ -13,6 +13,7 @@
 
 #include "libpushc/tests/stdafx.h"
 #include "libpushc/input/FileInput.h"
+#include "libpushc/QueryMgr.h"
 
 namespace Catch {
 template <>
@@ -41,7 +42,10 @@ struct StringMaker<Token> {
 } // namespace Catch
 
 TEST_CASE( "Basic lexing", "[lexer]" ) {
-    FileInput fin( CMAKE_PROJECT_ROOT "/Test/lexer.push", 5000, 4096 );
+    auto qm = std::make_shared<QueryMgr>();
+    std::shared_ptr<Worker> w_ctx = qm->setup( 1 );
+
+    FileInput fin( CMAKE_PROJECT_ROOT "/Test/lexer.push", 5000, 4096, w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();
     cfg.operators.push_back( "+=-" );
     cfg.operators.push_back( "--" );
