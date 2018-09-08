@@ -60,7 +60,8 @@ public:
 
 // Weird workaround for global function template specialization
 
-// Returns the head of a message including the error message
+// Returns the head of a message including the message text. Will not increment any message count. Use get_message()
+// instead.
 template <MessageType MesT, typename... Args>
 constexpr FmtStr get_message_head( Args... args ) {
     return get_message_head_impl<MesT, Args...>::impl( args... );
@@ -75,7 +76,8 @@ struct get_message_head_impl {
     }
 };
 
-// Returns a list of additional notes which can be applied to a message
+// Returns a list of additional notes which can be applied to a message. Will not increment any message count. Use
+// get_message() instead.
 template <MessageType MesT, typename... Args>
 constexpr std::vector<String> get_message_notes( Args... args ) {
     return get_message_notes_impl<MesT, Args...>::impl( args... );
@@ -93,7 +95,7 @@ struct get_message_notes_impl {
 #define MESSAGE_DEFINITION( id, classid, source_symbol, msg, notes_list )                                        \
     template <typename... Args>                                                                                  \
     struct get_message_head_impl<id, Args...> {                                                                  \
-        constexpr static FmtStr impl( Args... args ) {                                                     \
+        constexpr static FmtStr impl( Args... args ) {                                                           \
             auto at = std::make_tuple( args... );                                                                \
             FmtStr::Color message_class_clr =                                                                    \
                 ( classid == MessageClass::Notification                                                          \
@@ -114,7 +116,7 @@ struct get_message_notes_impl {
     };                                                                                                           \
     template <typename... Args>                                                                                  \
     struct get_message_notes_impl<id, Args...> {                                                                 \
-        constexpr static std::vector<String> impl( Args... args ) {                                        \
+        constexpr static std::vector<String> impl( Args... args ) {                                              \
             auto at = std::make_tuple( args... );                                                                \
             return std::vector<String> notes_list;                                                               \
         }                                                                                                        \
@@ -136,7 +138,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
 // Returns a formatted message which can be shown to the user
 template <MessageType MesT, typename... Args>
 constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
-                                    const std::vector<MessageInfo> &notes, Args... head_args ) {
+                              const std::vector<MessageInfo> &notes, Args... head_args ) {
     FmtStr result = get_message_head<MesT>( head_args... );
     auto notes_list = get_message_notes<MesT>( head_args... );
 
@@ -156,10 +158,12 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
     size_t line_offset = to_string( last_line ).size();
 
     // Print main message
-    notes_map[*message.file].push_front( message );
-    notes_map[*message.file].sort();
-    draw_file( result, *message.file, notes_map[*message.file], notes_list, line_offset, w_ctx );
-    notes_map.erase( *message.file );
+    if ( message.file ) { // message has no main file
+        notes_map[*message.file].push_front( message );
+        notes_map[*message.file].sort();
+        draw_file( result, *message.file, notes_map[*message.file], notes_list, line_offset, w_ctx );
+        notes_map.erase( *message.file );
+    }
 
     // Print notes
     for ( auto &n : notes_map ) {
@@ -167,23 +171,20 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
         draw_file( result, n.first, n.second, notes_list, line_offset, w_ctx );
     }
 
-    // count errors TODO don't print the messaged directly into the console
     if ( MesT < MessageType::error ) { // fatal error
         qm->abort_compilation();
     } else if ( MesT < MessageType::warning ) { // error
-        if ( g_ctx->error_count++ > g_ctx->max_allowed_errors ) {
-            print_msg_to_stdout( get_message_head<MessageType::ferr_abort_too_many_errors>( g_ctx->error_count.load() ) );
-            qm->abort_compilation();
+        if ( g_ctx->error_count++ >= g_ctx->max_allowed_errors ) {
+            w_ctx->print_msg<MessageType::ferr_abort_too_many_errors>( MessageInfo(), {}, g_ctx->error_count.load() );
         }
     } else if ( MesT < MessageType::notification ) { // warning
-        if ( g_ctx->warning_count++ > g_ctx->max_allowed_warnings ) {
-            print_msg_to_stdout( get_message_head<MessageType::ferr_abort_too_many_warnings>( g_ctx->warning_count.load() ) );
-            qm->abort_compilation();
+        if ( g_ctx->warning_count++ >= g_ctx->max_allowed_warnings ) {
+            w_ctx->print_msg<MessageType::ferr_abort_too_many_warnings>( MessageInfo(), {},
+                                                                         g_ctx->warning_count.load() );
         }
-    } else if ( g_ctx->notification_count++ > g_ctx->max_allowed_notifications ) { // notification
-        print_msg_to_stdout(
-            get_message_head<MessageType::ferr_abort_too_many_notifications>( g_ctx->notification_count.load() ) );
-        qm->abort_compilation();
+    } else if ( g_ctx->notification_count++ >= g_ctx->max_allowed_notifications ) { // notification
+        w_ctx->print_msg<MessageType::ferr_abort_too_many_notifications>( MessageInfo(), {},
+                                                                          g_ctx->notification_count.load() );
     }
     return result;
 }

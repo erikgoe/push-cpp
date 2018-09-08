@@ -74,5 +74,4 @@ void QueryMgr::abort_compilation() {
     if ( !open_jobs.empty() )
         open_jobs.pop();
     abort_new_jobs = true;
-    throw AbortCompilationError();
 }

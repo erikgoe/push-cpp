@@ -99,9 +99,10 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
     result += FmtStr::Piece( file, regular_color );
     for ( auto &n : notes ) {
         result += FmtStr::Piece( ";", regular_color );
-        result += FmtStr::Piece(to_string( n.line_begin ) + ( n.line_begin != n.line_end ? ".." + to_string( n.line_end ) : "" ) +
-                ":" + to_string( n.column ) +
-                ( n.column > 1 && n.line_begin == n.line_end ? ".." + to_string( n.column + n.length )
+        result += FmtStr::Piece(
+            to_string( n.line_begin ) + ( n.line_begin != n.line_end ? ".." + to_string( n.line_end ) : "" ) + ":" +
+                to_string( n.column ) +
+                ( n.column > 1 && n.line_begin == n.line_end ? ".." + to_string( n.column + n.length - 1 )
                                                              : n.column > 1 ? "+" + to_string( n.length ) : "" ),
             n.color );
     }

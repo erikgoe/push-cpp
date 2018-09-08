@@ -14,9 +14,10 @@
 #pragma once
 #include "libpushc/Base.h"
 #include "libpushc/util/String.h"
+#include "libpushc/Message.h"
 
 // Executes a job on its thread
-class Worker {
+class Worker : public std::enable_shared_from_this<Worker> {
     std::unique_ptr<std::thread> thread;
     std::atomic_bool finish; // will stop if is set to true
     std::shared_ptr<QueryMgr> qm;
@@ -42,4 +43,10 @@ public:
 
     // Returns the query manager used by this worker
     std::shared_ptr<QueryMgr> get_query_mgr() { return qm; }
+
+    // Prints a message to the user
+    template <MessageType MesT, typename... Args>
+    constexpr void print_msg( const MessageInfo &message, const std::vector<MessageInfo> &notes, Args... head_args ) {
+        qm->print_msg<MesT>( shared_from_this(), message, notes, head_args... );
+    }
 };

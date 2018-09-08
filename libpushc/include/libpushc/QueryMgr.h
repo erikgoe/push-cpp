@@ -82,6 +82,15 @@ public:
 
     // Returns if execution of jobs is allowed (only used internally)
     bool jobs_allowed() { return !abort_new_jobs; }
+
+    // Prints a message to the user
+    template <MessageType MesT, typename... Args>
+    constexpr void print_msg( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
+                              const std::vector<MessageInfo> &notes, Args... head_args ) {
+        print_msg_to_stdout( get_message<MesT>( w_ctx, message, notes, head_args... ) );
+        if( MesT < MessageType::error ) // fatal error
+            throw AbortCompilationError();
+    }
 };
 
 #include "libpushc/QueryMgr.inl"

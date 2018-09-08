@@ -80,5 +80,7 @@ public:
 
     bool empty() { return pieces.empty(); }
 
+    size_t size() { return pieces.size(); }
+
     std::list<Piece> get_raw() const { return pieces; }
 };

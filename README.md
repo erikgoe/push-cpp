@@ -36,4 +36,7 @@ NOTE: linux is currently not tested but may work ^^
 
 ## Tests
 Most of the test cases only check the basic functionality, which is required for the functions/modules to be usable.
-If you want to run the tests, build the project with Catch (so VCPKG_SOURCE_DIR must be set) and run the executable (either build/libpushc/src/tests/Debug/libpushc_test.exe or build/libpushc/src/tests/libpushc_test) from your shell.
+
+If you want to run the tests, build the project with Catch (so VCPKG_SOURCE_DIR must be set) and run the executable (either build/libpushc/src/tests/Debug/libpushc_test.exe or build/libpushc/src/tests/libpushc_test) from your shell. 
+
+The output will print some of warnings and error messages by design. Just make sure catchs' "All tests passed (x assertions in y test cases)" gets printed at the end.
