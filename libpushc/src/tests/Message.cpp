@@ -32,8 +32,8 @@ struct StringMaker<FmtStr> {
 
 
 TEST_CASE( "Message head", "[message]" ) {
-    CHECK( get_message_head<MessageType::error_lexer_char_not_allowed>() ==
-           FmtStr::Piece( "error L" + to_string( static_cast<u32>( MessageType::error_lexer_char_not_allowed ) ),
+    CHECK( get_message_head<MessageType::err_lexer_char_not_allowed>() ==
+           FmtStr::Piece( "error L" + to_string( static_cast<u32>( MessageType::err_lexer_char_not_allowed ) ),
                           FmtStr::Color::BoldRed ) +
                FmtStr::Piece( ": Character is not in allowed set of characters.\n", FmtStr::Color::BoldBlack ) );
 }
@@ -43,7 +43,7 @@ TEST_CASE( "Message body", "[message]" ) {
     std::shared_ptr<JobCollection<u32>> jc;
     auto file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
 
-    auto output = get_message<MessageType::error_lexer_char_not_allowed>(
+    auto output = get_message<MessageType::err_lexer_char_not_allowed>(
         w_ctx, MessageInfo( file, 4, 5, 12, 17, 0, FmtStr::Color::BoldRed ),
 
     print_msg_to_stdout( output );

@@ -21,8 +21,8 @@ class Worker {
     std::atomic_bool finish; // will stop if is set to true
     std::shared_ptr<QueryMgr> qm;
 
-    std::mutex mtx;
-    std::condition_variable cv;
+    Mutex mtx;
+    ConditionVariable cv;
 
 public:
     // Context data

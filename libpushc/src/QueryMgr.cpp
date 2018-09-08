@@ -14,6 +14,7 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/QueryMgr.h"
 #include "libpushc/Worker.h"
+#include "libpushc/Message.h"
 
 std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
     if ( thread_count < 1 ) {
@@ -33,6 +34,7 @@ std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
         worker.push_back( w );
     }
 
+    reset();
     return main_worker;
 }
 
@@ -60,7 +62,17 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
         }
     }
 
+    jobs_cv.notify_all(); // another job was propably finished before, so notify waiting threads
+
     if ( !ret_job )
         no_jobs = true;
     return ret_job;
+}
+
+void QueryMgr::abort_compilation() {
+    Lock lock( job_mtx );
+    if ( !open_jobs.empty() )
+        open_jobs.pop();
+    abort_new_jobs = true;
+    throw AbortCompilationError();
 }

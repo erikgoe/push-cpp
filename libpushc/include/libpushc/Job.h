@@ -34,9 +34,15 @@ public:
     BasicJob() { status = STATUS_FREE; }
     BasicJob( const BasicJob &other ) { this->status.store( other.status.load() ); }
 
+    // Cast into any Jobs' result
+    template <typename T>
+    auto to() -> const T {
+        return static_cast<Job<T> *>( this )->get();
+    }
+
     // Cast into any Job
     template <typename T>
-    Job<T> &to() {
+    Job<T> &as_job() {
         return *static_cast<Job<T> *>( this );
     }
 };
@@ -64,6 +70,7 @@ public:
             return false;
     }
 
+    // Returns the result of the job execution
     const R get() { return result.get(); }
 };
 
@@ -80,12 +87,16 @@ public:
     // returns true if all jobs are done
     bool is_finished();
 
+    // waits until all jobs have been finished without busy waiting
+    void wait();
+
     // Work on open jobs until finished. Other workers may already handle jobs for the query
     // If no free jobs remain (expect the first, which may be reserved), is_finished() will return false.
     // If \param prevent_idle is true other jobs from the QueryMgr are executed when there are no free jobs left. If
     // there are no free jobs left, the function will return. Returns a reference to itself.
     std::shared_ptr<JobCollection<T>> execute( Worker &w_ctx, bool prevent_idle = true );
 
+    // Returns the result of the query. Not from a job!
     decltype( result.get() ) get() { return result.get(); }
 
     friend class QueryMgr;

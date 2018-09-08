@@ -18,6 +18,9 @@ auto QueryMgr::query_impl( FuncT fn, bool volatile_query, const Args &... args )
     JobsBuilder jb;
     auto jc = std::make_shared<JobCollection<decltype( fn( args..., JobsBuilder(), QueryMgr() ) )>>();
 
+    if ( abort_new_jobs ) // Abort because some other thread has stopped execution
+        throw AbortCompilationError();
+
     jc->result.wrap( fn, args..., jb, *this );
 
     jc->jobs = jb.jobs;

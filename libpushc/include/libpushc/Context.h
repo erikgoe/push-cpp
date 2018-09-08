@@ -23,7 +23,20 @@ class Context {
     std::map<SettingType, std::unique_ptr<SettingValue>> settings; // store all the settings
 
 public:
-    Context() { update_global_settings(); }
+    std::atomic_size_t error_count;
+    std::atomic_size_t warning_count;
+    std::atomic_size_t notification_count;
+    std::atomic_size_t max_allowed_errors;
+    std::atomic_size_t max_allowed_warnings;
+    std::atomic_size_t max_allowed_notifications;
+
+
+    Context() {
+        update_global_settings();
+        error_count = 0;
+        warning_count = 0;
+        notification_count = 0;
+    }
 
     // Returns a previously saved setting. If it was not saved, returns the default value for the Setting type.
     template <typename ValT>
@@ -35,8 +48,8 @@ public:
     }
     // Returns a setting value or if it doesn't exist, saves \param default_value for the setting and returns it.
     template <typename ValT>
-    auto get_setting_or_set( const SettingType &setting_type,
-                             const decltype( ValT::value ) &default_value ) -> const decltype( ValT::value ) {
+    auto get_setting_or_set( const SettingType &setting_type, const decltype( ValT::value ) &default_value ) -> const
+        decltype( ValT::value ) {
         Lock lock( mtx );
         if ( settings.find( setting_type ) == settings.end() ) {
             settings[setting_type] = std::make_unique<ValT>( default_value );

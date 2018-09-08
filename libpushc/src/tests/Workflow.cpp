@@ -13,6 +13,7 @@
 
 #include "libpushc/tests/stdafx.h"
 #include "libpushc/QueryMgr.h"
+#include "libpushc/Message.h"
 
 void get_token_list( const String file, JobsBuilder &jb, QueryMgr &qm ) {
     jb.add_job<std::list<String>>( [&, file]( Worker &w_ctx ) {
@@ -30,7 +31,7 @@ void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, Que
             auto jc = qm.query( get_token_list, file )->execute( w_ctx );
             // do sth with the data
             auto job = jc->jobs.front()->to<std::list<String>>();
-            for ( auto &line : job.get() )
+            for ( auto &line : job )
                 b.push_back( line + "_token" );
 
             return b;
@@ -44,7 +45,7 @@ u32 compile_binary( const std::list<String> files, JobsBuilder &jb, QueryMgr &qm
         jc->execute( w_ctx );
         String stream;
         for ( auto &job : jc->jobs ) {
-            for ( auto &t : job->to<std::list<String>>().get() ) {
+            for ( auto &t : job->to<std::list<String>>() ) {
                 stream += t + " ";
             }
         }
@@ -90,7 +91,7 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
     }
     // Sleep( 1000. );
     jc->execute( *w_ctx );
-    String result = jc->jobs.front()->to<String>().get();
+    String result = jc->jobs.front()->to<String>();
     CHECK( result == check_result );
     CHECK( jc->get() == 0xD42 );
     qm->wait_finished();

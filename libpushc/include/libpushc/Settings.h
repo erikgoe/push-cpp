@@ -45,6 +45,9 @@ using StringSV = AnySV<String>;
 // Contains all possible settings
 enum class SettingType {
     tab_size, // tab size in spaces
+    max_errors,
+    max_warnings,
+    max_notifications,
 
     release_optimization,
     backend,

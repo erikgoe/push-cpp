@@ -14,6 +14,7 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/QueryMgr.h"
 #include "libpushc/Worker.h"
+#include "libpushc/Message.h"
 
 Worker::Worker( std::shared_ptr<QueryMgr> qm, size_t id ) {
     finish = false;
@@ -26,13 +27,20 @@ void Worker::work() {
         std::shared_ptr<BasicJob> job = qm->get_free_job();
         while ( !finish ) {
             while ( job ) { // handle open jobs
-                job->run( *this );
-                // LOG( "Thread " + to_string( id ) + " (extern) executed job(" + to_string( job->id ) + ")." );
+                try {
+                    job->run( *this );
+                }
+#pragma warning( push )
+#pragma warning( disable : 4101 )
+                catch ( AbortCompilationError &err ) {
+                    break; // Just abort compilation
+                }
+#pragma warning( pop )
                 job = qm->get_free_job();
             }
 
             {
-                std::unique_lock<std::mutex> lk( mtx );
+                UniqueLock lk( mtx );
                 cv.wait( lk, [this, &job] { return finish || ( job = qm->get_free_job() ); } );
             }
         }
@@ -41,7 +49,7 @@ void Worker::work() {
 void Worker::stop() {
     if ( thread && thread->joinable() ) { // the main thread has not explicit thread object
         {
-            std::lock_guard<std::mutex> lk( mtx );
+            Lock lk( mtx );
             finish = true;
         }
         cv.notify_all();

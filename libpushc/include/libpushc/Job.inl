@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-template<typename T>
+template <typename T>
 bool JobCollection<T>::is_finished() {
     for ( auto &job : jobs ) {
         if ( job->status != BasicJob::STATUS_FIN )
@@ -21,12 +21,23 @@ bool JobCollection<T>::is_finished() {
 }
 
 template <typename T>
+void JobCollection<T>::wait() {
+    UniqueLock lk( query_mgr->job_mtx );
+    query_mgr->jobs_cv.wait( lk, [this] {
+        if ( query_mgr->abort_new_jobs ) {
+            throw AbortCompilationError();
+        }
+        return is_finished();
+    } );
+}
+
+template <typename T>
 std::shared_ptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool prevent_idle ) {
     // handle open jobs
     for ( auto &job : jobs ) {
         job->run( w_ctx ); // the job itself will check if it's free
-                           // LOG( "Thread " + to_string( w_ctx.id ) + " (linear) executed job(" + to_string( job->id )
-                           // + ")." );
+        if ( !query_mgr->jobs_allowed() )
+            throw AbortCompilationError();
     }
 
     // prevent idle when jobs are still executed
@@ -35,8 +46,8 @@ std::shared_ptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool
             auto tmp_job = query_mgr->get_free_job();
             if ( tmp_job ) {
                 tmp_job->run( w_ctx );
-                // LOG( "Thread " + to_string( w_ctx.id ) + " (prevent_idle) executed job(" + to_string( tmp_job->id ) +
-                // ")." );
+                if ( !query_mgr->jobs_allowed() )
+                    throw AbortCompilationError();
             } else
                 break; // Return because there are no more free jobs
         }

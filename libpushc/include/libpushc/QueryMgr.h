@@ -21,7 +21,7 @@
 class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
     // Current state and settings
     std::shared_ptr<Context> context;
-    // Handles access to open_jobs, no_jobs from multiple threads
+    // Handles access to open_jobs, no_jobs, jobs_cv from multiple threads
     Mutex job_mtx;
     // All jobs which have to be executed
     std::stack<std::shared_ptr<BasicJob>> open_jobs;
@@ -30,6 +30,12 @@ class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
 
     // Is true if no free jobs exist. Helps to wake up threads when new jobs occur.
     bool no_jobs = false;
+
+    // Enables waiting for jobs
+    ConditionVariable jobs_cv;
+
+    // Is set to true in abort_compilation() and to false in reset(). Prevents new jobs from being created
+    std::atomic_bool abort_new_jobs;
 
     size_t job_ctr = 0; // used to give every job a new id
 
@@ -42,6 +48,9 @@ public:
     // Initialize the query manager and the whole compiler infrastructure and return the main worker. \param
     // thread_count is the total amount of workers (including this thread).
     std::shared_ptr<Worker> setup( size_t thread_count );
+
+    // In incremental build this method should be called before a new run
+    void reset() { abort_new_jobs = false; }
 
     // Creates a new query with the function of \param fn
     // \param args defines the argument provided for the query implementation. The first job from the query is
@@ -67,6 +76,12 @@ public:
 
     // Returns the application-global context
     std::shared_ptr<Context> get_global_context() { return context; }
+
+    // Cancel all waiting jobs and abort compilation (AbortCompilationError is thrown)
+    void abort_compilation();
+
+    // Returns if execution of jobs is allowed (only used internally)
+    bool jobs_allowed() { return !abort_new_jobs; }
 };
 
 #include "libpushc/QueryMgr.inl"

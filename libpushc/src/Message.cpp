@@ -19,7 +19,7 @@
 // Replaces tabs with spaces
 void ws_format_line( String &line ) {
     String tab_replace;
-    for ( size_t i = 0; i < String::TAB_WIDTH; i++ ) // TODO replace with setting
+    for ( size_t i = 0; i < String::TAB_WIDTH; i++ )
         tab_replace += ' ';
 
     for ( size_t i = 0; i < line.size(); i++ ) {
@@ -86,8 +86,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                         ->query( get_source_lines, file, source_line_bound, upper_bound )
                         ->execute( *w_ctx )
                         ->jobs.front()
-                        ->to<std::list<String>>()
-                        .get();
+                        ->to<std::list<String>>();
         source_lines.reserve( list.size() );
         for ( auto &s : list ) {
             ws_format_line( s );

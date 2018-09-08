@@ -17,4 +17,7 @@
 
 void Context::update_global_settings() {
     String::TAB_WIDTH = get_setting_or_set<SizeSV>( SettingType::tab_size, 4 );
+    max_allowed_errors = get_setting_or_set<SizeSV>( SettingType::max_errors, 256 );
+    max_allowed_warnings = get_setting_or_set<SizeSV>( SettingType::max_warnings, 256 );
+    max_allowed_notifications = get_setting_or_set<SizeSV>( SettingType::max_notifications, 256 );
 }

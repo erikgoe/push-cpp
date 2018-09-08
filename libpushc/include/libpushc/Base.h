@@ -38,8 +38,10 @@ using std::stoul;
 using std::stoull;
 using std::to_string;
 
-using Mutex = std::recursive_mutex;
+using Mutex = std::mutex;
 using Lock = std::lock_guard<Mutex>;
+using UniqueLock = std::unique_lock<Mutex>;
+using ConditionVariable = std::condition_variable;
 
 static Mutex log_mtx;
 

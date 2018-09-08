@@ -14,18 +14,29 @@
 // Actual error declaration
 enum class MessageType {
     fatal_error = 0,
-    error_lexer_char_not_allowed,
+    ferr_abort_too_many_errors,
+    ferr_abort_too_many_warnings,
+    ferr_abort_too_many_notifications,
 
     error = 100,
+    err_lexer_char_not_allowed,
 
     warning = 5000,
 
-    information = 10000,
+    notification = 10000,
 
     count
 };
 
-// Actual error definitions. Strucure: <MessageType>, <message class>, "<message source symbol>", "<error message>", {"notes", ...}
-// The error message and the notes may contain additional data shipped by the GET_ARG(index) macro.
-MESSAGE_DEFINITION( MessageType::error_lexer_char_not_allowed, MessageClass::Error, "L",
+// Actual error definitions. Strucure: <MessageType>, <message class>, "<message source symbol>", "<error message>",
+// {"notes", ...} The error message and the notes may contain additional data shipped by the GET_ARG(index) macro.
+
+MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_errors, MessageClass::Error, "X",
+                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated errors", {} );
+MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_warnings, MessageClass::Error, "X",
+                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated warnings", {} );
+MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_notifications, MessageClass::Error, "X",
+                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated notifications", {} );
+
+MESSAGE_DEFINITION( MessageType::err_lexer_char_not_allowed, MessageClass::Error, "L",
                     "Character is not in allowed set of characters.", { "not allowed character" } );
