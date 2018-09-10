@@ -44,6 +44,12 @@ public:
     // notifies the thread when new jobs occur
     void notify();
 
+    // Creates a new query (see QueryMgr::query())
+    template <typename FuncT, typename... Args>
+    auto query( FuncT fn, const Args &... args ) -> decltype( auto ) {
+        return qm->query( fn, shared_from_this(), args... );
+    }
+
     // Returns the query manager used by this worker
     std::shared_ptr<QueryMgr> get_query_mgr() { return qm; }
 
