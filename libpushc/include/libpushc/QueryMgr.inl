@@ -11,12 +11,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-template <typename FuncT, typename... Args>
-auto QueryMgr::query_impl( FuncT fn, bool volatile_query, const Args &... args ) -> decltype( auto ) {
-    // TODO impl volatile_query with caching of querries
+// Returns true if the query or its sub-queries must be re-run
+bool requires_run( QueryCacheHead &head );
 
-    JobsBuilder jb;
-    auto jc = std::make_shared<JobCollection<decltype( fn( args..., JobsBuilder(), QueryMgr() ) )>>();
+template <typename FuncT, typename... Args>
+auto QueryMgr::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
+    auto jc = std::make_shared<
+        JobCollection<decltype( fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>() ), QueryMgr() ) )>>();
+
+    auto fn_sig = FunctionSignature::create( fn, args... );
+    {
+        Lock lock( query_cache_mtx );
+        std::shared_ptr<QueryCacheHead> head;
+        if ( query_cache.find( fn_sig ) != query_cache.end() ) { // found cached
+            head = query_cache[fn_sig];
+            if ( !requires_run( *head ) ) { // cached state is valid
+                LOG( "Using cached query result." );
+                return head->jc->as_jc_ptr<decltype(
+                    fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>() ), QueryMgr() ) )>();
+            } else { // exists but must be updated
+                LOG( "Update cached query result." );
+                jc = head->jc->as_jc_ptr<decltype(
+                    fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>() ), QueryMgr() ) )>();
+            }
+        } else { // create new cache entry
+            head = std::make_shared<QueryCacheHead>( fn_sig, std::static_pointer_cast<BasicJobCollection>( jc ) );
+            query_cache[fn_sig] = head;
+        }
+
+        jc->fn_sig = fn_sig;
+
+        // Update dag
+        if ( w_ctx && w_ctx->curr_job ) { // if nullptr, there is no parent job
+            if ( query_cache.find( *w_ctx->curr_job->query_sig ) == query_cache.end() ) {
+                LOG_ERR( "Parent query was not found in query_cache" );
+            } else if ( std::find( head->sub_dag.begin(), head->sub_dag.end(),
+                                   query_cache[*w_ctx->curr_job->query_sig] ) == head->sub_dag.end() ) {
+                query_cache[*w_ctx->curr_job->query_sig]->sub_dag.push_back( head );
+            }
+        }
+    }
+
+    JobsBuilder jb( std::make_shared<FunctionSignature>( fn_sig ) );
 
     if ( abort_new_jobs ) // Abort because some other thread has stopped execution
         throw AbortCompilationError();
@@ -25,7 +61,7 @@ auto QueryMgr::query_impl( FuncT fn, bool volatile_query, const Args &... args )
 
     jc->jobs = jb.jobs;
     jc->query_mgr = shared_from_this();
-    if ( !jb.jobs.empty() )
+    if ( !jb.jobs.empty() ) // The first job will be skiped below, so set the id here
         jb.jobs.front()->id = job_ctr++;
 
     if ( jb.jobs.size() > 0 ) {

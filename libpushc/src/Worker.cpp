@@ -24,11 +24,11 @@ Worker::Worker( std::shared_ptr<QueryMgr> qm, size_t id ) {
 
 void Worker::work() {
     thread = std::make_unique<std::thread>( [this]() {
-        std::shared_ptr<BasicJob> job = qm->get_free_job();
+        curr_job = qm->get_free_job();
         while ( !finish ) {
-            while ( job ) { // handle open jobs
+            while ( curr_job ) { // handle open jobs
                 try {
-                    job->run( *this );
+                    curr_job->run( *this );
                 }
 #pragma warning( push )
 #pragma warning( disable : 4101 )
@@ -36,12 +36,12 @@ void Worker::work() {
                     break; // Just abort compilation
                 }
 #pragma warning( pop )
-                job = qm->get_free_job();
+                curr_job = qm->get_free_job();
             }
 
             {
                 UniqueLock lk( mtx );
-                cv.wait( lk, [this, &job] { return finish || ( job = qm->get_free_job() ); } );
+                cv.wait( lk, [this] { return finish || ( curr_job = qm->get_free_job() ); } );
             }
         }
     } );
@@ -60,4 +60,8 @@ void Worker::stop() {
 
 void Worker::notify() {
     cv.notify_all();
+}
+
+void Worker::set_curr_job_volatile() {
+    qm->set_volatile_job( *curr_job->query_sig );
 }

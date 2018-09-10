@@ -16,7 +16,7 @@
 #include "libpushc/Worker.h"
 #include "libpushc/Message.h"
 
-std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
+std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count, size_t cache_map_reserve ) {
     if ( thread_count < 1 ) {
         LOG_ERR( "Must be at least one worker." );
     }
@@ -25,6 +25,10 @@ std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count ) {
     context = std::make_shared<Context>();
     set_default_settings( context->settings );
 
+    // Query cache
+    query_cache.reserve( cache_map_reserve );
+
+    // Worker
     std::shared_ptr<Worker> main_worker = std::make_shared<Worker>( shared_from_this(), 0 );
     worker.push_back( main_worker );
 
@@ -74,4 +78,20 @@ void QueryMgr::abort_compilation() {
     if ( !open_jobs.empty() )
         open_jobs.pop();
     abort_new_jobs = true;
+}
+
+bool requires_run( QueryCacheHead &head ) {
+    if ( head.state >= QueryCacheHead::STATE_GREEN ) {
+        return false;
+    } else if ( head.state >= QueryCacheHead::STATE_RED ) {
+        return true;
+    } else { // Undecided
+        for ( auto &sub : head.sub_dag ) {
+            if ( requires_run( *sub ) ) {
+                head.state &= 0b011; // set red
+                return true;
+            }
+        }
+        return false;
+    }
 }

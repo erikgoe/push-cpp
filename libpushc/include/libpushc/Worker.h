@@ -15,6 +15,7 @@
 #include "libpushc/Base.h"
 #include "libpushc/util/String.h"
 #include "libpushc/Message.h"
+#include "libpushc/Job.h"
 
 // Executes a job on its thread
 class Worker : public std::enable_shared_from_this<Worker> {
@@ -28,6 +29,8 @@ class Worker : public std::enable_shared_from_this<Worker> {
 public:
     // Context data
     size_t id; // id of this worker
+    std::shared_ptr<BasicJob> curr_job;
+
 
     // Basic constructor
     Worker( std::shared_ptr<QueryMgr> qm, size_t id );
@@ -43,6 +46,9 @@ public:
 
     // Returns the query manager used by this worker
     std::shared_ptr<QueryMgr> get_query_mgr() { return qm; }
+
+    // Call this method in a job which does access volatile resources
+    void set_curr_job_volatile();
 
     // Prints a message to the user
     template <MessageType MesT, typename... Args>

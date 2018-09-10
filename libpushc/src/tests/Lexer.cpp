@@ -43,7 +43,7 @@ struct StringMaker<Token> {
 
 TEST_CASE( "Basic lexing", "[lexer]" ) {
     auto qm = std::make_shared<QueryMgr>();
-    std::shared_ptr<Worker> w_ctx = qm->setup( 1 );
+    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 0 );
 
     FileInput fin( CMAKE_PROJECT_ROOT "/Test/lexer.push", 5000, 4096, w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();
@@ -140,7 +140,10 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
 
 #ifndef _DEBUG
 TEST_CASE( "Stress test lexing", "[lexer]" ) {
-    FileInput fin( CMAKE_PROJECT_ROOT "/Test/gibberish.txt", 50, 30 );
+    auto qm = std::make_shared<QueryMgr>();
+    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 0 );
+
+    FileInput fin( CMAKE_PROJECT_ROOT "/Test/gibberish.txt", 50, 30, w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();
     cfg.operators.push_back( "." );
     fin.configure( cfg );
@@ -148,7 +151,7 @@ TEST_CASE( "Stress test lexing", "[lexer]" ) {
     size_t token_count = 0, identifier_count = 0;
     auto start = std::chrono::steady_clock::now();
     while ( true ) {
-        auto token = fin.get_token( false );
+        auto token = fin.get_token();
         if ( token.type == Token::Type::eof )
             break;
         token_count++;

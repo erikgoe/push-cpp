@@ -15,6 +15,7 @@
 #include "libpushc/Base.h"
 #include "libpushc/util/String.h"
 #include "libpushc/util/AnyResultWrapper.h"
+#include "libpushc/util/FunctionHash.h"
 
 template <typename R>
 class Job;
@@ -25,11 +26,12 @@ public:
     virtual ~BasicJob() {}
     virtual bool run( Worker &w_ctx ) = 0;
 
-    static const int STATUS_FREE = 0;
-    static const int STATUS_EXE = 1;
-    static const int STATUS_FIN = 2;
+    constexpr static int STATUS_FREE = 0;
+    constexpr static int STATUS_EXE = 1;
+    constexpr static int STATUS_FIN = 2;
     std::atomic_int status; // 0=free, 1=executing, 2=finished
     size_t id; // job id
+    std::shared_ptr<FunctionSignature> query_sig; // required to create sub-queries
 
     BasicJob() { status = STATUS_FREE; }
     BasicJob( const BasicJob &other ) { this->status.store( other.status.load() ); }
@@ -74,17 +76,38 @@ public:
     const R get() { return result.get(); }
 };
 
+template <typename T>
+class JobCollection;
+
+// Base class for polymorphism
+class BasicJobCollection : public std::enable_shared_from_this<BasicJobCollection> {
+public:
+    virtual ~BasicJobCollection() {}
+
+    // Cast this object to a specific JobCollection
+    template <typename T>
+    JobCollection<T> &as_jc() {
+        return *static_cast<JobCollection<T> *>( this );
+    }
+    // Cast this object to a specific JobCollection-shared_ptr
+    template <typename T>
+    std::shared_ptr<JobCollection<T>> as_jc_ptr() {
+        return std::static_pointer_cast<JobCollection<T>>( shared_from_this() );
+    }
+};
+
 // Stores the jobs for a specific query
 template <typename T>
-class JobCollection : public std::enable_shared_from_this<JobCollection<T>> {
+class JobCollection : public BasicJobCollection {
     std::shared_ptr<QueryMgr> query_mgr; // internally needed for exectue()
     AnyResultWrapper<T> result; // stores the result of the query (not a job)
+    FunctionSignature fn_sig; // required to callback query_mgr when jobs finished
 
 public:
     // a list of jobs for the query. The first job in the list is reserved by default (see QueryMgr::query).
     std::list<std::shared_ptr<BasicJob>> jobs;
 
-    // returns true if all jobs are done
+    // returns true if all jobs are done. You must use this method to enable query caching
     bool is_finished();
 
     // waits until all jobs have been finished without busy waiting
@@ -105,12 +128,16 @@ public:
 // This class is used to build a list of jobs
 class JobsBuilder {
     std::list<std::shared_ptr<BasicJob>> jobs;
+    std::shared_ptr<FunctionSignature> query_sig;
 
 public:
+    JobsBuilder( std::shared_ptr<FunctionSignature> &query_sig ) { this->query_sig = query_sig; }
+
     // Add a new job body with a return value
     template <typename R>
     JobsBuilder &add_job( std::function<R( Worker &w_ctx )> fn ) {
         jobs.push_back( std::static_pointer_cast<BasicJob>( std::make_shared<Job<R>>( fn ) ) );
+        jobs.back()->query_sig = query_sig;
         return *this;
     }
     friend class QueryMgr;

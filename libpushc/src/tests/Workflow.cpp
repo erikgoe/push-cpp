@@ -17,6 +17,7 @@
 
 void get_token_list( const String file, JobsBuilder &jb, QueryMgr &qm ) {
     jb.add_job<std::list<String>>( [&, file]( Worker &w_ctx ) {
+        w_ctx.set_curr_job_volatile();
         std::list<String> token;
         token.push_back( file.substr( 0, file.find( "." ) ) );
         token.push_back( file.substr( file.find( "." ), 1 ) );
@@ -28,7 +29,7 @@ void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, Que
     for ( auto &file : files ) {
         jb.add_job<std::list<String>>( [&, file]( Worker &w_ctx ) {
             std::list<String> b;
-            auto jc = qm.query( get_token_list, file )->execute( w_ctx );
+            auto jc = qm.query( get_token_list, w_ctx, file )->execute( w_ctx );
             // do sth with the data
             auto job = jc->jobs.front()->to<std::list<String>>();
             for ( auto &line : job )
@@ -40,7 +41,7 @@ void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, Que
 }
 u32 compile_binary( const std::list<String> files, JobsBuilder &jb, QueryMgr &qm ) {
     jb.add_job<String>( [&, files]( Worker &w_ctx ) {
-        auto jc = qm.query( get_binary_from_source, files );
+        auto jc = qm.query( get_binary_from_source, w_ctx, files );
         Sleep( 10. );
         jc->execute( w_ctx );
         String stream;
@@ -62,15 +63,15 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
     std::shared_ptr<JobCollection<u32>> jc;
     String check_result;
     SECTION( "simple files" ) {
-        SECTION( "single threaded" ) { w_ctx = qm->setup( 1 ); }
-        SECTION( "multithreaded" ) { w_ctx = qm->setup( 4 ); }
-        jc = qm->query( compile_binary, std::list<String>{ "somefile.push", "another.push", "last.push" } );
+        SECTION( "single threaded" ) { w_ctx = qm->setup( 20 ); }
+        SECTION( "multithreaded" ) { w_ctx = qm->setup( 4, 20 ); }
+        jc = qm->query( compile_binary, w_ctx, std::list<String>{ "somefile.push", "another.push", "last.push" } );
         check_result =
             "somefile_token ._token push_token another_token ._token push_token last_token ._token push_token ";
     }
     SECTION( "multi files" ) {
-        // SECTION( "single threaded" ) { w_ctx = qm->setup( 1 ); }
-        SECTION( "multithreaded" ) { w_ctx = qm->setup( 16 ); }
+        // SECTION( "single threaded" ) { w_ctx = qm->setup( 1, 1024 ); }
+        SECTION( "multithreaded" ) { w_ctx = qm->setup( 16, 1024 ); }
         auto filelist = std::list<String>();
         for ( char c = '@'; c <= 'Z'; c++ ) {
             for ( char c2 = '@'; c2 <= 'Z'; c2++ ) {
@@ -87,7 +88,7 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
                 //}
             }
         }
-        jc = qm->query( compile_binary, filelist );
+        jc = qm->query( compile_binary, w_ctx, filelist );
     }
     // Sleep( 1000. );
     jc->execute( *w_ctx );
@@ -95,4 +96,15 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
     CHECK( result == check_result );
     CHECK( jc->get() == 0xD42 );
     qm->wait_finished();
+}
+
+TEST_CASE( "Query caching", "[basic_workflow]" ) {
+    auto qm = std::make_shared<QueryMgr>();
+    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 8 );
+
+    qm->query( get_binary_from_source, w_ctx, std::list<String>{"a.b"} )->execute( *w_ctx )->wait();
+    qm->query( get_binary_from_source, w_ctx, std::list<String>{"a.b"} )->execute( *w_ctx )->wait();
+    qm->reset();
+    qm->query( get_binary_from_source, w_ctx, std::list<String>{"a.b"} )->execute( *w_ctx )->wait();
+    // this should print 1x "Using cached..." and 2x "Update cached..."
 }

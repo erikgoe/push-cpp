@@ -48,7 +48,7 @@ TEST_CASE( "Message head", "[message]" ) {
 
 TEST_CASE( "Message body", "[message]" ) {
     auto qm = std::make_shared<QueryMgr>();
-    std::shared_ptr<Worker> w_ctx = qm->setup( 1 );
+    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 2 );
     auto file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
 
     {
@@ -142,7 +142,7 @@ TEST_CASE( "Message body", "[message]" ) {
 
 TEST_CASE( "Message count", "[message]" ) {
     auto qm = std::make_shared<QueryMgr>();
-    std::shared_ptr<Worker> w_ctx = qm->setup( 1 );
+    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 4 );
 
     qm->get_global_context()->set_setting<SizeSV>( SettingType::max_notifications, 10 );
     qm->get_global_context()->update_global_settings();
