@@ -161,7 +161,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                     }
                     if ( curr_color == tmp_color ) {
                         curr_piece += line[j];
-                        while ( line.size() > j + 1 && (line[j + 1] & 0xC0 ) == 0x80 ) {
+                        while ( line.size() > j + 1 && ( line[j + 1] & 0xC0 ) == 0x80 ) {
                             j++;
                             curr_piece += line[j];
                         }
@@ -215,8 +215,8 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                     n_itr->color );
                 remaining_chars -= std::min<size_t>( remaining_chars, line_lengths[i - last_lower_bound] );
             }
-            if ( i == n_itr->line_end && note_messages.size() > n_itr->message_id ) { // print message
-                result += FmtStr::Piece( " " + note_messages[n_itr->message_id] + "\n", n_itr->color );
+            if ( i == n_itr->line_end && note_messages.size() > n_itr->message_idx ) { // print message
+                result += FmtStr::Piece( " " + note_messages[n_itr->message_idx] + "\n", n_itr->color );
             } else {
                 result += FmtStr::Piece( "\n", n_itr->color );
             }

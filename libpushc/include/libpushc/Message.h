@@ -33,18 +33,22 @@ struct MessageInfo {
     std::shared_ptr<String> file;
     u32 line_begin = 0, line_end = 0;
     u32 column = 0, length = 0;
-    u32 message_id = 0;
+    u32 message_idx = 0;
     FmtStr::Color color = FmtStr::Color::Blue;
 
     MessageInfo() {}
-    MessageInfo( std::shared_ptr<String> file, u32 line_begin, u32 line_end, u32 column, u32 length, u32 message_id,
+    MessageInfo( std::shared_ptr<String> file, u32 line_begin, u32 line_end, u32 column, u32 length, u32 message_idx,
                  FmtStr::Color color = FmtStr::Color::Blue ) {
         this->file = file;
         this->line_begin = line_begin;
         this->line_end = line_end;
         this->column = column;
         this->length = length;
-        this->message_id = message_id;
+        this->message_idx = message_idx;
+        this->color = color;
+    }
+    MessageInfo( u32 message_idx, FmtStr::Color color = FmtStr::Color::Blue ) {
+        this->message_idx = message_idx;
         this->color = color;
     }
     bool operator<( const MessageInfo &other ) const {
@@ -92,7 +96,7 @@ struct get_message_notes_impl {
     }
 };
 
-#define MESSAGE_DEFINITION( id, classid, source_symbol, msg, notes_list )                                        \
+#define MESSAGE_DEFINITION( id, classid, source_symbol, msg, ... )                                               \
     template <typename... Args>                                                                                  \
     struct get_message_head_impl<id, Args...> {                                                                  \
         constexpr static FmtStr impl( Args... args ) {                                                           \
@@ -118,7 +122,7 @@ struct get_message_notes_impl {
     struct get_message_notes_impl<id, Args...> {                                                                 \
         constexpr static std::vector<String> impl( Args... args ) {                                              \
             auto at = std::make_tuple( args... );                                                                \
-            return std::vector<String> notes_list;                                                               \
+            return std::vector<String>{ __VA_ARGS__ };                                                           \
         }                                                                                                        \
     }
 
@@ -151,9 +155,13 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
     // Calculate some required formatting information
     size_t last_line = 0;
     std::map<String, std::list<MessageInfo>> notes_map;
+    std::list<MessageInfo> global_messages;
     for ( auto &n : notes ) {
         last_line = std::max( last_line, n.line_end );
-        notes_map[*n.file].push_back( n );
+        if ( n.file )
+            notes_map[*n.file].push_back( n );
+        else
+            global_messages.push_back( n );
     }
     size_t line_offset = to_string( last_line ).size();
 
@@ -169,6 +177,14 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
     for ( auto &n : notes_map ) {
         n.second.sort();
         draw_file( result, n.first, n.second, notes_list, line_offset, w_ctx );
+    }
+
+    // Global messages
+    if ( !global_messages.empty() ) {
+        result += FmtStr::Piece( "  Notes:\n", FmtStr::Color::Blue ); // using notes color
+        for ( auto &m : global_messages ) {
+            result += FmtStr::Piece( "   " + notes_list[m.message_idx] + "\n", m.color );
+        }
     }
 
     if ( MesT < MessageType::error ) { // fatal error

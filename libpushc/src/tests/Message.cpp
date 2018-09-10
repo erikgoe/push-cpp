@@ -51,13 +51,12 @@ TEST_CASE( "Message body", "[message]" ) {
     std::shared_ptr<Worker> w_ctx = qm->setup( 1, 2 );
     auto file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
 
-    {
+    { // Simple message
         auto output = get_message<MessageType::test_message>(
             w_ctx, MessageInfo( file, 4, 4, 12, 4, 0, FmtStr::Color::BoldRed ), {} );
         FmtStr check_result;
-        check_result +=
-            FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
-                           FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
+                                       FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( ": Test error message.\n", FmtStr::Color::BoldBlack );
         check_result += FmtStr::Piece( "  --> ", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( CMAKE_PROJECT_ROOT "/Test/lexer.push", FmtStr::Color::Black );
@@ -84,14 +83,48 @@ TEST_CASE( "Message body", "[message]" ) {
         }
     }
 
-    {
-        auto output = get_message<MessageType::test_message>(
-            w_ctx, MessageInfo( file, 4, 5, 12, 17, 0, FmtStr::Color::BoldRed ),
-            { MessageInfo( file, 3, 4, 3, 18, 0, FmtStr::Color::BoldBlue ) } );
+    { // Message with global notes
+        auto output =
+            get_message<MessageType::test_message>( w_ctx, MessageInfo( file, 4, 4, 12, 4, 0, FmtStr::Color::BoldRed ),
+                                                    { MessageInfo( 1, FmtStr::Color::BoldBlue ) } );
         FmtStr check_result;
-        check_result +=
-            FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
-                           FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
+                                       FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( ": Test error message.\n", FmtStr::Color::BoldBlack );
+        check_result += FmtStr::Piece( "  --> ", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( CMAKE_PROJECT_ROOT "/Test/lexer.push", FmtStr::Color::Black );
+        check_result += FmtStr::Piece( ";", FmtStr::Color::Black );
+        check_result += FmtStr::Piece( "4:12..15", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
+        check_result += FmtStr::Piece( "  |\n", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "4 |", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "    letlet ", FmtStr::Color::Black );
+        check_result += FmtStr::Piece( "a= 4", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( "; ", FmtStr::Color::Black );
+        check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
+        check_result += FmtStr::Piece( "  |", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "           ^~~~", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( " message for this\n", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( "  Notes:\n", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "   global information text\n", FmtStr::Color::BoldBlue );
+
+        // Uncomment these lines to print the message to stdout
+        // auto output_cp = output;
+        // print_msg_to_stdout( output_cp );
+
+        REQUIRE( output.size() == check_result.size() );
+        while ( !output.empty() ) {
+            CHECK( output.consume() == check_result.consume() );
+        }
+    }
+
+    { // Complex overlapping message
+        auto output =
+            get_message<MessageType::test_message>( w_ctx, MessageInfo( file, 4, 5, 12, 17, 0, FmtStr::Color::BoldRed ),
+                                                    { MessageInfo( file, 3, 4, 3, 18, 0, FmtStr::Color::BoldBlue ) } );
+        FmtStr check_result;
+        check_result += FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
+                                       FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( ": Test error message.\n", FmtStr::Color::BoldBlack );
         check_result += FmtStr::Piece( "  --> ", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( CMAKE_PROJECT_ROOT "/Test/lexer.push", FmtStr::Color::Black );
