@@ -22,7 +22,7 @@ class String : public std::string {
 
 public:
     // Globals
-    static size_t TAB_WIDTH; // Used to translate tabs into spaces. Defined through a cxt global setting
+    static size_t TAB_WIDTH; // Used to translate tabs into spaces. Defined through a cxt global pref
 
 
     // Inherit base class constructors

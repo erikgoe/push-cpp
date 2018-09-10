@@ -16,15 +16,15 @@
 #include "libpushc/input/FileInput.h"
 #include "libpushc/QueryMgr.h"
 
-// NOT A QUERY! Returns a source input defined by the current settings
+// NOT A QUERY! Returns a source input defined by the current prefs
 std::shared_ptr<SourceInput> get_source_input( const String file, QueryMgr &qm, Worker &w_ctx ) {
     std::shared_ptr<SourceInput> source_input;
-    auto input_setting = qm.get_global_context()->get_setting<StringSV>( SettingType::input_source );
-    if ( input_setting == "file" ) {
+    auto input_pref = qm.get_global_context()->get_pref<StringSV>( PrefType::input_source );
+    if ( input_pref == "file" ) {
         source_input = std::make_shared<FileInput>( file, 8192, 4096, w_ctx.shared_from_this() );
     } else {
-        LOG_ERR( "Unknown input type setting." );
-        qm.print_msg<MessageType::err_unknown_source_input_setting>( w_ctx.shared_from_this(), MessageInfo(), {}, input_setting, file );
+        LOG_ERR( "Unknown input type pref." );
+        qm.print_msg<MessageType::err_unknown_source_input_pref>( w_ctx.shared_from_this(), MessageInfo(), {}, input_pref, file );
     }
     return source_input;
 }

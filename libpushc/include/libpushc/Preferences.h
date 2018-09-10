@@ -15,10 +15,10 @@
 #include "libpushc/Base.h"
 #include "libpushc/util/String.h"
 
-// Contains any possible value type for a setting
-class SettingValue {
+// Contains any possible value type for a pref
+class PrefValue {
 public:
-    virtual ~SettingValue() {}
+    virtual ~PrefValue() {}
 
     template <typename T>
     const T get() const {
@@ -26,9 +26,9 @@ public:
     }
 };
 
-// Stores a arbitrary type setting
+// Stores a arbitrary type pref
 template<typename T>
-class AnySV : public SettingValue {
+class AnySV : public PrefValue {
 public:
     AnySV() { this->value = {}; }
     AnySV( const T &value ) { this->value = value; }
@@ -42,8 +42,8 @@ using FloatSV = AnySV<f64>;
 using StringSV = AnySV<String>;
 
 
-// Contains all possible settings
-enum class SettingType {
+// Contains all possible preference
+enum class PrefType {
     tab_size, // tab size in spaces
     max_errors,
     max_warnings,
@@ -58,8 +58,8 @@ enum class SettingType {
     count
 };
 
-// Sets the default initial settings
-inline void set_default_settings( std::map<SettingType, std::unique_ptr<SettingValue>> &settings ) {
-    settings[SettingType::input_source] = std::make_unique<StringSV>( "file" );
+// Sets the default initial prefs
+inline void set_default_preferences( std::map<PrefType, std::unique_ptr<PrefValue>> &prefs ) {
+    prefs[PrefType::input_source] = std::make_unique<StringSV>( "file" );
 
 }

@@ -41,7 +41,7 @@ struct QueryCacheHead {
 
 // Manages compilation queries, jobs and workers.
 class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
-    // Current state and settings
+    // Current state and prefs
     std::shared_ptr<Context> context;
     // Handles access to open_jobs, no_jobs, jobs_cv from multiple threads
     Mutex job_mtx;

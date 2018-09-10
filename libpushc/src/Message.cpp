@@ -284,7 +284,7 @@ void print_msg_to_stdout( FmtStr &str ) {
         std::cout << piece.text << std::flush;
     }
 
-    // Reset console settings
+    // Reset console prefs
 #ifdef _WIN32
     SetConsoleTextAttribute( console_h, previous_color );
 #else

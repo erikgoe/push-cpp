@@ -21,9 +21,9 @@ std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count, size_t cache_map_r
         LOG_ERR( "Must be at least one worker." );
     }
 
-    // Context and settings
+    // Context and prefs
     context = std::make_shared<Context>();
-    set_default_settings( context->settings );
+    set_default_preferences( context->prefs );
 
     // Query cache
     query_cache.reserve( cache_map_reserve );

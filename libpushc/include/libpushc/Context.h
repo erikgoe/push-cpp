@@ -14,13 +14,13 @@
 #pragma once
 #include "libpushc/Base.h"
 #include "libpushc/util/String.h"
-#include "libpushc/Settings.h"
+#include "libpushc/Preferences.h"
 
-// Stores the current state and the settings for a compilation pass (or a incremental build)
+// Stores the current state and the prefs for a compilation pass (or a incremental build)
 class Context {
     Mutex mtx; // used for all async manipulations
 
-    std::map<SettingType, std::unique_ptr<SettingValue>> settings; // store all the settings
+    std::map<PrefType, std::unique_ptr<PrefValue>> prefs; // store all the prefs
 
 public:
     std::atomic_size_t error_count;
@@ -32,40 +32,43 @@ public:
 
 
     Context() {
-        update_global_settings();
+        update_global_prefs();
         error_count = 0;
         warning_count = 0;
         notification_count = 0;
     }
 
-    // Returns a previously saved setting. If it was not saved, returns the default value for the Setting type.
+    // Returns a previously saved pref. If it was not saved, returns the default value for the preference type.
     template <typename ValT>
-    auto get_setting( const SettingType &setting_type ) -> const decltype( ValT::value ) {
+    auto get_pref( const PrefType &pref_type ) -> const decltype( ValT::value ) {
         Lock lock( mtx );
-        if ( settings.find( setting_type ) == settings.end() )
-            settings[setting_type] = std::make_unique<ValT>();
-        return settings[setting_type]->get<ValT>().value;
+        if ( prefs.find( pref_type ) == prefs.end() ) {
+            prefs[pref_type] = std::make_unique<ValT>();
+            LOG_WARN( "Using preference (" + to_string( static_cast<u32>( pref_type ) ) +
+                      ") which was not set before." );
+        }
+        return prefs[pref_type]->get<ValT>().value;
     }
-    // Returns a setting value or if it doesn't exist, saves \param default_value for the setting and returns it.
+    // Returns a pref value or if it doesn't exist, saves \param default_value for the pref and returns it.
     template <typename ValT>
-    auto get_setting_or_set( const SettingType &setting_type, const decltype( ValT::value ) &default_value ) -> const
+    auto get_pref_or_set( const PrefType &pref_type, const decltype( ValT::value ) &default_value ) -> const
         decltype( ValT::value ) {
         Lock lock( mtx );
-        if ( settings.find( setting_type ) == settings.end() ) {
-            settings[setting_type] = std::make_unique<ValT>( default_value );
+        if ( prefs.find( pref_type ) == prefs.end() ) {
+            prefs[pref_type] = std::make_unique<ValT>( default_value );
             return default_value;
         }
-        return settings[setting_type]->get<ValT>().value;
+        return prefs[pref_type]->get<ValT>().value;
     }
-    // Stores a new setting or overwrites an existing one.
-    template <typename SettingT, typename ValT>
-    void set_setting( const SettingType &setting_type, const ValT &value ) {
+    // Stores a new pref or overwrites an existing one.
+    template <typename PrefT, typename ValT>
+    void set_pref( const PrefType &pref_type, const ValT &value ) {
         Lock lock( mtx );
-        settings[setting_type] = std::make_unique<SettingT>( value );
+        prefs[pref_type] = std::make_unique<PrefT>( value );
     }
 
-    // This method must be called to update some specific settings like tab length
-    void update_global_settings();
+    // This method must be called to update some specific prefs like tab length
+    void update_global_prefs();
 
     friend class QueryMgr;
 };

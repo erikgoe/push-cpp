@@ -19,7 +19,7 @@ enum class MessageType {
     ferr_abort_too_many_notifications,
 
     error = 100,
-    err_unknown_source_input_setting,
+    err_unknown_source_input_pref,
     err_unexpected_eof_at_line_query,
     err_lexer_char_not_allowed,
 
@@ -41,7 +41,7 @@ MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_warnings, MessageClass::Err
 MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_notifications, MessageClass::Error, "X",
                     "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated notifications." );
 
-MESSAGE_DEFINITION( MessageType::err_unknown_source_input_setting, MessageClass::Error, "L",
+MESSAGE_DEFINITION( MessageType::err_unknown_source_input_pref, MessageClass::Error, "L",
                     "Unknown source input type `" + GET_ARG( 0 ) + "` for file `" + GET_ARG( 1 ) + "`." );
 MESSAGE_DEFINITION( MessageType::err_unexpected_eof_at_line_query, MessageClass::Error, "L",
                     "File `" + *GET_ARG( 0 ) + "` unexpectedly ended at line `" + to_string( GET_ARG( 1 ) ) +

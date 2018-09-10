@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.6)
 add_executable(${TEST_NAME}
     Lexer.cpp
     Message.cpp
-    Settings.cpp
+    Preferences.cpp
     Test.cpp
     Workflow.cpp
 )

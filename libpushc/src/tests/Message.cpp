@@ -177,8 +177,8 @@ TEST_CASE( "Message count", "[message]" ) {
     auto qm = std::make_shared<QueryMgr>();
     std::shared_ptr<Worker> w_ctx = qm->setup( 1, 4 );
 
-    qm->get_global_context()->set_setting<SizeSV>( SettingType::max_notifications, 10 );
-    qm->get_global_context()->update_global_settings();
+    qm->get_global_context()->set_pref<SizeSV>( PrefType::max_notifications, 10 );
+    qm->get_global_context()->update_global_prefs();
 
     for ( size_t i = 0; i < 10; i++ )
         CHECK_NOTHROW( get_message<MessageType::test_message>( w_ctx, MessageInfo(), {} ) );
