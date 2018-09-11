@@ -24,6 +24,9 @@ class CLI {
     std::map<String, std::list<String>> args;
     std::list<String> files;
 
+    // Returns true if the parameter is provided
+    bool has_par( const String& parameter_name ) { return args.find( parameter_name ) != args.end(); }
+
 public:
     // Initializes the driver
     int setup( int argc, char** argv );

@@ -14,6 +14,10 @@
 #pragma once
 #include "libpushc/stdafx.h"
 
+#define PUSH_VERSION_MAJOR 0
+#define PUSH_VERSION_MINOR 1
+#define PUSH_VERSION_PATCH 0
+
 using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
