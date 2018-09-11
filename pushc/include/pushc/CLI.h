@@ -27,6 +27,9 @@ class CLI {
     // Returns true if the parameter is provided
     bool has_par( const String& parameter_name ) { return args.find( parameter_name ) != args.end(); }
 
+    // Prints the help text into the console
+    void print_help_text();
+
 public:
     // Initializes the driver
     int setup( int argc, char** argv );
