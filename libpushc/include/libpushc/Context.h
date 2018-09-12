@@ -70,5 +70,11 @@ public:
     // This method must be called to update some specific prefs like tab length
     void update_global_prefs();
 
+    // Returns the name of the triplet element corresponding to the value. Returns and empty string if this value does
+    // not exist
+    static String get_triplet_elem_name( const String &value );
+    // Returns the index-position of a triplet name
+    static size_t get_triplet_pos( const String &name );
+
     friend class QueryMgr;
 };

@@ -59,5 +59,5 @@ void CLI::print_help_text() {
                  "  <architecture>-<os/kernel/framework;specification>-<plattform/vendor>-\n"
                  "  <output_format>-<backend>-<runtime>-<linkage>-<build_configuration> \n"
                  "You may configure parts of the triplet and leave the remaining defaults with\n"
-                 "a <name>=<value> pair.\n";
+                 "a comma-separated list or <name>=<value> pairs.\n";
 }

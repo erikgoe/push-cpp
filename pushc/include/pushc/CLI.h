@@ -30,6 +30,11 @@ class CLI {
     // Prints the help text into the console
     void print_help_text();
 
+    // Returns true if the CLI has this preference name
+    static bool find_pref( const String& pref );
+    // Returns true if the CLI has this flag name
+    static bool find_flag( const String& flag );
+
 public:
     // Initializes the driver
     int setup( int argc, char** argv );
