@@ -12,11 +12,11 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/Base.h"
-#include "libpushc/Job.h"
-#include "libpushc/Worker.h"
-#include "libpushc/Preferences.h"
-#include "libpushc/util/FunctionHash.h"
+#include "libpush/Base.h"
+#include "libpush/Job.h"
+#include "libpush/Worker.h"
+#include "libpush/Preferences.h"
+#include "libpush/util/FunctionHash.h"
 
 // Stores meta information about a query
 struct QueryCacheHead {
@@ -206,4 +206,4 @@ public:
     static size_t get_triplet_pos( const String &name );
 };
 
-#include "libpushc/GlobalCtx.inl"
+#include "libpush/GlobalCtx.inl"

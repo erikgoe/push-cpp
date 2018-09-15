@@ -11,8 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/UnitCtx.h"
+#include "libpush/stdafx.h"
+#include "libpush/UnitCtx.h"
 
 std::vector<String> UnitCtx::known_files = {};
 Mutex UnitCtx::known_files_mtx = {};

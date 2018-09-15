@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/GlobalCtx.h"
-#include "libpushc/Worker.h"
-#include "libpushc/Message.h"
+#include "libpush/stdafx.h"
+#include "libpush/GlobalCtx.h"
+#include "libpush/Worker.h"
+#include "libpush/Message.h"
 
 Worker::Worker( std::shared_ptr<GlobalCtx> g_ctx, size_t id ) {
     finish = false;

@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "libpushc/Base.h"
-#include "libpushc/GlobalCtx.h"
-#include "libpushc/Job.h"
-#include "libpushc/Message.h"
+#include "libpush/Base.h"
+#include "libpush/GlobalCtx.h"
+#include "libpush/Job.h"
+#include "libpush/Message.h"

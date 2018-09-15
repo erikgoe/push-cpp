@@ -11,11 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/GlobalCtx.h"
-#include "libpushc/Worker.h"
-#include "libpushc/Message.h"
-#include "libpushc/UnitCtx.h"
+#include "libpush/stdafx.h"
+#include "libpush/GlobalCtx.h"
+#include "libpush/Worker.h"
+#include "libpush/Message.h"
+#include "libpush/UnitCtx.h"
 
 std::shared_ptr<Worker> GlobalCtx::setup( size_t thread_count, size_t cache_map_reserve ) {
     if ( thread_count < 1 ) {

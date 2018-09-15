@@ -12,8 +12,8 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/Base.h"
-#include "libpushc/GlobalCtx.h"
+#include "libpush/Base.h"
+#include "libpush/GlobalCtx.h"
 
 // The context of a compilation unit
 class UnitCtx {

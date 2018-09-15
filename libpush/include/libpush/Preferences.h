@@ -12,8 +12,8 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/Base.h"
-#include "libpushc/util/String.h"
+#include "libpush/Base.h"
+#include "libpush/util/String.h"
 
 // Contains any possible value type for a pref
 class PrefValue {

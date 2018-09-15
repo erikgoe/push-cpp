@@ -12,8 +12,8 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/Base.h"
-#include "libpushc/util/String.h"
+#include "libpush/Base.h"
+#include "libpush/util/String.h"
 
 // String which consists of multiple formatted parts
 class FmtStr {

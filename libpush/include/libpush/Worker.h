@@ -12,10 +12,10 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/Base.h"
-#include "libpushc/util/String.h"
-#include "libpushc/Message.h"
-#include "libpushc/Job.h"
+#include "libpush/Base.h"
+#include "libpush/util/String.h"
+#include "libpush/Message.h"
+#include "libpush/Job.h"
 
 // Executes a job on its thread
 class Worker : public std::enable_shared_from_this<Worker> {

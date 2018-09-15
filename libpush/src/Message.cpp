@@ -11,11 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/Message.h"
-#include "libpushc/GlobalCtx.h"
-#include "libpushc/basic_queries/FileQueries.h"
-#include "libpushc/UnitCtx.h"
+#include "libpush/stdafx.h"
+#include "libpush/Message.h"
+#include "libpush/GlobalCtx.h"
+#include "libpush/basic_queries/FileQueries.h"
+#include "libpush/UnitCtx.h"
 
 // Replaces tabs with spaces
 void ws_format_line( String &line ) {

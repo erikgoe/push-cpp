@@ -12,10 +12,10 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/Base.h"
-#include "libpushc/util/String.h"
-#include "libpushc/util/AnyResultWrapper.h"
-#include "libpushc/util/FunctionHash.h"
+#include "libpush/Base.h"
+#include "libpush/util/String.h"
+#include "libpush/util/AnyResultWrapper.h"
+#include "libpush/util/FunctionHash.h"
 
 template <typename R>
 class Job;
@@ -153,4 +153,4 @@ public:
     friend class GlobalCtx;
 };
 
-#include "libpushc/Job.inl"
+#include "libpush/Job.inl"

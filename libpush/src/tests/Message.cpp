@@ -11,9 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/tests/stdafx.h"
-#include "libpushc/Message.h"
-#include "libpushc/GlobalCtx.h"
+#include "libpush/tests/stdafx.h"
+#include "libpush/Message.h"
+#include "libpush/GlobalCtx.h"
 
 
 namespace Catch {

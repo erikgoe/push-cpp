@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/input/SourceInput.h"
-#include "libpushc/Worker.h"
-#include "libpushc/GlobalCtx.h"
+#include "libpush/stdafx.h"
+#include "libpush/input/SourceInput.h"
+#include "libpush/Worker.h"
+#include "libpush/GlobalCtx.h"
 
 TokenConfig TokenConfig::get_prelude_cfg() {
     TokenConfig cfg;

@@ -11,8 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/tests/stdafx.h"
-#include "libpushc/GlobalCtx.h"
+#include "libpush/tests/stdafx.h"
+#include "libpush/GlobalCtx.h"
 
 TEST_CASE( "Prefs usage", "[prefs]" ) {
     GlobalCtx ctx;

@@ -12,10 +12,10 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/Base.h"
-#include "libpushc/util/String.h"
-#include "libpushc/util/FmtStr.h"
-#include "libpushc/input/SourceInput.h"
+#include "libpush/Base.h"
+#include "libpush/util/String.h"
+#include "libpush/util/FmtStr.h"
+#include "libpush/input/SourceInput.h"
 
 // Defines all types of messages
 enum class MessageType;
@@ -130,7 +130,7 @@ struct get_message_notes_impl {
 #define GET_ARG( index ) std::get<index>( at )
 
 // Contains the actual definitions
-#include "libpushc/Message.inl"
+#include "libpush/Message.inl"
 
 #undef GET_ARG
 #undef MESSAGE_PARSE

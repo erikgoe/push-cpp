@@ -10,7 +10,7 @@ if(DEV_SOURCE_DIR)
 endif()
 
 # define the project name
-project(pushc)
+project(push)
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 1)
@@ -39,10 +39,10 @@ find_path(CATCH_INCLUDE_DIR NAMES catch.hpp PATH_SUFFIXES Catch2 QUIET)
 
 set(LIB_NAME lib${PROJECT_NAME})
 set(TEST_NAME ${LIB_NAME}_test)
-add_subdirectory(libpushc/src)
+add_subdirectory(libpush/src)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${TEST_NAME}) # set startup project
 
-set(EXE_NAME ${PROJECT_NAME})
+set(EXE_NAME ${PROJECT_NAME}c)
 add_subdirectory(pushc/src)
 
 #add_subdirectory(tests)

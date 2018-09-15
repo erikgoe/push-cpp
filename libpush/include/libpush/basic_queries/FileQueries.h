@@ -12,9 +12,9 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/stdafx.h"
-#include "libpushc/input/FileInput.h"
-#include "libpushc/UnitCtx.h"
+#include "libpush/stdafx.h"
+#include "libpush/input/FileInput.h"
+#include "libpush/UnitCtx.h"
 
 // NOT A QUERY! Returns a source input defined by the current prefs
 std::shared_ptr<SourceInput> get_source_input( const String file, UnitCtx &ctx, Worker &w_ctx ) {

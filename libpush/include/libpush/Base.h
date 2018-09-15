@@ -12,7 +12,7 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/stdafx.h"
+#include "libpush/stdafx.h"
 
 #define PUSH_VERSION_MAJOR 0
 #define PUSH_VERSION_MINOR 1

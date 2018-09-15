@@ -12,8 +12,8 @@
 // limitations under the License.
 
 #pragma once
-#include "libpushc/Base.h"
-#include "libpushc/input/SourceInput.h"
+#include "libpush/Base.h"
+#include "libpush/input/SourceInput.h"
 
 // Provides token input from a file
 // NOTE: would be better with one abstract BufferInput for FileInput, StringInput, etc. and just provide the

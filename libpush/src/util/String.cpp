@@ -11,8 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/util/String.h"
+#include "libpush/stdafx.h"
+#include "libpush/util/String.h"
 
 size_t String::TAB_WIDTH = { 4 };
 

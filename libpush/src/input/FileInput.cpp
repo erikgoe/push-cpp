@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/input/FileInput.h"
-#include "libpushc/Worker.h"
-#include "libpushc/GlobalCtx.h"
+#include "libpush/stdafx.h"
+#include "libpush/input/FileInput.h"
+#include "libpush/Worker.h"
+#include "libpush/GlobalCtx.h"
 
 FileInput::FileInput( const String &file, size_t buffer_size, size_t max_read, std::shared_ptr<Worker> w_ctx ) {
     this->w_ctx = w_ctx;
