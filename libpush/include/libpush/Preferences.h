@@ -45,15 +45,25 @@ using StringSV = AnySV<String>;
 // Contains all possible preference
 enum class PrefType {
     tab_size, // tab size in spaces
-    max_errors,
-    max_warnings,
-    max_notifications,
+    max_errors, // size_t count
+    max_warnings, // size_t count
+    max_notifications, // size_t count
 
-    release_optimization,
-    backend,
-    platform,
+    architecture, // string
+    os, // os/kernel; string
+    platform, // string
+    output_format, // binary output format; string
+    backend, // string
+    runtime, // runtime implementation library; string
+    dynamic_linkage, // bool
+    release_speed_optimization, // bool
+    release_size_optimization, // bool
+    debug_symbols, // bool
 
-    input_source,
+    input_source, // string
+
+    lto, // Link-Time Optimization; bool
+
 
     count
 };

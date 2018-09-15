@@ -119,7 +119,7 @@ String GlobalCtx::get_triplet_elem_name( const String &value ) {
                 value == "webasm" || value == "dos" ) {
         return "os";
     } else if ( value == "pc" || value == "android" || value == "ios" || value == "macos" ) {
-        return "plattform";
+        return "platform";
     } else if ( value == "pe" || value == "elf" || value == "macho" ) {
         return "format";
     } else if ( value == "llvm" || value == "gcc" || value == "msvc" || value == "pushbnd" || value == "ctrans" ) {
@@ -138,7 +138,7 @@ size_t GlobalCtx::get_triplet_pos( const String &name ) {
         return 0;
     else if ( name == "os" )
         return 1;
-    else if ( name == "plattform" )
+    else if ( name == "platform" )
         return 2;
     else if ( name == "format" )
         return 3;

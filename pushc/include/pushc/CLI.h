@@ -35,6 +35,21 @@ class CLI {
     // Returns true if the CLI has this flag name
     static bool find_flag( const String& flag );
 
+    // Stores a specific configuration setting in a GlobalCtx. Returns false if value is malformed
+    bool store_config( GlobalCtx& g_ctx, const String& name, const String& value );
+
+    // Stores a triplet element in a GlobalCtx
+    void store_triplet_elem( GlobalCtx& g_ctx, const String& name, const String& value );
+
+    // Helper function to fill the triplet_list
+    int fill_triplet( std::map<String, String>& triplet_list, const String& arg_name,
+                      const std::list<String> &arg_value );
+    // Helper function to fill the config_list
+    int fill_config( std::map<String, String>& config_list, const String& arg_name, const std::list<String> &arg_value );
+
+    // Returns how many cores this machine has
+    size_t get_cpu_count();
+
 public:
     // Initializes the driver
     int setup( int argc, char** argv );
