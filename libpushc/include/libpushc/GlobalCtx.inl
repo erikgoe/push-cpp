@@ -72,6 +72,10 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
     jc->g_ctx = shared_from_this();
     if ( !jb.jobs.empty() ) // The first job will be skiped below, so set the id here
         jb.jobs.front()->id = job_ctr++;
+    else { // no jobs have been created. Query finished
+        Lock lock( query_cache_mtx );
+        query_cache[fn_sig]->state |= 0b101; // set green
+    }
 
     if ( jb.jobs.size() > 0 ) {
         {
