@@ -82,7 +82,7 @@ public:
 
     ~GlobalCtx() { wait_finished(); }
 
-    // Initialize the query manager and the whole compiler infrastructure and return the main worker. \param
+    // Initialize the global context and the whole compiler infrastructure and return the main worker. \param
     // thread_count is the total amount of workers (including this thread).
     std::shared_ptr<Worker> setup( size_t thread_count, size_t cache_map_reserve = 256 );
 

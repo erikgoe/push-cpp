@@ -43,5 +43,5 @@ public:
     }
 
     // Returns the global context
-    std::shared_ptr<GlobalCtx> get_global_ctx() { return g_ctx; }
+    std::shared_ptr<GlobalCtx> global_ctx() { return g_ctx; }
 };

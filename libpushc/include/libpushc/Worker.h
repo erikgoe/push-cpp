@@ -50,8 +50,11 @@ public:
         return g_ctx->query( fn, shared_from_this(), args... );
     }
 
-    // Returns the query manager used by this worker
-    std::shared_ptr<GlobalCtx> get_global_ctx() { return g_ctx; }
+    // Returns the global context used by this worker
+    std::shared_ptr<GlobalCtx> global_ctx() { return g_ctx; }
+
+    // Returns the unit context for the current job
+    std::shared_ptr<UnitCtx> unit_ctx() { return curr_job->ctx; }
 
     // Call this method in a job which does access volatile resources
     void set_curr_job_volatile();

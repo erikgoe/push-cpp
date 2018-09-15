@@ -19,7 +19,7 @@
 // NOT A QUERY! Returns a source input defined by the current prefs
 std::shared_ptr<SourceInput> get_source_input( const String file, UnitCtx &ctx, Worker &w_ctx ) {
     std::shared_ptr<SourceInput> source_input;
-    auto input_pref = ctx.get_global_ctx()->get_pref<StringSV>( PrefType::input_source );
+    auto input_pref = ctx.global_ctx()->get_pref<StringSV>( PrefType::input_source );
     if ( input_pref == "file" ) {
         source_input = std::make_shared<FileInput>( file, 8192, 4096, w_ctx.shared_from_this() );
     } else {
