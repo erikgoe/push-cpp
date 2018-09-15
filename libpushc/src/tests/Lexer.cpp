@@ -13,7 +13,7 @@
 
 #include "libpushc/tests/stdafx.h"
 #include "libpushc/input/FileInput.h"
-#include "libpushc/QueryMgr.h"
+#include "libpushc/GlobalCtx.h"
 
 namespace Catch {
 template <>
@@ -42,8 +42,8 @@ struct StringMaker<Token> {
 } // namespace Catch
 
 TEST_CASE( "Basic lexing", "[lexer]" ) {
-    auto qm = std::make_shared<QueryMgr>();
-    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 0 );
+    auto g_ctx = std::make_shared<GlobalCtx>();
+    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
 
     FileInput fin( CMAKE_PROJECT_ROOT "/Test/lexer.push", 5000, 4096, w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();
@@ -140,8 +140,8 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
 
 #ifndef _DEBUG
 TEST_CASE( "Stress test lexing", "[lexer]" ) {
-    auto qm = std::make_shared<QueryMgr>();
-    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 0 );
+    auto g_ctx = std::make_shared<GlobalCtx>();
+    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
 
     FileInput fin( CMAKE_PROJECT_ROOT "/Test/gibberish.txt", 50, 30, w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();

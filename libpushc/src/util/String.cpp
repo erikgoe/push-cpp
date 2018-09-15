@@ -45,7 +45,7 @@ size_t length_of_string_grapheme( const T &str ) {
     return length;
 }
 
-
+String::String( const StringSlice &str ) : std::string( str.c_str(), str.size() ) {}
 const StringSlice &String::slice( size_t pos, size_t size ) {
     if ( last_slice == nullptr ) {
         return *( last_slice = new StringSlice( *this, pos, size ) );

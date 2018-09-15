@@ -13,8 +13,9 @@
 
 #include "libpushc/stdafx.h"
 #include "libpushc/Message.h"
-#include "libpushc/QueryMgr.h"
+#include "libpushc/GlobalCtx.h"
 #include "libpushc/basic_queries/FileQueries.h"
+#include "libpushc/UnitCtx.h"
 
 // Replaces tabs with spaces
 void ws_format_line( String &line ) {

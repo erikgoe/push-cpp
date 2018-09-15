@@ -65,11 +65,11 @@ class FunctionSignature {
 
 public:
     template <typename FuncT, typename... Args>
-    static FunctionSignature create( FuncT fn, const Args &... args ) {
+    static FunctionSignature create( FuncT fn, UnitCtx &ctx, const Args &... args ) {
         FunctionSignature fs;
         std::stringstream ss;
 
-        ss << typeid( fn ).hash_code();
+        ss << typeid( fn ).hash_code() << '|' << ctx.id;
         create_helper( ss, args... );
 
         fs.data = ss.str();

@@ -15,11 +15,17 @@
 bool requires_run( QueryCacheHead &head );
 
 template <typename FuncT, typename... Args>
-auto QueryMgr::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
-    auto jc = std::make_shared<
-        JobCollection<decltype( fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>() ), QueryMgr() ) )>>();
+auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
+    std::shared_ptr<UnitCtx> ctx;
+    if ( w_ctx && w_ctx->curr_job )
+        ctx = w_ctx->curr_job->ctx;
+    else
+        ctx = get_global_unit_ctx();
 
-    auto fn_sig = FunctionSignature::create( fn, args... );
+    auto jc = std::make_shared<JobCollection<decltype(
+        fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ), GlobalCtx() ) )>>();
+
+    auto fn_sig = FunctionSignature::create( fn, *ctx, args... );
     {
         Lock lock( query_cache_mtx );
         std::shared_ptr<QueryCacheHead> head;
@@ -28,11 +34,11 @@ auto QueryMgr::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &
             if ( !requires_run( *head ) ) { // cached state is valid
                 LOG( "Using cached query result." );
                 return head->jc->as_jc_ptr<decltype(
-                    fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>() ), QueryMgr() ) )>();
+                    fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ), GlobalCtx() ) )>();
             } else { // exists but must be updated
                 LOG( "Update cached query result." );
                 jc = head->jc->as_jc_ptr<decltype(
-                    fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>() ), QueryMgr() ) )>();
+                    fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ), GlobalCtx() ) )>();
             }
         } else { // create new cache entry
             head = std::make_shared<QueryCacheHead>( fn_sig, std::static_pointer_cast<BasicJobCollection>( jc ) );
@@ -52,7 +58,7 @@ auto QueryMgr::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &
         }
     }
 
-    JobsBuilder jb( std::make_shared<FunctionSignature>( fn_sig ) );
+    JobsBuilder jb( std::make_shared<FunctionSignature>( fn_sig ), ctx );
 
     if ( abort_new_jobs ) // Abort because some other thread has stopped execution
         throw AbortCompilationError();

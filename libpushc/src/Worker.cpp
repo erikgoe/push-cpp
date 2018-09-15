@@ -12,19 +12,19 @@
 // limitations under the License.
 
 #include "libpushc/stdafx.h"
-#include "libpushc/QueryMgr.h"
+#include "libpushc/GlobalCtx.h"
 #include "libpushc/Worker.h"
 #include "libpushc/Message.h"
 
-Worker::Worker( std::shared_ptr<QueryMgr> qm, size_t id ) {
+Worker::Worker( std::shared_ptr<GlobalCtx> g_ctx, size_t id ) {
     finish = false;
-    this->qm = qm;
+    this->g_ctx = g_ctx;
     this->id = id;
 }
 
 void Worker::work() {
     thread = std::make_unique<std::thread>( [this]() {
-        curr_job = qm->get_free_job();
+        curr_job = g_ctx->get_free_job();
         while ( !finish ) {
             while ( curr_job ) { // handle open jobs
                 try {
@@ -36,12 +36,12 @@ void Worker::work() {
                     break; // Just abort compilation
                 }
 #pragma warning( pop )
-                curr_job = qm->get_free_job();
+                curr_job = g_ctx->get_free_job();
             }
 
             {
                 UniqueLock lk( mtx );
-                cv.wait( lk, [this] { return finish || ( curr_job = qm->get_free_job() ); } );
+                cv.wait( lk, [this] { return finish || ( curr_job = g_ctx->get_free_job() ); } );
             }
         }
     } );
@@ -63,5 +63,5 @@ void Worker::notify() {
 }
 
 void Worker::set_curr_job_volatile() {
-    qm->set_volatile_job( *curr_job->query_sig );
+    g_ctx->set_volatile_job( *curr_job->query_sig );
 }

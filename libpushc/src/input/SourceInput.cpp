@@ -14,7 +14,7 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/input/SourceInput.h"
 #include "libpushc/Worker.h"
-#include "libpushc/QueryMgr.h"
+#include "libpushc/GlobalCtx.h"
 
 TokenConfig TokenConfig::get_prelude_cfg() {
     TokenConfig cfg;

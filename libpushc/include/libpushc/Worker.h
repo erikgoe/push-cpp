@@ -21,7 +21,7 @@
 class Worker : public std::enable_shared_from_this<Worker> {
     std::unique_ptr<std::thread> thread;
     std::atomic_bool finish; // will stop if is set to true
-    std::shared_ptr<QueryMgr> qm;
+    std::shared_ptr<GlobalCtx> g_ctx;
 
     Mutex mtx;
     ConditionVariable cv;
@@ -33,9 +33,9 @@ public:
 
 
     // Basic constructor
-    Worker( std::shared_ptr<QueryMgr> qm, size_t id );
+    Worker( std::shared_ptr<GlobalCtx> g_ctx, size_t id );
 
-    // starts a new thread and executes free jobs from the QueryMgr
+    // starts a new thread and executes free jobs from the GlobalCtx
     void work();
 
     // The thread will wait for new jobs until this method is called. Blocks until the thread finished.
@@ -44,14 +44,14 @@ public:
     // notifies the thread when new jobs occur
     void notify();
 
-    // Creates a new query (see QueryMgr::query())
+    // Creates a new query (see GlobalCtx::query())
     template <typename FuncT, typename... Args>
     auto query( FuncT fn, const Args &... args ) -> decltype( auto ) {
-        return qm->query( fn, shared_from_this(), args... );
+        return g_ctx->query( fn, shared_from_this(), args... );
     }
 
     // Returns the query manager used by this worker
-    std::shared_ptr<QueryMgr> get_query_mgr() { return qm; }
+    std::shared_ptr<GlobalCtx> get_query_mgr() { return g_ctx; }
 
     // Call this method in a job which does access volatile resources
     void set_curr_job_volatile();
@@ -59,6 +59,6 @@ public:
     // Prints a message to the user
     template <MessageType MesT, typename... Args>
     constexpr void print_msg( const MessageInfo &message, const std::vector<MessageInfo> &notes, Args... head_args ) {
-        qm->print_msg<MesT>( shared_from_this(), message, notes, head_args... );
+        g_ctx->print_msg<MesT>( shared_from_this(), message, notes, head_args... );
     }
 };

@@ -30,6 +30,7 @@ public:
 
     String() {}
     String( const std::string &other ) { *static_cast<std::string *>( this ) = other; }
+    String( const StringSlice &str );
 
     // Replace all occurrences in the string
     static String replace_all( String &search_in, const String &search_for, const String &replace_with ) {

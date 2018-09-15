@@ -13,7 +13,7 @@
 
 #include "libpushc/tests/stdafx.h"
 #include "libpushc/Message.h"
-#include "libpushc/QueryMgr.h"
+#include "libpushc/GlobalCtx.h"
 
 
 namespace Catch {
@@ -47,8 +47,8 @@ TEST_CASE( "Message head", "[message]" ) {
 }
 
 TEST_CASE( "Message body", "[message]" ) {
-    auto qm = std::make_shared<QueryMgr>();
-    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 2 );
+    auto g_ctx = std::make_shared<GlobalCtx>();
+    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 2 );
     auto file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
 
     { // Simple message
@@ -174,11 +174,11 @@ TEST_CASE( "Message body", "[message]" ) {
 }
 
 TEST_CASE( "Message count", "[message]" ) {
-    auto qm = std::make_shared<QueryMgr>();
-    std::shared_ptr<Worker> w_ctx = qm->setup( 1, 4 );
+    auto g_ctx = std::make_shared<GlobalCtx>();
+    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 4 );
 
-    qm->get_global_context()->set_pref<SizeSV>( PrefType::max_notifications, 10 );
-    qm->get_global_context()->update_global_prefs();
+    g_ctx->set_pref<SizeSV>( PrefType::max_notifications, 10 );
+    g_ctx->update_global_prefs();
 
     for ( size_t i = 0; i < 10; i++ )
         CHECK_NOTHROW( get_message<MessageType::test_message>( w_ctx, MessageInfo(), {} ) );

@@ -75,4 +75,5 @@ inline void Sleep( f64 ms_duration ) {
 }
 
 class Worker;
-class QueryMgr;
+class GlobalCtx;
+class UnitCtx;

@@ -117,9 +117,9 @@ int CLI::execute() {
                                 if ( t_pos >= 8 ) // last triplet was not found
                                     break;
                                 while ( t_pos < 8 ) {
-                                    if ( Context::get_triplet_pos( Context::get_triplet_elem_name( elem ) ) ==
+                                    if ( GlobalCtx::get_triplet_pos( GlobalCtx::get_triplet_elem_name( elem ) ) ==
                                          t_pos ) { // found right position
-                                        triplet_list[Context::get_triplet_elem_name( elem )] = elem;
+                                        triplet_list[GlobalCtx::get_triplet_elem_name( elem )] = elem;
                                         break;
                                     }
                                     t_pos++;
@@ -143,15 +143,15 @@ int CLI::execute() {
                                 std::cout << arg.first << ": requires pairs in form of <name>=<value>\n";
                                 return RET_COMMAND_ERROR;
                             } else { // right format
-                                if ( Context::get_triplet_pos( splitted2.front() ) >= 8 ) {
+                                if ( GlobalCtx::get_triplet_pos( splitted2.front() ) >= 8 ) {
                                     std::cout << "Unknown triplet element name \"" + splitted2.front() + "\".\n";
                                     return RET_COMMAND_ERROR;
-                                } else if ( Context::get_triplet_elem_name( splitted2.back() ) != splitted2.front() ) {
+                                } else if ( GlobalCtx::get_triplet_elem_name( splitted2.back() ) != splitted2.front() ) {
                                     std::cout << "Unknown triplet value \"" + splitted2.back() + "\" for \"" +
                                                      splitted2.front() + "\".\n";
-                                    if ( !Context::get_triplet_elem_name( splitted2.back() ).empty() )
+                                    if ( !GlobalCtx::get_triplet_elem_name( splitted2.back() ).empty() )
                                         std::cout << "Did you mean \"" +
-                                                         Context::get_triplet_elem_name( splitted2.back() ) + "=" +
+                                                         GlobalCtx::get_triplet_elem_name( splitted2.back() ) + "=" +
                                                          splitted2.back() + "\"?\n";
                                     return RET_COMMAND_ERROR;
                                 } else { // found matching values

@@ -146,10 +146,9 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
     FmtStr result = get_message_head<MesT>( head_args... );
     auto notes_list = get_message_notes<MesT>( head_args... );
 
-    auto qm = w_ctx->get_query_mgr();
-    auto g_ctx = qm->get_global_context();
+    auto g_ctx = w_ctx->get_query_mgr();
 
-    if ( !qm->jobs_allowed() )
+    if ( !g_ctx->jobs_allowed() )
         throw AbortCompilationError();
 
     // Calculate some required formatting information
@@ -188,7 +187,7 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
     }
 
     if ( MesT < MessageType::error ) { // fatal error
-        qm->abort_compilation();
+        g_ctx->abort_compilation();
     } else if ( MesT < MessageType::warning ) { // error
         if ( g_ctx->error_count++ >= g_ctx->max_allowed_errors ) {
             w_ctx->print_msg<MessageType::ferr_abort_too_many_errors>( MessageInfo(), {}, g_ctx->error_count.load() );
@@ -207,3 +206,4 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
 
 // Prints
 void print_msg_to_stdout( FmtStr &str );
+;

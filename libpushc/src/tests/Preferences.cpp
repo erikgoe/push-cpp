@@ -12,10 +12,10 @@
 // limitations under the License.
 
 #include "libpushc/tests/stdafx.h"
-#include "libpushc/Context.h"
+#include "libpushc/GlobalCtx.h"
 
 TEST_CASE( "Prefs usage", "[prefs]" ) {
-    Context ctx;
+    GlobalCtx ctx;
 
     ctx.set_pref<BoolSV>( PrefType::release_optimization, false );
     CHECK( ctx.get_pref<BoolSV>( PrefType::release_optimization ) == false );

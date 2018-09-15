@@ -13,9 +13,9 @@
 
 #pragma once
 #include "libpushc/Base.h"
-#include "libpushc/Context.h"
 #include "libpushc/Job.h"
 #include "libpushc/Worker.h"
+#include "libpushc/Preferences.h"
 #include "libpushc/util/FunctionHash.h"
 
 // Stores meta information about a query
@@ -39,37 +39,48 @@ struct QueryCacheHead {
     }
 };
 
-// Manages compilation queries, jobs and workers.
-class QueryMgr : public std::enable_shared_from_this<QueryMgr> {
-    // Current state and prefs
-    std::shared_ptr<Context> context;
+// Manages compilation queries, jobs, workers and settings.
+class GlobalCtx : public std::enable_shared_from_this<GlobalCtx> {
+    // Stores a list of all worker threads including the main thread
+    std::list<std::shared_ptr<Worker>> worker;
+
+
     // Handles access to open_jobs, no_jobs, jobs_cv from multiple threads
     Mutex job_mtx;
     // All jobs which have to be executed
     std::stack<std::shared_ptr<BasicJob>> open_jobs;
-    // Stores a list of all worker threads including the main thread
-    std::list<std::shared_ptr<Worker>> worker;
-
     // Is true if no free jobs exist. Helps to wake up threads when new jobs occur.
     bool no_jobs = false;
-
     // Enables waiting for jobs
     ConditionVariable jobs_cv;
-
     // Is set to true in abort_compilation() and to false in reset(). Prevents new jobs from being created
     std::atomic_bool abort_new_jobs;
-
     size_t job_ctr = 0; // used to give every job a new id
+
 
     Mutex query_cache_mtx;
     // Enables caching of queries
     std::unordered_map<FunctionSignature, std::shared_ptr<QueryCacheHead>> query_cache;
 
+
+    Mutex pref_mtx; // used for async preference access
+    std::map<PrefType, std::unique_ptr<PrefValue>> prefs; // store all the prefs
+
+
     template <typename FuncT, typename... Args>
     auto query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto );
 
 public:
-    ~QueryMgr() { wait_finished(); }
+    // Public data
+    std::atomic_size_t error_count;
+    std::atomic_size_t warning_count;
+    std::atomic_size_t notification_count;
+    std::atomic_size_t max_allowed_errors;
+    std::atomic_size_t max_allowed_warnings;
+    std::atomic_size_t max_allowed_notifications;
+
+
+    ~GlobalCtx() { wait_finished(); }
 
     // Initialize the query manager and the whole compiler infrastructure and return the main worker. \param
     // thread_count is the total amount of workers (including this thread).
@@ -105,6 +116,9 @@ public:
         return query_impl( fn, w_ctx, args... );
     }
 
+    // Returns the root unit context. Use it only to create new build queries.
+    std::shared_ptr<UnitCtx> get_global_unit_ctx();
+
     // Waits until all workers have finished. Call this method only from the main thread.
     void wait_finished();
 
@@ -112,9 +126,6 @@ public:
     // The returned job will always have the "free" status.
     // NOTE: nullptr is returned if no free jobs where found.
     std::shared_ptr<BasicJob> get_free_job();
-
-    // Returns the application-global context
-    std::shared_ptr<Context> get_global_context() { return context; }
 
     // Cancel all waiting jobs and abort compilation (AbortCompilationError is thrown)
     void abort_compilation();
@@ -154,6 +165,45 @@ public:
         if ( MesT < MessageType::error ) // fatal error
             throw AbortCompilationError();
     }
+
+
+    // Returns a previously saved pref. If it was not saved, returns the default value for the preference type.
+    template <typename ValT>
+    auto get_pref( const PrefType &pref_type ) -> const decltype( ValT::value ) {
+        Lock lock( pref_mtx );
+        if ( prefs.find( pref_type ) == prefs.end() ) {
+            prefs[pref_type] = std::make_unique<ValT>();
+            LOG_WARN( "Using preference (" + to_string( static_cast<u32>( pref_type ) ) +
+                      ") which was not set before." );
+        }
+        return prefs[pref_type]->get<ValT>().value;
+    }
+    // Returns a pref value or if it doesn't exist, saves \param default_value for the pref and returns it.
+    template <typename ValT>
+    auto get_pref_or_set( const PrefType &pref_type, const decltype( ValT::value ) &default_value ) -> const
+        decltype( ValT::value ) {
+        Lock lock( pref_mtx );
+        if ( prefs.find( pref_type ) == prefs.end() ) {
+            prefs[pref_type] = std::make_unique<ValT>( default_value );
+            return default_value;
+        }
+        return prefs[pref_type]->get<ValT>().value;
+    }
+    // Stores a new pref or overwrites an existing one.
+    template <typename PrefT, typename ValT>
+    void set_pref( const PrefType &pref_type, const ValT &value ) {
+        Lock lock( pref_mtx );
+        prefs[pref_type] = std::make_unique<PrefT>( value );
+    }
+
+    // This method must be called to update some specific prefs like tab length
+    void update_global_prefs();
+
+    // Returns the name of the triplet element corresponding to the value. Returns and empty string if this value does
+    // not exist
+    static String get_triplet_elem_name( const String &value );
+    // Returns the index-position of a triplet name
+    static size_t get_triplet_pos( const String &name );
 };
 
-#include "libpushc/QueryMgr.inl"
+#include "libpushc/GlobalCtx.inl"

@@ -12,18 +12,22 @@
 // limitations under the License.
 
 #include "libpushc/stdafx.h"
-#include "libpushc/QueryMgr.h"
+#include "libpushc/GlobalCtx.h"
 #include "libpushc/Worker.h"
 #include "libpushc/Message.h"
+#include "libpushc/UnitCtx.h"
 
-std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count, size_t cache_map_reserve ) {
+std::shared_ptr<Worker> GlobalCtx::setup( size_t thread_count, size_t cache_map_reserve ) {
     if ( thread_count < 1 ) {
         LOG_ERR( "Must be at least one worker." );
     }
+    update_global_prefs();
+    error_count = 0;
+    warning_count = 0;
+    notification_count = 0;
 
-    // Context and prefs
-    context = std::make_shared<Context>();
-    set_default_preferences( context->prefs );
+    // Preferences
+    set_default_preferences( prefs );
 
     // Query cache
     query_cache.reserve( cache_map_reserve );
@@ -42,13 +46,17 @@ std::shared_ptr<Worker> QueryMgr::setup( size_t thread_count, size_t cache_map_r
     return main_worker;
 }
 
-void QueryMgr::wait_finished() {
+std::shared_ptr<UnitCtx> GlobalCtx::get_global_unit_ctx() {
+    return std::make_shared<UnitCtx>( std::make_shared<String>( "" ) );
+}
+
+void GlobalCtx::wait_finished() {
     for ( auto &w : worker ) {
         w->stop();
     }
 }
 
-std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
+std::shared_ptr<BasicJob> GlobalCtx::get_free_job() {
     std::shared_ptr<BasicJob> ret_job;
 
     Lock lock( job_mtx );
@@ -73,7 +81,7 @@ std::shared_ptr<BasicJob> QueryMgr::get_free_job() {
     return ret_job;
 }
 
-void QueryMgr::abort_compilation() {
+void GlobalCtx::abort_compilation() {
     Lock lock( job_mtx );
     if ( !open_jobs.empty() )
         open_jobs.pop();
@@ -94,4 +102,54 @@ bool requires_run( QueryCacheHead &head ) {
         }
         return false;
     }
+}
+
+void GlobalCtx::update_global_prefs() {
+    String::TAB_WIDTH = get_pref_or_set<SizeSV>( PrefType::tab_size, 4 );
+    max_allowed_errors = get_pref_or_set<SizeSV>( PrefType::max_errors, 256 );
+    max_allowed_warnings = get_pref_or_set<SizeSV>( PrefType::max_warnings, 256 );
+    max_allowed_notifications = get_pref_or_set<SizeSV>( PrefType::max_notifications, 256 );
+}
+
+String GlobalCtx::get_triplet_elem_name( const String &value ) {
+    if ( value == "x86" || value == "x86_64" || value == "arm" || value == "mips" || value == "8051" ||
+         value == "avr" || value == "aarch64" || value == "powerpc" ) {
+        return "arch";
+    } else if ( value == "windows" || value == "linux" || value == "darwin" || value == "bsd" || value == "fuchsia" ||
+                value == "webasm" || value == "dos" ) {
+        return "os";
+    } else if ( value == "pc" || value == "android" || value == "ios" || value == "macos" ) {
+        return "plattform";
+    } else if ( value == "pe" || value == "elf" || value == "macho" ) {
+        return "format";
+    } else if ( value == "llvm" || value == "gcc" || value == "msvc" || value == "pushbnd" || value == "ctrans" ) {
+        return "backend";
+    } else if ( value == "glibc" || value == "musl" || value == "msvcrt" ) {
+        return "runtime";
+    } else if ( value == "static" || value == "dynamic" ) {
+        return "linkage";
+    } else if ( value == "debug" || value == "release" || value == "minsizerel" || value == "reldebinfo" ) {
+        return "build";
+    } else
+        return "";
+}
+size_t GlobalCtx::get_triplet_pos( const String &name ) {
+    if ( name == "arch" )
+        return 0;
+    else if ( name == "os" )
+        return 1;
+    else if ( name == "plattform" )
+        return 2;
+    else if ( name == "format" )
+        return 3;
+    else if ( name == "backend" )
+        return 4;
+    else if ( name == "runtime" )
+        return 5;
+    else if ( name == "linkage" )
+        return 6;
+    else if ( name == "build" )
+        return 7;
+    else
+        return 8;
 }
