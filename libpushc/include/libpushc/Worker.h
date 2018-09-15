@@ -51,7 +51,7 @@ public:
     }
 
     // Returns the query manager used by this worker
-    std::shared_ptr<GlobalCtx> get_query_mgr() { return g_ctx; }
+    std::shared_ptr<GlobalCtx> get_global_ctx() { return g_ctx; }
 
     // Call this method in a job which does access volatile resources
     void set_curr_job_volatile();

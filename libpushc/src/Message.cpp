@@ -83,7 +83,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                 upper_bound = n.line_end;
         }
 
-        auto list = w_ctx->get_query_mgr()
+        auto list = w_ctx->get_global_ctx()
                         ->query( get_source_lines, nullptr, file, source_line_bound, upper_bound )
                         ->execute( *w_ctx )
                         ->jobs.front()

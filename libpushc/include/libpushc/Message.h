@@ -146,7 +146,7 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
     FmtStr result = get_message_head<MesT>( head_args... );
     auto notes_list = get_message_notes<MesT>( head_args... );
 
-    auto g_ctx = w_ctx->get_query_mgr();
+    auto g_ctx = w_ctx->get_global_ctx();
 
     if ( !g_ctx->jobs_allowed() )
         throw AbortCompilationError();

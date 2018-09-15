@@ -69,7 +69,7 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
     jc->result.wrap( fn, args..., jb, *ctx );
 
     jc->jobs = jb.jobs;
-    jc->query_mgr = shared_from_this();
+    jc->g_ctx = shared_from_this();
     if ( !jb.jobs.empty() ) // The first job will be skiped below, so set the id here
         jb.jobs.front()->id = job_ctr++;
 

@@ -104,9 +104,9 @@ public:
 // Stores the jobs for a specific query
 template <typename T>
 class JobCollection : public BasicJobCollection {
-    std::shared_ptr<GlobalCtx> query_mgr; // internally needed for exectue()
+    std::shared_ptr<GlobalCtx> g_ctx; // internally needed for exectue()
     AnyResultWrapper<T> result; // stores the result of the query (not a job)
-    FunctionSignature fn_sig; // required to callback query_mgr when jobs finished
+    FunctionSignature fn_sig; // required to callback g_ctx when jobs finished
 
 public:
     // a list of jobs for the query. The first job in the list is reserved by default (see GlobalCtx::query).

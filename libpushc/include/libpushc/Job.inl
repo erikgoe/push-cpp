@@ -17,13 +17,13 @@ bool JobCollection<T>::is_finished() {
         if ( job->status != BasicJob::STATUS_FIN )
             return false;
     }
-    query_mgr->finish_job( fn_sig ); // is finished now
+    g_ctx->finish_job( fn_sig ); // is finished now
     return true;
 }
 
 template <typename T>
 void JobCollection<T>::wait() {
-    query_mgr->wait_job_collection_finished( *this );
+    g_ctx->wait_job_collection_finished( *this );
 }
 
 template <typename T>
@@ -32,7 +32,7 @@ std::shared_ptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool
     for ( auto &job : jobs ) {
         w_ctx.curr_job = job;
         job->run( w_ctx ); // the job itself will check if it's free
-        if ( !query_mgr->jobs_allowed() )
+        if ( !g_ctx->jobs_allowed() )
             throw AbortCompilationError();
     }
     w_ctx.curr_job = nullptr;
@@ -40,11 +40,11 @@ std::shared_ptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool
     // prevent idle when jobs are still executed
     if ( prevent_idle ) {
         while ( !is_finished() ) {
-            auto tmp_job = query_mgr->get_free_job();
+            auto tmp_job = g_ctx->get_free_job();
             if ( tmp_job ) {
                 w_ctx.curr_job = tmp_job;
                 tmp_job->run( w_ctx );
-                if ( !query_mgr->jobs_allowed() )
+                if ( !g_ctx->jobs_allowed() )
                     throw AbortCompilationError();
             } else
                 break; // Return because there are no more free jobs
