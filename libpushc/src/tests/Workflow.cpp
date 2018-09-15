@@ -16,7 +16,7 @@
 #include "libpushc/Message.h"
 #include "libpushc/UnitCtx.h"
 
-void get_token_list( const String file, JobsBuilder &jb, GlobalCtx &g_ctx ) {
+void get_token_list( const String file, JobsBuilder &jb, UnitCtx &ctx ) {
     jb.add_job<std::list<String>>( [file]( Worker &w_ctx ) {
         w_ctx.set_curr_job_volatile();
         std::list<String> token;
@@ -26,7 +26,7 @@ void get_token_list( const String file, JobsBuilder &jb, GlobalCtx &g_ctx ) {
         return token;
     } );
 }
-void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, GlobalCtx &g_ctx ) {
+void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, UnitCtx &ctx ) {
     for ( auto &file : files ) {
         jb.add_job<std::list<String>>( [file]( Worker &w_ctx ) {
             std::list<String> b;
@@ -40,7 +40,7 @@ void get_binary_from_source( const std::list<String> files, JobsBuilder &jb, Glo
         } );
     }
 }
-u32 compile_binary( const std::list<String> files, JobsBuilder &jb, GlobalCtx &g_ctx ) {
+u32 compile_binary( const std::list<String> files, JobsBuilder &jb, UnitCtx &ctx ) {
     jb.add_job<String>( [files]( Worker &w_ctx ) {
         auto jc = w_ctx.query( get_binary_from_source, files );
         Sleep( 10. );

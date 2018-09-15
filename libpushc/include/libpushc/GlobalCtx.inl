@@ -22,8 +22,9 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
     else
         ctx = get_global_unit_ctx();
 
-    auto jc = std::make_shared<JobCollection<decltype(
-        fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ), GlobalCtx() ) )>>();
+    auto jc =
+        std::make_shared<JobCollection<decltype( fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ),
+                                                     UnitCtx( std::shared_ptr<String>(), shared_from_this() ) ) )>>();
 
     auto fn_sig = FunctionSignature::create( fn, *ctx, args... );
     {
@@ -33,12 +34,14 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
             head = query_cache[fn_sig];
             if ( !requires_run( *head ) ) { // cached state is valid
                 LOG( "Using cached query result." );
-                return head->jc->as_jc_ptr<decltype(
-                    fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ), GlobalCtx() ) )>();
+                return head->jc
+                    ->as_jc_ptr<decltype( fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ),
+                                              UnitCtx( std::shared_ptr<String>(), shared_from_this() ) ) )>();
             } else { // exists but must be updated
                 LOG( "Update cached query result." );
-                jc = head->jc->as_jc_ptr<decltype(
-                    fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ), GlobalCtx() ) )>();
+                jc =
+                    head->jc->as_jc_ptr<decltype( fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ),
+                                                      UnitCtx( std::shared_ptr<String>(), shared_from_this() ) ) )>();
             }
         } else { // create new cache entry
             head = std::make_shared<QueryCacheHead>( fn_sig, std::static_pointer_cast<BasicJobCollection>( jc ) );
@@ -63,7 +66,7 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
     if ( abort_new_jobs ) // Abort because some other thread has stopped execution
         throw AbortCompilationError();
 
-    jc->result.wrap( fn, args..., jb, *this );
+    jc->result.wrap( fn, args..., jb, *ctx );
 
     jc->jobs = jb.jobs;
     jc->query_mgr = shared_from_this();

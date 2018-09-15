@@ -21,12 +21,15 @@ class UnitCtx {
     static std::vector<String> known_files;
     static Mutex known_files_mtx;
 
+    std::shared_ptr<GlobalCtx> g_ctx;
+
 public:
     std::shared_ptr<String> root_file; // main file of this compilation unit
     size_t id; // uniquely identifies this compilation unit
 
     // Create a new unit context
-    UnitCtx( std::shared_ptr<String> &filepath ) {
+    UnitCtx( std::shared_ptr<String> &filepath, std::shared_ptr<GlobalCtx> g_ctx ) {
+        this->g_ctx = g_ctx;
         root_file = filepath;
 
         Lock lock( known_files_mtx );
@@ -38,4 +41,7 @@ public:
         }
         id = new_id;
     }
+
+    // Returns the global context
+    std::shared_ptr<GlobalCtx> get_global_ctx() { return g_ctx; }
 };

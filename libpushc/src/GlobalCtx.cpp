@@ -47,7 +47,7 @@ std::shared_ptr<Worker> GlobalCtx::setup( size_t thread_count, size_t cache_map_
 }
 
 std::shared_ptr<UnitCtx> GlobalCtx::get_global_unit_ctx() {
-    return std::make_shared<UnitCtx>( std::make_shared<String>( "" ) );
+    return std::make_shared<UnitCtx>( std::make_shared<String>( "" ), shared_from_this() );
 }
 
 void GlobalCtx::wait_finished() {
