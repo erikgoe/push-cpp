@@ -13,11 +13,13 @@ target_include_directories(${EXE_NAME}
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
         ${CMAKE_CURRENT_SOURCE_DIR}/../../libpush/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../libpushc/include
 )
 
 # linking
 target_link_libraries(${EXE_NAME}
     libpush
+    libpushc
 )
 
 # cotire speedup

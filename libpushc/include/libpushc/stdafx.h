@@ -14,7 +14,6 @@
 #pragma once
 
 #include "libpush/Base.h"
-#include "libpush/GlobalCtx.h"
 #include "libpush/UnitCtx.h"
 #include "libpush/Job.h"
 #include "libpush/Message.h"

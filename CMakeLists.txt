@@ -42,7 +42,9 @@ set(TEST_NAME ${LIB_NAME}_test)
 add_subdirectory(libpush/src)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${TEST_NAME}) # set startup project
 
+set(LIB_NAME lib${PROJECT_NAME}c)
+set(TEST_NAME ${LIB_NAME}c_test)
+add_subdirectory(libpushc/src)
+
 set(EXE_NAME ${PROJECT_NAME}c)
 add_subdirectory(pushc/src)
-
-#add_subdirectory(tests)

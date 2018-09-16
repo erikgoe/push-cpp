@@ -17,12 +17,12 @@
 TEST_CASE( "Prefs usage", "[prefs]" ) {
     GlobalCtx ctx;
 
-    ctx.set_pref<BoolSV>( PrefType::release_optimization, false );
-    CHECK( ctx.get_pref<BoolSV>( PrefType::release_optimization ) == false );
+    ctx.set_pref<BoolSV>( PrefType::release_speed_optimization, false );
+    CHECK( ctx.get_pref<BoolSV>( PrefType::release_speed_optimization ) == false );
 
-    ctx.set_pref<IntSV>( PrefType::release_optimization, 1234 );
-    ctx.set_pref<IntSV>( PrefType::release_optimization, 3210 );
-    CHECK( ctx.get_pref<IntSV>( PrefType::release_optimization ) == 3210 );
+    ctx.set_pref<IntSV>( PrefType::release_speed_optimization, 1234 );
+    ctx.set_pref<IntSV>( PrefType::release_speed_optimization, 3210 );
+    CHECK( ctx.get_pref<IntSV>( PrefType::release_speed_optimization ) == 3210 );
 
     CHECK( ctx.get_pref<StringSV>( PrefType::platform ) == "" );
     
@@ -31,7 +31,7 @@ TEST_CASE( "Prefs usage", "[prefs]" ) {
     CHECK( ctx.get_pref<StringSV>( PrefType::platform ) == "pc" );
     CHECK( ctx.get_pref<StringSV>( PrefType::backend ) == "llvm" );
     
-    CHECK( ctx.get_pref<IntSV>( PrefType::release_optimization ) == 3210 );
+    CHECK( ctx.get_pref<IntSV>( PrefType::release_speed_optimization ) == 3210 );
     CHECK( ctx.get_pref<StringSV>( PrefType::backend ) == "llvm" );
     CHECK( ctx.get_pref<StringSV>( PrefType::platform ) == "pc" );
 }

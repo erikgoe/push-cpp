@@ -48,4 +48,5 @@ bool CLI::store_config( GlobalCtx& g_ctx, const String& name, const String& valu
             return false;
         g_ctx.set_pref<BoolSV>( PrefType::lto, get_boolean_flag( value ) );
     }
+    return false;
 }

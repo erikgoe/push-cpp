@@ -14,6 +14,7 @@
 #pragma once
 #include "pushc/stdafx.h"
 #include "pushc/CLI.h"
+#include "libpushc/Compiler.h"
 
 int main( int argc, char** argv ) {
     auto cli = CLI();
@@ -220,7 +221,7 @@ int CLI::execute() {
         std::cout << "Push infrastructure version " + to_string( PUSH_VERSION_MAJOR ) + "." +
                          to_string( PUSH_VERSION_MINOR ) + "." + to_string( PUSH_VERSION_PATCH ) + "\n";
     } else { // Regular compilation call
-        std::list<String> output_files;
+        std::list<String> output_files; // TODO
         bool run_afterwards = false;
         bool clean_build = false;
         String explicit_prelude; // TODO
@@ -296,14 +297,14 @@ int CLI::execute() {
         }
 
         // Do some preparation
-        if ( output_files.empty() ) { // find project file or .push files TODO
+        if ( files.empty() ) { // find project file or .push files TODO
         }
         if ( clean_build ) { // clean before TODO
         }
 
         // Create initial queries
-        for ( auto& file : output_files ) {
-            // TODO
+        for ( auto& file : files ) {
+            g_ctx->query( compile_new_unit, w_ctx, file );
         }
 
         if ( run_afterwards ) { // execute now TODO

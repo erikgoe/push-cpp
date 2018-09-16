@@ -12,9 +12,7 @@
 // limitations under the License.
 
 #pragma once
+#include "libpush/stdafx.h"
 
-#include "libpush/Base.h"
-#include "libpush/GlobalCtx.h"
-#include "libpush/UnitCtx.h"
-#include "libpush/Job.h"
-#include "libpush/Message.h"
+// Initial compiler query for new units
+void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &ctx );

@@ -11,10 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "libpushc/stdafx.h"
+#include "libpushc/Compiler.h"
 
-#include "libpush/Base.h"
-#include "libpush/GlobalCtx.h"
-#include "libpush/UnitCtx.h"
-#include "libpush/Job.h"
-#include "libpush/Message.h"
+void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &ctx ) {
+    
+}
