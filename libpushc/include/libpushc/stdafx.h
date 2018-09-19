@@ -13,7 +13,12 @@
 
 #pragma once
 
+#include <filesystem>
+
 #include "libpush/Base.h"
 #include "libpush/UnitCtx.h"
 #include "libpush/Job.h"
 #include "libpush/Message.h"
+#include "libpush/basic_queries/FileQueries.h"
+
+namespace fs = std::experimental::filesystem;

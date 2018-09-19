@@ -22,8 +22,9 @@ bool JobCollection<T>::is_finished() {
 }
 
 template <typename T>
-void JobCollection<T>::wait() {
+std::shared_ptr<JobCollection<T>> JobCollection<T>::wait() {
     g_ctx->wait_job_collection_finished( *this );
+    return as_jc_ptr<T>();
 }
 
 template <typename T>

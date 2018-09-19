@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.6)
 # add files
 add_library(${LIB_NAME}
     Compiler.cpp
+    Prelude.cpp
+    Util.cpp
 )
 
 # includes

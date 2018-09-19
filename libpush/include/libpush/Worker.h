@@ -49,6 +49,11 @@ public:
     auto query( FuncT fn, const Args &... args ) -> decltype( auto ) {
         return g_ctx->query( fn, shared_from_this(), args... );
     }
+    // Shortcut for query()->execute()->wait()
+    template <typename FuncT, typename... Args>
+    auto do_query( FuncT fn, const Args &... args ) -> decltype( auto ) {
+        return g_ctx->query( fn, shared_from_this(), args... )->execute( *this )->wait();
+    }
 
     // Returns the global context used by this worker
     std::shared_ptr<GlobalCtx> global_ctx() { return g_ctx; }

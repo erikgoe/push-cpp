@@ -14,5 +14,5 @@
 #pragma once
 #include "libpushc/stdafx.h"
 
-// Initial compiler query for new units
-void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &parent_ctx );
+// NOT A QUERY! Consumes a comment till the end
+void consume_comment( std::shared_ptr<SourceInput> &input, TokenConfig &conf );

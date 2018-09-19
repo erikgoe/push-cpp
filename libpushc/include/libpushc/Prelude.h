@@ -15,4 +15,7 @@
 #include "libpushc/stdafx.h"
 
 // Initial compiler query for new units
-void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &parent_ctx );
+void load_prelude( std::shared_ptr<String> prelude, JobsBuilder &jb, UnitCtx &parent_ctx );
+
+// Loads a prelude file
+void load_prelude_file( std::shared_ptr<String> path, JobsBuilder &jb, UnitCtx &ctx );

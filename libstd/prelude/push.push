@@ -1,0 +1,216 @@
+// Copyright 2018 Erik Götzfried
+// Licensed under the Apache License, Version 2.0( the "License" );
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+/* This file is an example implementation of the prelude for a 32 bit platform.
+ */
+
+/* Rules
+ * MCI functions are only valid in prelude files or in prelude-included std-lib files,
+ * MCI functions (names):
+ * - define_mci_rule: very basic rules, which define the language syntax.
+ * - create_mci_logic: used in methods to define e. g. very low-level operations like integer addition.
+ * - define_mci_optimization: take in a push-lambda which contain optimizations on the AST and an optimization execution level to be used conditionally
+ * Syntax:
+ *     MCI syntax is independent from the prelude
+ *     MCI functions always start with the name, then the parameters in parenthesis and end with a semicolon.
+ *     The parameters of MCI rules always depend on their MCI, which is the first parameter.
+ *     The parameters are separated by commas, sub parameters by spaces.
+ *     MCI parameters may not be empty.
+ *     Strings and characters are always escaped and written in double quotes.
+ *     If a string is expected for e. g. a keyword, you can either write it in double quotes or use a predefined name. You can also use the "or" keyword to define multiple matching strings.
+ *     The "->" syntax is often used to define which token/AST has which meaning in the syntax rule. The names are defines by the MCI instruction and the specified layout type.
+ * Multiple definitions for one MCI are allowed.
+ * Include other prelude files with "#prelude(<file>)" and std-library files with "#include(<file>)". This is only possible in a prelude file.
+ * Only a std-library file included this way is able to use the global "create_mci_logic()" function. TODO define example for primitive type operators
+ * 
+ */
+
+/* Operator precedence table
+ *  1. function call, template, array-, scope-, member access
+ *  2. !(not), ~(bit not), -(unary), +(unary), &(ref), type_of, as_tuple, ++(prefix), --(prefix); all right to left
+ *  3. ++(postfix), --(postfix)
+ *  4. as(cast), :(type definitions)
+ *  5. *, /, %
+ *  6. +, -
+ *  7. &
+ *  8. '(bit xor)
+ *  9. |
+ * 10. <<, >>
+ * 10.5 ..(range)
+ * 11. in(iterator, collection)
+ * 12. <, <=, >, >=
+ * 13. ==, !=
+ * 14. &&
+ * 15. ||
+ * 16. =, +=, -=, *=, /=, %=, &=, '=, |=, <<=, >>=, :=; all right to left
+ * 17. =>(pair)
+ * 18. ,(comma)
+ */
+
+/* TODO list
+ * dynamic blocks
+ * lambdas
+ * check precedence for other operations like if/for/struct and update the precedence in the code
+ * any, int, float as compound types/traits
+ * tuples (with parenthesis syntax)
+ * module, crate syntax
+ * static statements, compilerhandler
+ * with-keyword
+ * repeat keyword: like continue but without increment
+ * is-of-type operator with a lower precedence than e. g. & operator
+ *     also the & operator impl for Types may combine them in manner to be used in trait bounds
+ * 
+ */
+
+// Syntax rules
+define_mci_rule( EXPRESSION_RULES, divide semicolon, block left_brace right_brace, term left_parenthesis right_parenthesis ); // list of rules for expressions: semicolons divide expressions/statements, braces combine a block, parenthesis combine a term
+define_mci_rule( COMMENT_RULES, block "/*" "*/", nested_blocks_allowed, line "//", block_doc "/**" "*/", line_doc "///", block "<--" "-->" ); // define rules for regular commenting
+define_mci_rule( IDENTIFIER_RULES, any_unicode, exclude operators or keywords, no_spaces, case functions snake method snake variables snake modules snake struct pascal trait pascal, unused begin "_" ); // define rules for identifiers
+define_mci_rule( LITERAL_CHARACTER_ESCAPES, newline "\\n", horizontal_tab "\\t", vertical_tab "\\v", carriage_return "\\r", backslash "\\\\", quote "\\\'", double_quotes "\\\", null "\\0", ascii_oct "\\o", ascii_hex "\\x", unicode_32_hex "\\u" truncate_leading ); // Possible character escapes in strings or single characters and encoding escapes (truncate_leading means that leading zeros may be omitted).
+define_mci_rule( LITERAL_STRING_RULES, basic_escaped double_quotes double_quotes, block_escaped tree_double_quotes tree_double_quotes, wide_escaped double_quotes double_quotes prefix "w", raw double_quotes double_quotes prefix "r" rep_delimiter "(" ")", wide_raw double_quotes double_quotes prefix "wr" rep_delimiter "(" ")", value_extraction "\\(" ")" multi_allowed ); // define rules for normal strings(utf8 encoded), block strings, wide strings(utf23 encoded), raw strings and value extraction (multi_allowed means that more than just one identifier may be extracted).
+define_mci_rule( LITERAL_SINGLE_CHARACTER_RULES, basic_escaped quote quote, byte_escaped quote quote prefix "b" ); // single character definition. 
+define_mci_rule( LITERAL_INTEGER_RULES, default_dec, prefix_bin "0b" optional, prefix_oct "0o" optional, prefix_hex "0x" optional, delimiter_kilo "_" optional, allow_type_postfix ); // define the literal rules for integer types
+define_mci_rule( LITERAL_FLOATING_POINT_RULES, default_dec, delimiter_kilo "_" optional, fraction_delimiter "." optional, exponential_delimiter "E" or "e" optional, exponential_positive "+", exponential_negative "-", allow_type_postfix ); // define the literal rules for float types
+/*
+// Special statements
+define_mci_rule( ALIAS_EXPRESSION, double_list, "use", assignment -> new_identifier ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
+define_mci_rule( LET_STATEMENT, double_list, "let", assignment -> new_identifier ); // let keyword which starts a new variable binding
+define_mci_rule( SELF_EXPRESSION, single_list, "self" ); // the self keyword is the currently executed object in non-static methods
+
+// OOP constructs
+define_mci_rule( STRUCT_DEFINITION, triple_list, "struct", identifier -> new_identifier, expr -> body ); // struct declarations are defined by the keyword "struct" a identifier and the following body.
+define_mci_rule( STRUCT_DEFINITION, single_list, "struct" ); // anonymous struct
+define_mci_rule( TRAIT_DEFINITION, triple_list, "trait", identifier -> new_identifier, expr -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
+define_mci_rule( IMPL_DEFINITION, triple_list, "impl", identifier -> type, expr -> body ); // impl-blocks which defines methods for a struct independent of a trait
+define_mci_rule( IMPL_DEFINITION, quintuple_list, "impl", identifier -> trait, "for", identifier -> type, expr -> body ); // impl-blocks which defines a trait for a struct
+
+// Control flow
+define_mci_rule( IF_EXPRESSION, triple_list, "if", expr -> condition, expr -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
+define_mci_rule( IF_ELSE_EXPRESSION, quintuple_list, "if", expr -> condition, expr -> exec0, "else", expr -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and a alternative executable block
+define_mci_rule( WHILE_EXPRESSION, triple_list, "while", expr -> condition, expr -> exec ); // regular while loop
+define_mci_rule( FOR_EXPRESSION, triple_list, "for", iterator -> condition, expr -> exec ); // for loop over an iterator
+define_mci_rule( MATCH_EXPRESSION, triple_list, "match", expr -> selector, expr -> body ); // match keyword which matches an expression
+
+// Functions
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, triple_list, identifier -> name, identifier_list -> parameters, expr_block -> body ); // a function with a block body
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, identifier_list -> parameters, "->", expr -> body ); // a single-line function
+
+// Appending operations
+define_mci_rule( DEFINE_TEMPLATE, call_ext, 1, ltr, "<", ">", identifier -> value, identifier_list -> parameters ); // template arguments are surrounded by angular brackets
+define_mci_rule( SCOPE_ACCESS, binary_op, 1, ltr, "::", expr -> base, expr -> name ); // scope access is a symbol extension
+define_mci_rule( SCOPE_ACCESS, uny_op_left, 1, rtl, "::", expr -> name ); // global scope access
+define_mci_rule( MEMBER_ACCESS, binary_op, 1, ltr, ".", expr -> base, expr -> name ); // member access of a object
+define_mci_rule( ARRAY_SPECIFIER, call_ext, 1, ltr, "[", "]", identifier -> value, expr -> size ); // array appending to a type or variable. The size may be a number or a static variable, etc.
+
+// Operators
+// NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), layout type (uny_op_left, uny_op_right, binary_op), precedence, alignment (ltr or rtl), layout parameters (normally multiple), name in layout (optional: if used in other MCI rules)
+define_mci_rule( NEW_OPERATOR, std::op::function_call, call_ext, 1, ltr, "(", ")", identifier -> exec, identifier_list -> parameters ); // function calls surround their parameters in parenthesis
+
+define_mci_rule( NEW_OPERATOR, std::op::log_not, uny_op_left, 2, rtl, "!", expr -> value ); // define the logical not operator
+define_mci_rule( NEW_OPERATOR, std::op::invert, uny_op_left, 2, rtl, "~", expr -> value ); // define the not/invert operator
+define_mci_rule( NEW_OPERATOR, std::op::negate, uny_op_left, 2, rtl, "-", expr -> value ); // define the negation operator
+define_mci_rule( NEW_OPERATOR, std::op::positive, uny_op_left, 2, rtl, "+", expr -> value ); // define the positive operator (only for symmetry with the negation operator)
+define_mci_rule( NEW_OPERATOR, std::op::increment_prefix, uny_op_left, 2, rtl, "++", expr -> value ); // define the prefix increment operator
+define_mci_rule( NEW_OPERATOR, std::op::decrement_prefix, uny_op_left, 2, rtl, "--", expr -> value ); // define the prefix decrement operator
+define_mci_rule( NEW_OPERATOR, std::op::increment_postfix, uny_op_right, 3, ltr, "++", expr -> value ); // define the postfix increment operator
+define_mci_rule( NEW_OPERATOR, std::op::decrement_postfix, uny_op_right, 3, ltr, "--", expr -> value ); // define the postfix decrement operator
+define_mci_rule( NEW_OPERATOR, std::op::cast_from, binary_op, 4, ltr, "as", expr -> rvalue, expr -> lvalue ); // define the From cast with the as keyword
+define_mci_rule( NEW_OPERATOR, std::op::cast_into, binary_op, 4, ltr, "as", expr -> rvalue, expr -> lvalue ); // define the Into cast with the as keyword
+
+define_mci_rule( NEW_OPERATOR, std::op::multiplication, binary_op, 5, ltr, "*", expr -> lvalue, expr -> rvalue ); // basic multiplication operator
+define_mci_rule( NEW_OPERATOR, std::op::division, binary_op, 5, ltr, "/", expr -> lvalue, expr -> rvalue ); // basic division operator
+define_mci_rule( NEW_OPERATOR, std::op::remain, binary_op, 5, ltr, "%", expr -> lvalue, expr -> rvalue ); // basic remaining operator
+define_mci_rule( NEW_OPERATOR, std::op::addition, binary_op, 6, ltr, "+", expr -> lvalue, expr -> rvalue ); // basic addition operator
+define_mci_rule( NEW_OPERATOR, std::op::subtraction, binary_op, 6, ltr, "-", expr -> lvalue, expr -> rvalue ); // basic subtraction operator
+
+define_mci_rule( NEW_OPERATOR, std::op::bit_and, binary_op, 7, ltr, "&", expr -> lvalue, expr -> rvalue ); // basic bit "and" operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_xor, binary_op, 8, ltr, "\'", expr -> lvalue, expr -> rvalue ); // basic bit xor operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_or, binary_op, 9, ltr, "|", expr -> lvalue, expr -> rvalue ); // basic bit or operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_shift_left, binary_op, 10, ltr, "<<", expr -> lvalue, expr -> rvalue ); // basic left bit shift operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_shift_right, binary_op, 10, ltr, ">>", expr -> lvalue, expr -> rvalue ); // basic right bit shift operator
+
+define_mci_rule( NEW_OPERATOR, std::op::iterate_collection, binary_op, 11, ltr, "in", expr -> lvalue, expr -> rvalue, iterator ); // iteration over a collection
+
+define_mci_rule( NEW_OPERATOR, std::op::smaller, binary_op, 12, ltr, "<", expr -> lvalue, expr -> rvalue ); // regular compare
+define_mci_rule( NEW_OPERATOR, std::op::smaller_or_eql, binary_op, 12, ltr, "<=", expr -> lvalue, expr -> rvalue ); // regular compare (with or eaual)
+define_mci_rule( NEW_OPERATOR, std::op::bigger, binary_op, 12, ltr, ">", expr -> rvalue, expr -> lvalue ); // inverse compare
+define_mci_rule( NEW_OPERATOR, std::op::bigger_or_eql, binary_op, 12, ltr, ">=", expr -> rvalue, expr -> lvalue ); // inverse compare (with or eaual)
+define_mci_rule( NEW_OPERATOR, std::op::is_equal, binary_op, 13, ltr, "==", expr -> rvalue, expr -> lvalue ); // equality comarison
+define_mci_rule( NEW_OPERATOR, std::op::is_not_equal, binary_op, 13, ltr, "!=", expr -> rvalue, expr -> lvalue ); // inequality comarison
+
+define_mci_rule( NEW_OPERATOR, std::op::logic_and, binary_op, 14, ltr, "&&", expr -> lvalue, expr -> rvalue ); // basic logical "and" operator
+define_mci_rule( NEW_OPERATOR, std::op::logic_or, binary_op, 15, ltr, "||", expr -> lvalue, expr -> rvalue ); // basic logical or operator
+
+define_mci_rule( NEW_OPERATOR, std::op::assignment, binary_op, 16, rtl, "=", expr -> lvalue, expr -> rvalue, assignment ); // simple assignment
+define_mci_rule( NEW_OPERATOR, std::op::add_assign, binary_op, 16, rtl, "+=", expr -> lvalue, expr -> rvalue, assignment ); // simple add assignment
+define_mci_rule( NEW_OPERATOR, std::op::subtract_assign, binary_op, 16, rtl, "-=", expr -> lvalue, expr -> rvalue, assignment ); // simple subtract assignment
+define_mci_rule( NEW_OPERATOR, std::op::multiply_assign, binary_op, 16, rtl, "*=", expr -> lvalue, expr -> rvalue, assignment ); // simple multiply assignment
+define_mci_rule( NEW_OPERATOR, std::op::divide_assign, binary_op, 16, rtl, "/=", expr -> lvalue, expr -> rvalue, assignment ); // simple divide assignment
+define_mci_rule( NEW_OPERATOR, std::op::remain_assign, binary_op, 16, rtl, "%=", expr -> lvalue, expr -> rvalue, assignment ); // simple remain assignment
+define_mci_rule( NEW_OPERATOR, std::op::and_assign, binary_op, 16, rtl, "&=", expr -> lvalue, expr -> rvalue, assignment ); // simple bit and assignment
+define_mci_rule( NEW_OPERATOR, std::op::xor_assign, binary_op, 16, rtl, "\'=", expr -> lvalue, expr -> rvalue, assignment ); // simple bit xor assignment
+define_mci_rule( NEW_OPERATOR, std::op::or_assign, binary_op, 16, rtl, "|=", expr -> lvalue, expr -> rvalue, assignment ); // simple bit or assignment
+define_mci_rule( NEW_OPERATOR, std::op::shift_left_assign, binary_op, 16, rtl, "<<=", expr -> lvalue, expr -> rvalue, assignment ); // simple left bit shift assignment
+define_mci_rule( NEW_OPERATOR, std::op::shift_right_assign, binary_op, 16, rtl, ">>=", expr -> lvalue, expr -> rvalue, assignment ); // simple right bit shift assignment
+define_mci_rule( NEW_OPERATOR, std::op::default_assign, binary_op, 16, rtl, ":=", expr -> lvalue, expr -> rvalue, assignment ); // simple default operator assignment
+
+define_mci_rule( NEW_OPERATOR, std::op::relation, binary_op, 17, rtl, "=>", expr -> lvalue, expr -> rvalue, relation ); // pair two variables with a relation
+define_mci_rule( NEW_OPERATOR, std::op::comma_combine, binary_op, 18, lrt, ",", expr -> lvalue, expr -> rvalue ); // the comma-linking operator
+define_mci_rule( NEW_OPERATOR, std::op::comma_end, uny_op_right, 18, lrt, ",", expr -> value ); // the comma-linking operator which enables a ending comma in e. g. structs
+
+define_mci_rule( REFERENCE_TYPE, uny_op_left, 2, rtl, "&", expr -> type ); // syntax to define a reference or destruct a reference
+define_mci_rule( TYPE_OF, uny_op_left, 2, rtl, "type_of", expr -> type ); // define the type_of operator
+define_mci_rule( STRUCT_TO_TUPLE, uny_op_right, 2, ltr, "as_tuple", expr -> type ); // define the as_tuple operator
+define_mci_rule( OPERATION_TYPE, binary_op, 4, ltr, ":", expr -> value, expr -> type ); // define the type operator
+define_mci_rule( RANGE_DEFINITION_EXC, binary_op, 10.5, ltr, "..", expr -> lvalue, expr -> rvalue, range ); // define the range operator for 0..5
+define_mci_rule( RANGE_DEFINITION_FROM_EXC, uny_op_right, 10.5, ltr, "..", expr -> value, range ); // define the range operator 5..
+define_mci_rule( RANGE_DEFINITION_TO_EXC, uny_op_left, 10.5, ltr, "..", expr -> value, range ); // define the range operator for ..5
+define_mci_rule( RANGE_DEFINITION_INC, binary_op, 10.5, ltr, "..=", expr -> lvalue, expr -> rvalue, range ); // define the range operator for 0..=5
+define_mci_rule( RANGE_DEFINITION_TO_INC, uny_op_left, 10.5, ltr, "..=", expr -> rvalue, range ); // define the range operator for ..=5
+
+// Primitive types
+define_mci_rule( LITERAL_TYPE, TYPE, single_list, "type" ); // definition of the "type" type
+define_mci_rule( LITERAL_TYPE, BOOLEAN, single_list, "bool" ); // definition of the "bool" type
+define_mci_rule( LITERAL_TYPE, CHARACTER_32BIT, single_list, "char" ); // define the "char" type
+define_mci_rule( LITERAL_TYPE, CHARACTER_8BIT, single_list, "char8" ); // define the ASCII "char" type
+define_mci_rule( LITERAL_TYPE, STRING, single_list, "string" ); // definition of the "string" type
+define_mci_rule( LITERAL_TYPE, UNSIGNED_32BIT, single_list, "usize" ); // define the "usize" type
+define_mci_rule( LITERAL_TYPE, SIGNED_32BIT, single_list, "isize" ); // define the "isize" type
+define_mci_rule( LITERAL_TYPE, NEVER, single_list, "!" ); // definition of the "!" type
+define_mci_rule( LITERAL_TYPE, UNIT, double_list, "(", ")" ); // define the unit-type
+define_mci_rule( LITERAL_TYPE, UNKNOWN, single_list, "_" ); // define the unknown type
+define_mci_rule( LITERAL_TYPE, IDENTIFIER, single_list, "ident" ); // define the "identifier" type
+define_mci_rule( LITERAL_TYPE, SELF, single_list, "Self" ); // define the "self" type
+
+define_mci_rule( LITERAL_TYPE, SIGNED_8BIT, single_list, "i8" ); // definition of the "i8" type
+define_mci_rule( LITERAL_TYPE, SIGNED_16BIT, single_list, "i16" ); // definition of the "i16" type
+define_mci_rule( LITERAL_TYPE, SIGNED_32BIT, single_list, "i32" ); // definition of the "i32" type
+define_mci_rule( LITERAL_TYPE, SIGNED_64BIT, single_list, "i64" ); // definition of the "i64" type
+define_mci_rule( LITERAL_TYPE, SIGNED_128BIT, single_list, "i128" ); // definition of the "i128" type
+define_mci_rule( LITERAL_TYPE, SIGNED_256BIT, single_list, "i256" ); // definition of the "i256" type
+define_mci_rule( LITERAL_TYPE, UNSIGNED_8BIT, single_list, "u8" ); // definition of the "u8" type
+define_mci_rule( LITERAL_TYPE, UNSIGNED_16BIT, single_list, "u16" ); // definition of the "u16" type
+define_mci_rule( LITERAL_TYPE, UNSIGNED_32BIT, single_list, "u32" ); // definition of the "u32" type
+define_mci_rule( LITERAL_TYPE, UNSIGNED_64BIT, single_list, "u64" ); // definition of the "u64" type
+define_mci_rule( LITERAL_TYPE, UNSIGNED_128BIT, single_list, "u128" ); // definition of the "u128" type
+define_mci_rule( LITERAL_TYPE, UNSIGNED_256BIT, single_list, "u256" ); // definition of the "u256" type
+define_mci_rule( LITERAL_TYPE, FLOATING_POINT_32BIT, single_list, "f32" ); // definition of the "f32" type
+define_mci_rule( LITERAL_TYPE, FLOATING_POINT_64BIT, single_list, "f64" ); // definition of the "f64" type
+define_mci_rule( LITERAL_TYPE, FLOATING_POINT_128BIT, single_list, "f128" ); // definition of the "f128" type
+define_mci_rule( LITERAL_TYPE, FLOATING_POINT_256BIT, single_list, "f256" ); // definition of the "f256" type
+
+// Special literals
+define_mci_rule( LITERAL_BOOLEAN, true, single_list, "true" or "TRUE" ); // define the true-literal
+define_mci_rule( LITERAL_BOOLEAN, false, single_list, "false" or "FALSE" ); // define the false-literal
+define_mci_rule( LITERAL_RANGE, ZERO_TO_INFINITY, ".." ); // define the "to-infinit" range literal
+*/

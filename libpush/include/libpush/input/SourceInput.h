@@ -116,8 +116,9 @@ public:
 
     // Opens a new source input for the given file
     virtual std::shared_ptr<SourceInput> open_new_file( const String &file, std::shared_ptr<Worker> w_ctx ) = 0;
-    // Check whether a file exists in the source system.
-    virtual bool file_exists( const String &file ) = 0;
+
+    // Returns the used filepath
+    virtual std::shared_ptr<String> get_filename() { return filename; }
 
     // Get the next token from the stream.
     virtual Token get_token() = 0;

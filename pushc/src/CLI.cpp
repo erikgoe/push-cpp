@@ -303,8 +303,8 @@ int CLI::execute() {
         }
 
         // Create initial queries
-        for ( auto& file : files ) {
-            g_ctx->query( compile_new_unit, w_ctx, file );
+        for ( auto& file : files ) { // TODO first create all queries with no reserved jobs, then execute
+            w_ctx->do_query( compile_new_unit, file );
         }
 
         if ( run_afterwards ) { // execute now TODO

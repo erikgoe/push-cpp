@@ -17,22 +17,10 @@
 #include "libpush/UnitCtx.h"
 
 // NOT A QUERY! Returns a source input defined by the current prefs
-std::shared_ptr<SourceInput> get_source_input( const String file, UnitCtx &ctx, Worker &w_ctx ) {
-    std::shared_ptr<SourceInput> source_input;
-    auto input_pref = ctx.global_ctx()->get_pref<StringSV>( PrefType::input_source );
-    if ( input_pref == "file" ) {
-        source_input = std::make_shared<FileInput>( file, 8192, 4096, w_ctx.shared_from_this() );
-    } else {
-        LOG_ERR( "Unknown input type pref." );
-        w_ctx.print_msg<MessageType::err_unknown_source_input_pref>( MessageInfo(), {}, input_pref, file );
-    }
-    return source_input;
-}
+std::shared_ptr<SourceInput> get_source_input( const String file, Worker &w_ctx );
 
-// Returns
-void get_source_lines( const String file, size_t line_begin, size_t line_end, JobsBuilder &jb, UnitCtx &ctx ) {
-    jb.add_job<std::list<String>>( [&, file, line_begin, line_end]( Worker &w_ctx ) {
-        auto source = get_source_input( file, ctx, w_ctx );
-        return source->get_lines( line_begin, line_end, w_ctx );
-    } );
-}
+// NOT A QUERY! Returns the path to the installed std-library path
+std::shared_ptr<String> get_std_dir();
+
+// Extracts source lines from any file
+void get_source_lines( const String file, size_t line_begin, size_t line_end, JobsBuilder &jb, UnitCtx &ctx );

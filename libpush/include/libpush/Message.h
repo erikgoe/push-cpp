@@ -162,7 +162,7 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
         else
             global_messages.push_back( n );
     }
-    size_t line_offset = to_string( last_line ).size();
+    size_t line_offset = to_string( std::max( last_line, std::max( message.line_begin, message.line_begin ) ) ).size();
 
     // Print main message
     if ( message.file ) { // message has no main file
@@ -206,4 +206,3 @@ constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &
 
 // Prints
 void print_msg_to_stdout( FmtStr &str );
-;

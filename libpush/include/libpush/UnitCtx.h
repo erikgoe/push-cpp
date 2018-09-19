@@ -14,6 +14,7 @@
 #pragma once
 #include "libpush/Base.h"
 #include "libpush/GlobalCtx.h"
+#include "libpush/PreludeConfig.h"
 
 // The context of a compilation unit
 class UnitCtx {
@@ -24,9 +25,13 @@ class UnitCtx {
     std::shared_ptr<GlobalCtx> g_ctx;
 
 public:
+    // General data
     std::shared_ptr<String> root_file; // main file of this compilation unit
     size_t id; // uniquely identifies this compilation unit
 
+    // Prelude configuration
+    PreludeConfig prelude_conf;
+    
     // Create a new unit context
     UnitCtx( std::shared_ptr<String> &filepath, std::shared_ptr<GlobalCtx> g_ctx ) {
         this->g_ctx = g_ctx;

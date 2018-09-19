@@ -100,7 +100,7 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
                     t.line = curr_line;
                     t.column = curr_column;
                     t.length = 0;
-                    t.leading_ws = false;
+                    t.leading_ws = "";
                     return t;
                 } else {
                     ptr--; // move one back for next run
@@ -194,6 +194,8 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
 }
 
 Token FileInput::get_token() {
+    auto tmp = get_token_impl( ptr, in_string, in_comment, curr_line, curr_column, curr_tt );
+
     // reset for next preview
     prev_ptr = ptr;
     prev_in_string = in_string;
@@ -202,7 +204,7 @@ Token FileInput::get_token() {
     prev_curr_column = curr_column;
     prev_curr_tt = curr_tt;
 
-    return get_token_impl( ptr, in_string, in_comment, curr_line, curr_column, curr_tt );
+    return tmp;
 }
 
 Token FileInput::preview_token() {
@@ -241,8 +243,7 @@ std::list<String> FileInput::get_lines( size_t line_begin, size_t line_end, Work
         if ( line_count >= line_begin && *ptr != '\r' && *ptr != '\n' )
             curr_line += *ptr;
 
-        if ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' ||
-             *ptr == '\r' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\n' ) { // found a newline
+        if ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' || *ptr == '\r' ) { // found a newline
             line_count++;
             if ( line_count > line_begin )
                 lines.push_back( curr_line );

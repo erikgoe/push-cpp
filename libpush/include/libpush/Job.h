@@ -116,7 +116,7 @@ public:
     bool is_finished();
 
     // waits until all jobs have been finished without busy waiting
-    void wait();
+    std::shared_ptr<JobCollection<T>> wait();
 
     // Work on open jobs until finished. Other workers may already handle jobs for the query
     // If no free jobs remain (expect the first, which may be reserved), is_finished() will return false.
@@ -150,6 +150,11 @@ public:
         jobs.back()->ctx = ctx;
         return *this;
     }
+
+    // Switch the context for all following jobs. Already created jobs will have the old context. This will not change
+    // the query signature!
+    void switch_context( std::shared_ptr<UnitCtx> &new_ctx ) { ctx = new_ctx; }
+    
     friend class GlobalCtx;
 };
 

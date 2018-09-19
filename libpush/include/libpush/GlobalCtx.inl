@@ -51,7 +51,7 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
         jc->fn_sig = fn_sig;
 
         // Update dag
-        if ( w_ctx && w_ctx->curr_job ) { // if nullptr, there is no parent job
+        if ( w_ctx && w_ctx->curr_job ) { // if nullptr, there is no parent job TODO: test whether w_ctx is ever zero
             if ( query_cache.find( *w_ctx->curr_job->query_sig ) == query_cache.end() ) {
                 LOG_ERR( "Parent query was not found in query_cache" );
             } else if ( std::find( head->sub_dag.begin(), head->sub_dag.end(),

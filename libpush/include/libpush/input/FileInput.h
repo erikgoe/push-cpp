@@ -46,7 +46,8 @@ public:
     ~FileInput();
 
     std::shared_ptr<SourceInput> open_new_file( const String &file, std::shared_ptr<Worker> w_ctx );
-    bool file_exists( const String &file );
+    
+    static bool file_exists( const String &file );
 
     Token get_token();
 
