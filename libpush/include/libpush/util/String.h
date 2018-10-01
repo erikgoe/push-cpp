@@ -49,7 +49,7 @@ public:
         return replace_all( *this, search_for, replace_with );
     }
 
-    // Like substr() but returns a StringSlice instead of a substr.
+    // Like substr() but returns a StringSlice instead of a substr. Results of earlier calls are invalidated.
     const StringSlice &slice( size_t pos, size_t size = String::npos );
 
     // Like substr() but returns a StringSlice instead of a substr. Earlier results of this method are still valid.
@@ -58,7 +58,7 @@ public:
     // Returns the length of the string in code points
     size_t length_cp() const;
 
-    // Returns the lenght of the string in grapheme-blocks. This method takes only simple characters into account.
+    // Returns the length of the string in grapheme-blocks. This method takes only simple characters into account.
     size_t length_grapheme() const;
 
     // Retruns a slice with only the last line

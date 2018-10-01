@@ -50,7 +50,7 @@ using Syntax = std::list<std::pair<String, String>>;
 
 // Defines syntax rules for any operator (binary or unary)
 struct Operator {
-    size_t precedence = 0; // how operators are combined
+    f32 precedence = 0; // how operators are combined
     bool ltr = true; // left to right or right to left
     Syntax syntax; // left type -> name pair
 };
@@ -58,7 +58,6 @@ struct Operator {
 // Operator which is implementaed in a library through a trait
 struct TraitOperator {
     Operator op;
-    String trait;
     String fn; // function in the trait
 };
 
@@ -134,7 +133,7 @@ struct PreludeConfig {
     std::list<Operator> member_access_op; // how sub-elements may be accessed
     // TODO array access
 
-    std::map<String, Operator> subtypes; // these subtypes may occur in type -> name pairs
+    std::map<String, std::list<Operator>> subtypes; // these subtypes may occur in type -> name pairs
     std::list<TraitOperator> operators; // all general operators
     std::list<Operator> reference_op; // used for borrowing
     std::list<Operator> type_of_op; // returns the type of a expression
@@ -142,9 +141,9 @@ struct PreludeConfig {
     std::list<Operator> type_op; // special type defining operator
     std::list<RangeOperator> range_op; // any possible range
 
-    std::list<std::pair<String, String>> type_literals; // literals which describe types
-    std::list<std::pair<String, bool>> bool_literals; // literals which describe a boolean
-    std::list<std::pair<String, i64>> int_literals; // literals which describe an integer
-    std::list<std::pair<String, f64>> float_literals; // literals which describe an double
-    std::list<std::pair<String, std::pair<i64, i64>>> range_literals; // literals which describe an range
+    std::list<std::pair<Syntax, String>> type_literals; // literals which describe types
+    std::list<std::pair<Syntax, bool>> bool_literals; // literals which describe a boolean
+    std::list<std::pair<Syntax, i64>> int_literals; // literals which describe an integer
+    std::list<std::pair<Syntax, f64>> float_literals; // literals which describe an double
+    std::list<std::pair<Syntax, std::pair<i64, i64>>> range_literals; // literals which describe an range
 };

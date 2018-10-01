@@ -23,13 +23,15 @@ enum class MessageType {
     error = 100,
     err_unknown_source_input_pref,
     err_unexpected_eof_at_line_query,
+    err_unexpected_eof_at_string_parsing,
     err_lexer_char_not_allowed,
     err_not_allowed_token_in_prelude,
     err_parse_mci_rule,
     err_unknown_mci,
     err_feature_curr_not_supported,
+    err_parse_number,
 
-        warning = 5000,
+    warning = 5000,
 
     notification = 10000,
 
@@ -59,6 +61,9 @@ MESSAGE_DEFINITION( MessageType::err_unexpected_eof_at_line_query, MessageClass:
                     "File `" + *GET_ARG( 0 ) + "` unexpectedly ended at line `" + to_string( GET_ARG( 1 ) ) +
                         "` while attempting to read range \"" + to_string( GET_ARG( 2 ) ) + ".." +
                         to_string( GET_ARG( 3 ) ) + "\"." );
+MESSAGE_DEFINITION( MessageType::err_unexpected_eof_at_string_parsing, MessageClass::Error, "I",
+                    "File `" + *GET_ARG( 0 ) + "` unexpectedly ended while attempting to read a string.",
+                    "string begins here" );
 MESSAGE_DEFINITION( MessageType::err_lexer_char_not_allowed, MessageClass::Error, "I",
                     "Character `" + String( 1, GET_ARG( 0 ) ) + "`(" + to_string( static_cast<u32>( GET_ARG( 0 ) ) ) +
                         ") is not in allowed set of characters.",
@@ -72,6 +77,8 @@ MESSAGE_DEFINITION( MessageType::err_parse_mci_rule, MessageClass::Error, "I", "
 MESSAGE_DEFINITION( MessageType::err_unknown_mci, MessageClass::Error, "I", "Unknown MCI `" + GET_ARG( 0 ) + "`.", "" );
 MESSAGE_DEFINITION( MessageType::err_feature_curr_not_supported, MessageClass::Error, "X",
                     "The feature `" + GET_ARG( 0 ) + "` is not suppported in this compiler version.", "" );
+MESSAGE_DEFINITION( MessageType::err_parse_number, MessageClass::Error, "I",
+                    "Failed to parse number literal value.", "" );
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",
                     "global information text" );

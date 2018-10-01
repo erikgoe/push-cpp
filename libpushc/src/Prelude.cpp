@@ -118,9 +118,8 @@ void load_prelude( std::shared_ptr<String> prelude, JobsBuilder &jb, UnitCtx &ct
                 ( *filepath ) += "/prelude/project.push";
             }
             ctx->prelude_conf = get_prelude_prelude();
-            prelude_conf = *w_ctx.do_query( load_prelude_file, filepath )
-                                ->jobs.front()
-                                ->to<std::shared_ptr<PreludeConfig>>();
+            prelude_conf =
+                *w_ctx.do_query( load_prelude_file, filepath )->jobs.front()->to<std::shared_ptr<PreludeConfig>>();
         }
 
         return prelude_conf;
@@ -168,41 +167,24 @@ void load_prelude_file( std::shared_ptr<String> path, JobsBuilder &jb, UnitCtx &
 }
 
 
-void create_prelude_error_msg( Worker &w_ctx, Token &token, std::shared_ptr<String> &filename ) {
+void create_prelude_error_msg( Worker &w_ctx, Token &token ) {
     w_ctx.print_msg<MessageType::err_parse_mci_rule>(
-        MessageInfo( filename, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ), {} );
+        MessageInfo( token.file, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ), {} );
 }
 
-void create_not_supported_error_msg( Worker &w_ctx, Token &token, std::shared_ptr<String> &filename,
-                                     const String &feature_description ) {
+void create_not_supported_error_msg( Worker &w_ctx, Token &token, const String &feature_description ) {
     w_ctx.print_msg<MessageType::err_feature_curr_not_supported>(
-        MessageInfo( filename, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ), {},
+        MessageInfo( token.file, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ), {},
         feature_description );
 }
 
-// Translate strings like "semicolon" in ";"
-String parse_string_literal( std::shared_ptr<SourceInput> &input, Worker &w_ctx, std::shared_ptr<String> &filename ) {
-    auto token = input->get_token();
+// Translate strings like "semicolon" into ";"
+String parse_string_literal( std::shared_ptr<SourceInput> &input, Worker &w_ctx ) {
+    auto token = input->preview_token();
     if ( token.type == Token::Type::string_begin ) { // regular string
-        String ret = "";
-        auto start_token = token; // save begin for error reporting
-        token = input->preview_next_token();
-        while ( token.type != Token::Type::string_end && token.type != Token::Type::eof ) {
-            token = input->get_token();
-            if ( !ret.empty() )
-                ret += token.leading_ws + token.content;
-            else
-                ret += token.content;
-            token = input->preview_token();
-        }
-        if ( token.type == Token::Type::string_end )
-            input->get_token(); // consume
-        if ( token.type == Token::Type::eof || ret.empty() ) { // string_end not found
-            create_prelude_error_msg( w_ctx, start_token, filename );
-            return "";
-        }
-        return ret;
+        return parse_string( input, w_ctx );
     } else if ( token.type == Token::Type::identifier ) { // named string
+        input->get_token(); // consume
         if ( token.content == "semicolon" )
             return ";";
         else if ( token.content == "left_brace" )
@@ -235,13 +217,145 @@ String parse_string_literal( std::shared_ptr<SourceInput> &input, Worker &w_ctx,
                   token.content == "ascii_hex" || token.content == "unicode_32_hex" ) // special identifiers
             return "\x2" + token.content;
         else {
-            create_prelude_error_msg( w_ctx, token, filename );
+            create_prelude_error_msg( w_ctx, token );
             return "";
         }
     } else {
-        create_prelude_error_msg( w_ctx, token, filename );
+        create_prelude_error_msg( w_ctx, token );
         return "";
     }
+}
+
+// Returns the size of a syntax list
+size_t parse_list_size( std::shared_ptr<SourceInput> &input ) {
+    auto token = input->get_token();
+    if ( token.content == "single_list" || token.content == "uny_op_left" || token.content == "uny_op_right" )
+        return 1;
+    else if ( token.content == "double_list" || token.content == "bin_op" || token.content == "call_ext" )
+        return 2;
+    else if ( token.content == "triple_list" )
+        return 3;
+    else if ( token.content == "quadruple_list" )
+        return 4;
+    else if ( token.content == "quintuple_list" )
+        return 5;
+    else
+        return 0;
+}
+
+// Parses a syntax definition and adds keywords or operators to the prelude configuration. Returns true if was
+// successful.
+bool parse_syntax( Syntax &output, std::shared_ptr<PreludeConfig> &conf, size_t list_size,
+                   std::shared_ptr<SourceInput> &input, Worker &w_ctx ) {
+    for ( size_t i = 0; i < list_size; i++ ) {
+        auto token = input->preview_token();
+        String type; // or operator/keyword
+        if ( token.type == Token::Type::string_begin ) {
+            type = parse_string( input, w_ctx );
+
+            if ( is_operator_token( type ) )
+                conf->token_conf.operators.push_back( type );
+            else
+                conf->token_conf.keywords.push_back( type );
+        } else {
+            auto token = input->get_token();
+            type = token.content;
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+        }
+
+        token = input->preview_token();
+        if ( token.type == Token::Type::op && token.content == "->" ) { // pair
+            input->get_token(); // consume
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+
+            output.push_back( std::make_pair( type, token.content ) );
+        } else { // single string
+            output.push_back( std::make_pair( type, String() ) );
+        }
+
+        if ( i + 1 < list_size ) {
+            token = input->get_token();
+            if ( token.content != "," ) { // consume comma
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+#define CONSUME_COMMA( token )                    \
+    token = input->get_token();                   \
+    if ( token.content != "," ) {                 \
+        create_prelude_error_msg( w_ctx, token ); \
+        return false;                             \
+    }
+
+
+
+// Parses a simple operator definition and adds keywords or operators to the prelude configuration. Returns true if was
+// successful.
+bool parse_operator( Operator &output, std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<SourceInput> &input,
+                     Worker &w_ctx ) {
+    String operator_type = input->preview_token().content;
+    size_t list_size = parse_list_size( input );
+
+    Token token;
+    CONSUME_COMMA( token );
+
+    output.precedence = static_cast<f32>( parse_number( input, w_ctx, conf ).as_float() );
+    CONSUME_COMMA( token );
+
+    token = input->get_token();
+    if ( token.type != Token::Type::identifier && token.content != "ltr" && token.content != "rtl" ) {
+        create_prelude_error_msg( w_ctx, token );
+        return false;
+    }
+    output.ltr = token.content == "ltr";
+    CONSUME_COMMA( token );
+
+    String op_token = parse_string_literal( input, w_ctx );
+    if ( op_token.empty() ) {
+        create_prelude_error_msg( w_ctx, token );
+        return false;
+    }
+    if ( is_operator_token( op_token ) )
+        conf->token_conf.operators.push_back( op_token );
+    else
+        conf->token_conf.keywords.push_back( op_token );
+    CONSUME_COMMA( token );
+
+    if ( !parse_syntax( output.syntax, conf, list_size, input, w_ctx ) )
+        return false;
+
+    if ( operator_type == "uny_op_left" ) {
+        output.syntax.insert( output.syntax.begin(), std::make_pair( op_token, "" ) );
+    } else if ( operator_type == "bin_op" || operator_type == "uny_op_right" ) {
+        output.syntax.insert( ++output.syntax.begin(), std::make_pair( op_token, "" ) );
+    }
+
+    // Subtype
+    token = input->preview_token();
+    if ( token.content == "," ) {
+        input->get_token(); // consume
+
+        token = input->get_token();
+        if ( token.type != Token::Type::identifier ) {
+            create_prelude_error_msg( w_ctx, token );
+            return false;
+        }
+
+        conf->subtypes[token.content].push_back( output );
+    }
+    return true;
 }
 
 bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<SourceInput> &input, Worker &w_ctx ) {
@@ -250,20 +364,20 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
     auto token = input->get_token();
     // function
     if ( token.type != Token::Type::identifier || token.content != "define_mci_rule" ) {
-        create_prelude_error_msg( w_ctx, token, filename );
+        create_prelude_error_msg( w_ctx, token );
         return false;
     }
     token = input->get_token();
     // parenthesis
     if ( token.type != Token::Type::term_begin ) {
-        create_prelude_error_msg( w_ctx, token, filename );
+        create_prelude_error_msg( w_ctx, token );
         return false;
     }
 
     token = input->get_token();
     // MCI
     if ( token.type != Token::Type::identifier ) {
-        create_prelude_error_msg( w_ctx, token, filename );
+        create_prelude_error_msg( w_ctx, token );
         return false;
     }
     String mci = token.content;
@@ -271,7 +385,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
     token = input->preview_token();
     // first comma
     if ( token.type != Token::Type::op || token.content != "," ) {
-        create_prelude_error_msg( w_ctx, token, filename );
+        create_prelude_error_msg( w_ctx, token );
         return false;
     }
 
@@ -280,9 +394,9 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
         token = input->get_token(); // consume comma
 
 // Using this here because the code occurs soo often and cannot be reasonably extracted into a function
-#define PARSE_LITERAL( str )                                   \
-    auto str = parse_string_literal( input, w_ctx, filename ); \
-    if ( str.empty() )                                         \
+#define PARSE_LITERAL( str )                         \
+    auto str = parse_string_literal( input, w_ctx ); \
+    if ( str.empty() )                               \
     return false
 
         // Find and handle MCI content
@@ -300,7 +414,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str2 );
                 conf->token_conf.term.push_back( std::make_pair( str, str2 ) );
             } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token, filename );
+                create_prelude_error_msg( w_ctx, token );
                 return false;
             }
         } else if ( mci == "COMMENT_RULES" ) {
@@ -318,7 +432,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
             } else if ( token.content == "nested_blocks_disallowed" ) {
                 conf->token_conf.nested_comments = false;
             } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token, filename );
+                create_prelude_error_msg( w_ctx, token );
                 return false;
             }
         } else if ( mci == "IDENTIFIER_RULES" ) {
@@ -333,7 +447,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                     else if ( str == "\x2keywords" )
                         conf->exclude_keywords = true;
                     else { // exclude specific words
-                        create_not_supported_error_msg( w_ctx, token, filename,
+                        create_not_supported_error_msg( w_ctx, token,
                                                         "Exclude arbritray words from possible identifiers set." );
                         return false;
                     }
@@ -345,18 +459,18 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
             } else if ( token.content == "case" ) {
                 token = input->preview_token();
                 if ( token.type != Token::Type::identifier ) { // sub parameters may not be empty
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 while ( token.content != "," ) {
                     token = input->get_token();
                     if ( token.type != Token::Type::identifier ) {
-                        create_prelude_error_msg( w_ctx, token, filename );
+                        create_prelude_error_msg( w_ctx, token );
                         return false;
                     }
                     auto token2 = input->get_token();
                     if ( token2.type != Token::Type::identifier ) {
-                        create_prelude_error_msg( w_ctx, token2, filename );
+                        create_prelude_error_msg( w_ctx, token2 );
                         return false;
                     }
                     IdentifierCase i_case =
@@ -366,7 +480,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                                   ? IdentifierCase::pascal
                                   : token2.content == "camel" ? IdentifierCase::camel : IdentifierCase::count;
                     if ( i_case == IdentifierCase::count ) {
-                        create_prelude_error_msg( w_ctx, token2, filename );
+                        create_prelude_error_msg( w_ctx, token2 );
                         return false;
                     }
                     if ( token.content == "functions" )
@@ -385,13 +499,13 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 }
             } else if ( token.content == "unused" ) {
                 if ( input->get_token().content != "begin" ) {
-                    create_not_supported_error_msg( w_ctx, token, filename, "Unused variable not with prefix." );
+                    create_not_supported_error_msg( w_ctx, token, "Unused variable not with prefix." );
                     return false;
                 }
                 PARSE_LITERAL( str );
                 conf->unused_prefix.push_back( str );
             } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token, filename );
+                create_prelude_error_msg( w_ctx, token );
                 return false;
             }
         } else if ( mci == "LITERAL_CHARACTER_ESCAPES" ) {
@@ -414,14 +528,14 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
             if ( input->preview_token().content != "," ) {
                 if ( str != "\x2unicode_32_hex" ) {
                     create_not_supported_error_msg(
-                        w_ctx, input->get_token(), filename,
+                        w_ctx, input->get_token(),
                         "Additional attributes for char encodings other than unicode_32_hex." );
                 } else {
                     token = input->get_token();
                     if ( token.content == "truncate_leading" ) {
                         conf->truncate_unicode_hex_prefix = true;
                     } else {
-                        create_prelude_error_msg( w_ctx, token, filename );
+                        create_prelude_error_msg( w_ctx, token );
                         return false;
                     }
                 }
@@ -443,7 +557,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str2 );
                 token = input->get_token();
                 if ( token.content != "prefix" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 PARSE_LITERAL( str3 );
@@ -454,13 +568,13 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str2 );
                 token = input->get_token();
                 if ( token.content != "prefix" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 PARSE_LITERAL( str3 );
                 token = input->get_token();
                 if ( token.content != "rep_delimiter" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 PARSE_LITERAL( str4 );
@@ -472,13 +586,13 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str2 );
                 token = input->get_token();
                 if ( token.content != "prefix" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 PARSE_LITERAL( str3 );
                 token = input->get_token();
                 if ( token.content != "rep_delimiter" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 PARSE_LITERAL( str4 );
@@ -498,7 +612,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                     conf->allow_multi_value_extract = false;
                 }
             } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token, filename );
+                create_prelude_error_msg( w_ctx, token );
                 return false;
             }
         } else if ( mci == "LITERAL_SINGLE_CHARACTER_RULES" ) {
@@ -513,14 +627,14 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str2 );
                 token = input->get_token();
                 if ( token.content != "prefix" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 PARSE_LITERAL( str3 );
                 conf->token_conf.string.push_back( std::make_pair( str, str2 ) );
                 conf->char_rules.push_back( CharacterRule{ str, str2, str3, true, false } );
             } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token, filename );
+                create_prelude_error_msg( w_ctx, token );
                 return false;
             }
         } else if ( mci == "LITERAL_INTEGER_RULES" ) {
@@ -531,7 +645,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str );
                 token = input->get_token();
                 if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 conf->token_conf.integer_prefix.push_back( str );
@@ -540,7 +654,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str );
                 token = input->get_token();
                 if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 conf->token_conf.integer_prefix.push_back( str );
@@ -549,7 +663,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str );
                 token = input->get_token();
                 if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 conf->token_conf.integer_prefix.push_back( str );
@@ -558,7 +672,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str );
                 token = input->get_token();
                 if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 conf->token_conf.integer_delimiter.push_back( str );
@@ -568,7 +682,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
             } else if ( token.content == "disallow_type_postfix" ) {
                 conf->allow_int_type_postfix = false;
             } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token, filename );
+                create_prelude_error_msg( w_ctx, token );
                 return false;
             }
         } else if ( mci == "LITERAL_FLOATING_POINT_RULES" ) {
@@ -579,7 +693,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str );
                 token = input->get_token();
                 if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 conf->token_conf.float_delimiter.push_back( str );
@@ -588,7 +702,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 PARSE_LITERAL( str );
                 token = input->get_token();
                 if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
                 conf->token_conf.float_delimiter.push_back( str );
@@ -601,7 +715,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
                 } while ( input->preview_token().content == "or" && /*consume*/ input->get_token().column );
                 token = input->get_token();
                 if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token, filename );
+                    create_prelude_error_msg( w_ctx, token );
                     return false;
                 }
             } else if ( token.content == "exponential_positive" ) {
@@ -621,7 +735,7 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
             } else if ( token.content == "disallow_type_postfix" ) {
                 conf->allow_float_type_postfix = false;
             } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token, filename );
+                create_prelude_error_msg( w_ctx, token );
                 return false;
             }
         } else if ( mci == "ALIAS_EXPRESSION" ) { // TODO
@@ -636,39 +750,160 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
         } else if ( mci == "FOR_EXPRESSION" ) { // TODO
         } else if ( mci == "MATCH_EXPRESSION" ) { // TODO
         } else if ( mci == "FUNCTION_DEFINITION" ) {
-            // TODO
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            auto trait = token.content;
+            CONSUME_COMMA( token );
+
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            auto function = token.content;
+            CONSUME_COMMA( token );
+
+            Syntax syntax;
+            auto list_size = parse_list_size( input );
+            CONSUME_COMMA( token );
+
+            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+                return false;
+            }
+
+            conf->fn_definitions.push_back( FunctionDefinition{ trait, function, syntax } );
         } else if ( mci == "DEFINE_TEMPLATE" ) { // TODO
         } else if ( mci == "SCOPE_ACCESS" ) {
-            // TODO
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->scope_access_op.push_back( op );
         } else if ( mci == "MEMBER_ACCESS" ) {
-            // TODO
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->member_access_op.push_back( op );
         } else if ( mci == "ARRAY_SPECIFIER" ) { // TODO
         } else if ( mci == "NEW_OPERATOR" ) {
-            // TODO
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            auto fn = token.content;
+
+            CONSUME_COMMA( token );
+
+            Operator op;
+            parse_operator( op, conf, input, w_ctx );
+            conf->operators.push_back( TraitOperator{ op, fn } );
         } else if ( mci == "REFERENCE_TYPE" ) {
-            // TODO
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->reference_op.push_back( op );
         } else if ( mci == "TYPE_OF" ) {
-            // TODO
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->type_of_op.push_back( op );
         } else if ( mci == "STRUCT_TO_TUPLE" ) {
-            // TODO
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->struct_to_tuple_op.push_back( op );
         } else if ( mci == "OPERATION_TYPE" ) {
-            // TODO
-        } else if ( mci == "RANGE_DEFINITION_EXC" ) {
-            // TODO
-        } else if ( mci == "RANGE_DEFINITION_FROM_EXC" ) {
-            // TODO
-        } else if ( mci == "RANGE_DEFINITION_TO_EXC" ) {
-            // TODO
-        } else if ( mci == "RANGE_DEFINITION_INC" ) {
-            // TODO
-        } else if ( mci == "RANGE_DEFINITION_TO_INC" ) {
-            // TODO
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->type_op.push_back( op );
+        } else if ( mci == "RANGE_DEFINITION_EXC" || mci == "RANGE_DEFINITION_FROM_EXC" ||
+                    mci == "RANGE_DEFINITION_TO_EXC" || mci == "RANGE_DEFINITION_INC" ||
+                    mci == "RANGE_DEFINITION_TO_INC" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+
+            RangeOperator::Type type;
+            if ( mci == "RANGE_DEFINITION_EXC" )
+                type = RangeOperator::Type::exclude;
+            else if ( mci == "RANGE_DEFINITION_FROM_EXC" )
+                type = RangeOperator::Type::exclude_from;
+            else if ( mci == "RANGE_DEFINITION_TO_EXC" )
+                type = RangeOperator::Type::exclude_to;
+            else if ( mci == "RANGE_DEFINITION_INC" )
+                type = RangeOperator::Type::include;
+            else if ( mci == "RANGE_DEFINITION_TO_INC" )
+                type = RangeOperator::Type::include_to;
+            else
+                type = RangeOperator::Type::count; // never reached
+
+            conf->range_op.push_back( RangeOperator{ type, op } );
         } else if ( mci == "LITERAL_TYPE" ) {
-            // TODO
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            auto value = token.content;
+            CONSUME_COMMA( token );
+
+            Syntax syntax;
+            auto list_size = parse_list_size( input );
+            CONSUME_COMMA( token );
+
+            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+                return false;
+            }
+
+            conf->type_literals.push_back( std::make_pair( syntax, value ) );
         } else if ( mci == "LITERAL_BOOLEAN" ) {
-            // TODO
+            token = input->get_token();
+            auto value = token.content;
+            if ( token.type != Token::Type::identifier || ( value != "TRUE" && value != "FALSE" ) ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            CONSUME_COMMA( token );
+
+            Syntax syntax;
+            auto list_size = parse_list_size( input );
+            CONSUME_COMMA( token );
+
+            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+                return false;
+            }
+
+            conf->bool_literals.push_back( std::make_pair( syntax, value == "TRUE" ) );
         } else if ( mci == "LITERAL_RANGE" ) {
-            // TODO
+            token = input->get_token();
+            auto value = token.content;
+            if ( token.type != Token::Type::identifier || value != "ZERO_TO_INFINITY" ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            CONSUME_COMMA( token );
+
+            Syntax syntax;
+            auto list_size = parse_list_size( input );
+            CONSUME_COMMA( token );
+
+            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+                return false;
+            }
+            if ( value == "ZERO_TO_INFINITY" )
+                conf->range_literals.push_back(
+                    std::make_pair( syntax, std::make_pair<i64, i64>( -9223372036854775807, 9223372036854775807 ) ) );
         } else { // Unknown MCI
             w_ctx.print_msg<MessageType::err_unknown_mci>(
                 MessageInfo( input->get_filename(), token.line, token.line, token.column, token.length, 0,
@@ -681,15 +916,17 @@ bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<Sourc
     // parenthesis
     token = input->get_token(); // consume parenthesis
     if ( token.type != Token::Type::term_end ) {
-        create_prelude_error_msg( w_ctx, token, filename );
+        create_prelude_error_msg( w_ctx, token );
         return false;
     }
     token = input->get_token();
     // semicolon
     if ( token.type != Token::Type::stat_divider ) {
-        create_prelude_error_msg( w_ctx, token, filename );
+        create_prelude_error_msg( w_ctx, token );
         return false;
     }
 
     return true;
 }
+
+#undef CONSUME_COMMA

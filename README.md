@@ -3,7 +3,7 @@ PUSHlang (Performant, Universal, Safe and High level) is a modern programming la
 The language is highly inspired by Rust but does not intend to be compatible in any way. I created this project to play around with programming language design. I wanted to build a language that works just the way i which it to do and maybe other folks like this way too.
 This project directory contains the c++ compiler implementation but for now also the language specification. Pushc is (will be) a cross-compiler, thus this repo is only needed to bootstrap the language.
 
-Wip: The project is currently in a very early development stage and thus everything may change frequently.
+WIP: The project is currently in a very early development stage and thus everything may change frequently.
 
 ## Push?
 This is the current development name and thus the language may be renamed some day.
