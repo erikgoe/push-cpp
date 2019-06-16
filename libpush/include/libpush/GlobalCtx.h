@@ -33,7 +33,7 @@ struct QueryCacheHead {
     u32 complexity = 0; // TODO
     std::list<std::shared_ptr<QueryCacheHead>> sub_dag; // queries which are called in this query
 
-    QueryCacheHead( const FunctionSignature &func, std::shared_ptr<BasicJobCollection> &jc ) {
+    QueryCacheHead( const FunctionSignature &func, const std::shared_ptr<BasicJobCollection> &jc ) {
         this->func = func;
         this->jc = jc;
     }
@@ -104,17 +104,13 @@ public:
     // \param args defines the argument provided for the query implementation. The first job from the query is
     // reserved for the calling worker and is thus not in the open_jobs list.
     template <typename FuncT, typename... Args>
-    auto query( FuncT fn, Worker &w_ctx, const Args &... args ) -> decltype( auto ) {
-        return query_impl( fn, w_ctx.shared_from_this(), args... );
-    }
+    auto query( FuncT fn, Worker &w_ctx, const Args &... args ) -> decltype( auto );
 
     // Creates a new query with the function of \param fn.
     // \param args defines the argument provided for the query implementation. The first job from the query is
     // reserved for the calling worker and is thus not in the open_jobs list.
     template <typename FuncT, typename... Args>
-    auto query( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
-        return query_impl( fn, w_ctx, args... );
-    }
+    auto query( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto );
 
     // Returns the root unit context. Use it only to create new build queries.
     std::shared_ptr<UnitCtx> get_global_unit_ctx();
@@ -159,7 +155,7 @@ public:
 
     // Prints a message to the user
     template <MessageType MesT, typename... Args>
-    constexpr void print_msg( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
+    void print_msg( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
                               const std::vector<MessageInfo> &notes, Args... head_args ) {
         print_msg_to_stdout( get_message<MesT>( w_ctx, message, notes, head_args... ) );
         if ( MesT < MessageType::error ) // fatal error
@@ -205,5 +201,3 @@ public:
     // Returns the index-position of a triplet name
     static size_t get_triplet_pos( const String &name );
 };
-
-#include "libpush/GlobalCtx.inl"

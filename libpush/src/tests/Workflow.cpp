@@ -16,6 +16,11 @@
 #include "libpush/Message.h"
 #include "libpush/UnitCtx.h"
 
+#include "libpush/Worker.inl"
+#include "libpush/Job.inl"
+#include "libpush/GlobalCtx.inl"
+#include "libpush/util/FunctionHash.inl"
+
 void get_token_list( const String file, JobsBuilder &jb, UnitCtx &ctx ) {
     jb.add_job<std::list<String>>( [file]( Worker &w_ctx ) {
         w_ctx.set_curr_job_volatile();

@@ -17,6 +17,7 @@
 #include "libpush/Message.h"
 #include "libpush/UnitCtx.h"
 
+
 std::shared_ptr<Worker> GlobalCtx::setup( size_t thread_count, size_t cache_map_reserve ) {
     if ( thread_count < 1 ) {
         LOG_ERR( "Must be at least one worker." );

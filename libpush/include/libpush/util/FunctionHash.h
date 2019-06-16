@@ -65,16 +65,7 @@ class FunctionSignature {
 
 public:
     template <typename FuncT, typename... Args>
-    static FunctionSignature create( FuncT fn, UnitCtx &ctx, const Args &... args ) {
-        FunctionSignature fs;
-        std::stringstream ss;
-
-        ss << typeid( fn ).hash_code() << '|' << ctx.id;
-        create_helper( ss, args... );
-
-        fs.data = ss.str();
-        return fs;
-    }
+    static FunctionSignature create( FuncT fn, UnitCtx &ctx, const Args &... args );
 
     bool operator==( const FunctionSignature &other ) const { return other.data == data; }
 

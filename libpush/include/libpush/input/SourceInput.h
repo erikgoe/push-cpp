@@ -67,7 +67,7 @@ struct Token {
 
     bool operator==( const Token &other ) const {
         return type == other.type && content == other.content &&
-               ( file == other.file || file && other.file && *file == *other.file ) && line == other.line &&
+               ( file == other.file || ( file && other.file && *file == *other.file ) ) && line == other.line &&
                column == other.column && length == other.length && leading_ws == other.leading_ws;
     }
 };
@@ -93,7 +93,7 @@ struct TokenConfig {
     std::vector<String> keywords; // all available operators
 
     // Returns a predefined configuration for prelude files
-    static TokenConfig TokenConfig::get_prelude_cfg();
+    static TokenConfig get_prelude_cfg();
 };
 
 // Base class to get a token list

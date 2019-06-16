@@ -16,6 +16,9 @@
 #include "libpush/GlobalCtx.h"
 #include "libpush/basic_queries/FileQueries.h"
 #include "libpush/UnitCtx.h"
+#include "libpush/GlobalCtx.inl"
+
+#include "libpush/util/FunctionHash.inl"
 
 // Replaces tabs with spaces
 void ws_format_line( String &line ) {
@@ -112,7 +115,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
     // Draw source code body
     size_t last_lower_bound = 0, last_upper_bound = 0; // used to calculate line bounds
     std::vector<size_t> line_lengths;
-    for ( auto &n_itr = notes.begin(); n_itr != notes.end(); n_itr++ ) {
+    for ( auto n_itr = notes.begin(); n_itr != notes.end(); n_itr++ ) {
         // Contains all highlightings in the code. Structure: line, column, length, color
         std::list<std::tuple<size_t, size_t, size_t, FmtStr::Color>> hl_lines;
 
@@ -145,7 +148,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
                 String num = to_string( i );
                 result += FmtStr::Piece( String( line_offset - num.length(), ' ' ) + num + " |", note_color );
 
-                String &line =
+                const String &line =
                     ( source_lines.size() > i - source_line_bound ? source_lines[i - source_line_bound] : "" );
                 line_lengths[i - last_lower_bound] = line.length_grapheme();
 
@@ -225,7 +228,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
     }
 }
 
-void print_msg_to_stdout( FmtStr &str ) {
+void print_msg_to_stdout( FmtStr str ) {
 // Configure console first
 #ifdef _WIN32
     HANDLE console_h = GetStdHandle( STD_OUTPUT_HANDLE );

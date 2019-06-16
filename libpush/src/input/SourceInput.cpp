@@ -16,6 +16,9 @@
 #include "libpush/Worker.h"
 #include "libpush/GlobalCtx.h"
 
+#include "libpush/Worker.inl"
+#include "libpush/Message.inl"
+
 TokenConfig TokenConfig::get_prelude_cfg() {
     TokenConfig cfg;
     cfg.stat_divider.push_back( ";" );
@@ -112,14 +115,14 @@ std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, boo
             if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
                 return std::make_pair( Token::Type::term_end, tc.second.size() );
         }
-        if ( curr_tt == Token::Type::encoded_char && ( back >= '0' && back <= '9' || back >= 'A' && back <= 'Z' ||
-                                                       back >= 'a' && back <= 'z' ) ) { // encoded characters
+        if ( curr_tt == Token::Type::encoded_char && ( ( back >= '0' && back <= '9' ) || ( back >= 'A' && back <= 'Z' ) ||
+                                                       ( back >= 'a' && back <= 'z' ) ) ) { // encoded characters
             return std::make_pair( Token::Type::encoded_char, 1 );
         }
         if ( curr_tt != Token::Type::identifier &&
-             ( back >= '0' && back <= '9' ||
+             ( (back >= '0' && back <= '9' ) ||
                ( ( curr_tt == Token::Type::number || curr_tt == Token::Type::number_float ) &&
-                 ( back >= 'A' && back <= 'F' || back >= 'a' && back <= 'f' ) ) ) ) { // numbers
+                 ( ( back >= 'A' && back <= 'F' ) || ( back >= 'a' && back <= 'f' ) ) ) ) ) { // numbers
             if ( curr_tt == Token::Type::number_float )
                 return std::make_pair( Token::Type::number_float, 1 );
             else

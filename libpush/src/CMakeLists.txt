@@ -21,6 +21,8 @@ target_include_directories(${LIB_NAME}
 
 # linking
 target_link_libraries(${LIB_NAME}
+    ${CMAKE_THREAD_LIBS_INIT}
+    stdc++fs
 )
 
 # cotire speedup

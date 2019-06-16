@@ -11,8 +11,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 // Returns true if the query or its sub-queries must be re-run
 bool requires_run( QueryCacheHead &head );
+
+template <typename> struct ReturnType;
+
+template <typename R, typename... Args>
+struct ReturnType<R(*)(Args...)> {
+   using type = R;
+};
+
+template <typename T>
+using return_t = typename ReturnType<T>::type;
+
 
 template <typename FuncT, typename... Args>
 auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
@@ -23,8 +36,7 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
         ctx = get_global_unit_ctx();
 
     auto jc =
-        std::make_shared<JobCollection<decltype( fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ),
-                                                     UnitCtx( std::shared_ptr<String>(), shared_from_this() ) ) )>>();
+        std::make_shared<JobCollection<return_t<decltype(fn)>>>();
 
     auto fn_sig = FunctionSignature::create( fn, *ctx, args... );
     {
@@ -35,13 +47,11 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
             if ( !requires_run( *head ) ) { // cached state is valid
                 LOG( "Using cached query result." );
                 return head->jc
-                    ->as_jc_ptr<decltype( fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ),
-                                              UnitCtx( std::shared_ptr<String>(), shared_from_this() ) ) )>();
+                    ->as_jc_ptr<return_t<decltype(fn)>>();
             } else { // exists but must be updated
                 LOG( "Update cached query result." );
                 jc =
-                    head->jc->as_jc_ptr<decltype( fn( args..., JobsBuilder( std::shared_ptr<FunctionSignature>(), ctx ),
-                                                      UnitCtx( std::shared_ptr<String>(), shared_from_this() ) ) )>();
+                    head->jc->as_jc_ptr<return_t<decltype(fn)>>();
             }
         } else { // create new cache entry
             head = std::make_shared<QueryCacheHead>( fn_sig, std::static_pointer_cast<BasicJobCollection>( jc ) );
@@ -97,4 +107,14 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
     }
 
     return jc;
+}
+
+template <typename FuncT, typename... Args>
+auto GlobalCtx::query( FuncT fn, Worker &w_ctx, const Args &... args ) -> decltype( auto )
+{
+    return query_impl( fn, w_ctx.shared_from_this(), args... );
+}
+template <typename FuncT, typename... Args>
+auto GlobalCtx::query( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
+    return query_impl( fn, w_ctx, args... );
 }

@@ -33,7 +33,7 @@ public:
     PreludeConfig prelude_conf;
     
     // Create a new unit context
-    UnitCtx( std::shared_ptr<String> &filepath, std::shared_ptr<GlobalCtx> g_ctx ) {
+    UnitCtx( const std::shared_ptr<String> &filepath, std::shared_ptr<GlobalCtx> g_ctx ) {
         this->g_ctx = g_ctx;
         root_file = filepath;
 

@@ -11,74 +11,68 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Actual error declaration
-enum class MessageType {
-    fatal_error = 0,
-    ferr_abort_too_many_errors,
-    ferr_abort_too_many_warnings,
-    ferr_abort_too_many_notifications,
-    ferr_file_not_found,
-    ferr_failed_prelude,
+#pragma once
 
-    error = 100,
-    err_unknown_source_input_pref,
-    err_unexpected_eof_at_line_query,
-    err_unexpected_eof_at_string_parsing,
-    err_lexer_char_not_allowed,
-    err_not_allowed_token_in_prelude,
-    err_parse_mci_rule,
-    err_unknown_mci,
-    err_feature_curr_not_supported,
-    err_parse_number,
+template <MessageType MesT, typename... Args>
+FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
+                              const std::vector<MessageInfo> &notes, Args... head_args ) {
+    FmtStr result = get_message_head<MesT>( head_args... );
+    auto notes_list = get_message_notes<MesT>( head_args... );
 
-    warning = 5000,
+    auto g_ctx = w_ctx->global_ctx();
 
-    notification = 10000,
+    if ( !g_ctx->jobs_allowed() )
+        throw AbortCompilationError();
 
-    count,
-    test_message // used for testing
-};
+    // Calculate some required formatting information
+    u32 last_line = 0;
+    std::map<String, std::list<MessageInfo>> notes_map;
+    std::list<MessageInfo> global_messages;
+    for ( auto &n : notes ) {
+        last_line = std::max( last_line, n.line_end );
+        if ( n.file )
+            notes_map[*n.file].push_back( n );
+        else
+            global_messages.push_back( n );
+    }
+    size_t line_offset = to_string( std::max( last_line, std::max( message.line_begin, message.line_begin ) ) ).size();
 
-// Actual error definitions. Strucure: <MessageType>, <message class>, "<message source symbol>", "<error message>",
-// ..."notes" The error message and the notes may contain additional data shipped by the GET_ARG(index) macro.
+    // Print main message
+    if ( message.file ) { // message has no main file
+        notes_map[*message.file].push_front( message );
+        notes_map[*message.file].sort();
+        draw_file( result, *message.file, notes_map[*message.file], notes_list, line_offset, w_ctx );
+        notes_map.erase( *message.file );
+    }
 
-// Message source symbols: I(lexer/input), C(Compiler), L(Linker), X(may be everywhere)
+    // Print notes
+    for ( auto &n : notes_map ) {
+        n.second.sort();
+        draw_file( result, n.first, n.second, notes_list, line_offset, w_ctx );
+    }
 
-MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_errors, MessageClass::FatalError, "X",
-                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated errors." );
-MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_warnings, MessageClass::FatalError, "X",
-                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated warnings." );
-MESSAGE_DEFINITION( MessageType::ferr_abort_too_many_notifications, MessageClass::FatalError, "X",
-                    "Abort due to too many (" + to_string( GET_ARG( 0 ) ) + ") generated notifications." );
-MESSAGE_DEFINITION( MessageType::ferr_file_not_found, MessageClass::FatalError, "I",
-                    "File \"" + GET_ARG( 0 ) + "\" was not found." );
-MESSAGE_DEFINITION( MessageType::ferr_failed_prelude, MessageClass::FatalError, "I",
-                    "Failed to load prelude \"" + GET_ARG( 0 ) + "\"." );
+    // Global messages
+    if ( !global_messages.empty() ) {
+        result += FmtStr::Piece( "  Notes:\n", FmtStr::Color::Blue ); // using notes color
+        for ( auto &m : global_messages ) {
+            result += FmtStr::Piece( "   " + notes_list[m.message_idx] + "\n", m.color );
+        }
+    }
 
-MESSAGE_DEFINITION( MessageType::err_unknown_source_input_pref, MessageClass::Error, "I",
-                    "Unknown source input type `" + GET_ARG( 0 ) + "` for file `" + GET_ARG( 1 ) + "`." );
-MESSAGE_DEFINITION( MessageType::err_unexpected_eof_at_line_query, MessageClass::Error, "I",
-                    "File `" + *GET_ARG( 0 ) + "` unexpectedly ended at line `" + to_string( GET_ARG( 1 ) ) +
-                        "` while attempting to read range \"" + to_string( GET_ARG( 2 ) ) + ".." +
-                        to_string( GET_ARG( 3 ) ) + "\"." );
-MESSAGE_DEFINITION( MessageType::err_unexpected_eof_at_string_parsing, MessageClass::Error, "I",
-                    "File `" + *GET_ARG( 0 ) + "` unexpectedly ended while attempting to read a string.",
-                    "string begins here" );
-MESSAGE_DEFINITION( MessageType::err_lexer_char_not_allowed, MessageClass::Error, "I",
-                    "Character `" + String( 1, GET_ARG( 0 ) ) + "`(" + to_string( static_cast<u32>( GET_ARG( 0 ) ) ) +
-                        ") is not in allowed set of characters.",
-                    "not allowed unit point`" + String( 1, GET_ARG( 0 ) ) + "`(" +
-                        to_string( static_cast<u32>( GET_ARG( 0 ) ) ) + ")" );
-MESSAGE_DEFINITION( MessageType::err_not_allowed_token_in_prelude, MessageClass::Error, "I",
-                    "Token `" + GET_ARG( 0 ) + "` is not allowed at this position in a prelude file.",
-                    "not allowed token `" + GET_ARG( 0 ) + "`" );
-MESSAGE_DEFINITION( MessageType::err_parse_mci_rule, MessageClass::Error, "I", "Failed to parse MCI rule.",
-                    "at this token" );
-MESSAGE_DEFINITION( MessageType::err_unknown_mci, MessageClass::Error, "I", "Unknown MCI `" + GET_ARG( 0 ) + "`.", "" );
-MESSAGE_DEFINITION( MessageType::err_feature_curr_not_supported, MessageClass::Error, "X",
-                    "The feature `" + GET_ARG( 0 ) + "` is not suppported in this compiler version.", "" );
-MESSAGE_DEFINITION( MessageType::err_parse_number, MessageClass::Error, "I",
-                    "Failed to parse number literal value.", "" );
-
-MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",
-                    "global information text" );
+    if ( MesT < MessageType::error ) { // fatal error
+        g_ctx->abort_compilation();
+    } else if ( MesT < MessageType::warning ) { // error
+        if ( g_ctx->error_count++ >= g_ctx->max_allowed_errors ) {
+            w_ctx->print_msg<MessageType::ferr_abort_too_many_errors>( MessageInfo(), {}, g_ctx->error_count.load() );
+        }
+    } else if ( MesT < MessageType::notification ) { // warning
+        if ( g_ctx->warning_count++ >= g_ctx->max_allowed_warnings ) {
+            w_ctx->print_msg<MessageType::ferr_abort_too_many_warnings>( MessageInfo(), {},
+                                                                         g_ctx->warning_count.load() );
+        }
+    } else if ( g_ctx->notification_count++ >= g_ctx->max_allowed_notifications ) { // notification
+        w_ctx->print_msg<MessageType::ferr_abort_too_many_notifications>( MessageInfo(), {},
+                                                                          g_ctx->notification_count.load() );
+    }
+    return result;
+}

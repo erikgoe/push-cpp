@@ -46,14 +46,11 @@ public:
 
     // Creates a new query (see GlobalCtx::query())
     template <typename FuncT, typename... Args>
-    auto query( FuncT fn, const Args &... args ) -> decltype( auto ) {
-        return g_ctx->query( fn, shared_from_this(), args... );
-    }
+    auto query( FuncT fn, const Args &... args ) -> decltype( auto );
+
     // Shortcut for query()->execute()->wait()
     template <typename FuncT, typename... Args>
-    auto do_query( FuncT fn, const Args &... args ) -> decltype( auto ) {
-        return g_ctx->query( fn, shared_from_this(), args... )->execute( *this )->wait();
-    }
+    auto do_query( FuncT fn, const Args &... args ) -> decltype( auto );
 
     // Returns the global context used by this worker
     std::shared_ptr<GlobalCtx> global_ctx() { return g_ctx; }
@@ -66,7 +63,5 @@ public:
 
     // Prints a message to the user
     template <MessageType MesT, typename... Args>
-    constexpr void print_msg( const MessageInfo &message, const std::vector<MessageInfo> &notes, Args... head_args ) {
-        g_ctx->print_msg<MesT>( shared_from_this(), message, notes, head_args... );
-    }
+    constexpr void print_msg( const MessageInfo &message, const std::vector<MessageInfo> &notes, Args... head_args );
 };

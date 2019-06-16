@@ -61,8 +61,18 @@ public:
     // Returns the length of the string in grapheme-blocks. This method takes only simple characters into account.
     size_t length_grapheme() const;
 
-    // Retruns a slice with only the last line
+    // Returns a slice with only the last line
     StringSlice trim_leading_lines() const;
+
+    // Explicit conversation to a path
+    fs::path to_path() const {
+        return fs::path( static_cast<std::string>(*this) );
+    }
+
+    // Implicit conversation to a path
+    operator fs::path() const {
+        return to_path();
+    }
 };
 
 // Temporary slice of a string. Operations on the original string may INVALIDATE this slice.

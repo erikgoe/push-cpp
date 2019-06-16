@@ -16,6 +16,9 @@
 #include "libpush/Worker.h"
 #include "libpush/GlobalCtx.h"
 
+#include "libpush/Worker.inl"
+#include "libpush/Message.inl"
+
 FileInput::FileInput( const String &file, size_t buffer_size, size_t max_read, std::shared_ptr<Worker> w_ctx ) {
     this->w_ctx = w_ctx;
     filename = std::make_shared<String>( file );
@@ -77,7 +80,7 @@ std::shared_ptr<SourceInput> FileInput::open_new_file( const String &file, std::
 }
 
 bool FileInput::file_exists( const String &file ) {
-    return fs::exists( file );
+    return fs::exists( file.to_path() );
 }
 
 Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, size_t &curr_line, size_t &curr_column,
@@ -120,7 +123,7 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
         // Make the code more stage-based
         if ( !eof )
             curr += *ptr;
-        auto e_pair = ( eof ? std::make_pair( Token::Type::eof, 0 )
+        auto e_pair = ( eof ? std::make_pair<Token::Type, size_t>( Token::Type::eof, 0 )
                             : ending_token( curr, in_string, in_comment, curr_tt, curr_line,
                                             curr_column + curr_ws.length_grapheme() +
                                                 curr.trim_leading_lines().length_grapheme() - 1 ) );
@@ -128,10 +131,10 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
             curr_ws = curr.substr( 0, curr.size() - ( eof ? 0 : 1 ) );
             curr = curr.substr( curr.size() - ( eof ? 0 : 1 ) );
         }
-        if ( ( e_pair.first != curr_tt || !Token::is_sticky( e_pair.first ) && e_pair.second == curr.size() ) &&
+        if ( ( e_pair.first != curr_tt || ( !Token::is_sticky( e_pair.first ) && e_pair.second == curr.size() ) ) &&
              !( curr_tt == Token::Type::number && e_pair.first == Token::Type::number_float ) &&
              !( curr_tt == Token::Type::keyword && e_pair.first == Token::Type::identifier ) ) {
-            if ( e_pair.second != curr.size() || !Token::is_sticky( e_pair.first ) && curr_tt != Token::Type::count ||
+            if ( e_pair.second != curr.size() || ( !Token::is_sticky( e_pair.first ) && curr_tt != Token::Type::count ) ||
                  e_pair.first == Token::Type::comment_end ) {
                 if ( e_pair.second != curr.size() ) {
                     // revert last token
@@ -185,7 +188,7 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
         // token not finished
         // NOTE: use this method to check for newlines and request e. g. a comment_end instead of the current approach
         curr_tt = e_pair.first; // set the type if ending_token() used the whole string
-        if ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' ||
+        if ( ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' ) ||
              *ptr == '\r' ) { // advance one line. Possible because revert_size is at least 1
             curr_line++;
             curr_column = 1;
@@ -243,7 +246,7 @@ std::list<String> FileInput::get_lines( size_t line_begin, size_t line_end, Work
         if ( line_count >= line_begin && *ptr != '\r' && *ptr != '\n' )
             curr_line += *ptr;
 
-        if ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' || *ptr == '\r' ) { // found a newline
+        if ( ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' ) || *ptr == '\r' ) { // found a newline
             line_count++;
             if ( line_count > line_begin )
                 lines.push_back( curr_line );

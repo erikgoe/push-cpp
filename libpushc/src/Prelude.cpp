@@ -167,12 +167,12 @@ void load_prelude_file( std::shared_ptr<String> path, JobsBuilder &jb, UnitCtx &
 }
 
 
-void create_prelude_error_msg( Worker &w_ctx, Token &token ) {
+void create_prelude_error_msg( Worker &w_ctx, const Token &token ) {
     w_ctx.print_msg<MessageType::err_parse_mci_rule>(
         MessageInfo( token.file, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ), {} );
 }
 
-void create_not_supported_error_msg( Worker &w_ctx, Token &token, const String &feature_description ) {
+void create_not_supported_error_msg( Worker &w_ctx, const Token &token, const String &feature_description ) {
     w_ctx.print_msg<MessageType::err_feature_curr_not_supported>(
         MessageInfo( token.file, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ), {},
         feature_description );

@@ -11,5 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define CATCH_CONFIG_MAIN // Catch provides main()
-#include "catch2/catch.hpp"
+#pragma once
+
+#include "libpush/UnitCtx.h"
+
+template <typename FuncT, typename... Args>
+FunctionSignature FunctionSignature::create( FuncT fn, UnitCtx &ctx, const Args &... args ) {
+    FunctionSignature fs;
+    std::stringstream ss;
+
+    ss << typeid( fn ).hash_code() << '|' << ctx.id;
+    create_helper( ss, args... );
+
+    fs.data = ss.str();
+    return fs;
+}

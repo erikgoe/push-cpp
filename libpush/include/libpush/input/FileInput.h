@@ -38,7 +38,7 @@ class FileInput : public SourceInput {
     bool fill_buffer();
 
     // implementation of the *_token() methods
-    Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, size_t &curr_line,
+    Token get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, size_t &curr_line,
                                      size_t &curr_column, Token::Type &curr_tt );
 
 public:

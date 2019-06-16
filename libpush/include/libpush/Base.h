@@ -66,8 +66,8 @@ static void log( const std::string &msg ) {
 
 #if defined( _WIN32 )
 namespace fs = std::experimental::filesystem;
-#elif
-namespace fs = sf::filesystem;
+#else
+namespace fs = std::filesystem;
 #endif
 
 inline void Sleep( f64 ms_duration ) {

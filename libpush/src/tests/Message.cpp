@@ -15,6 +15,8 @@
 #include "libpush/Message.h"
 #include "libpush/GlobalCtx.h"
 
+#include "libpush/Message.inl"
+#include "libpush/Worker.inl"
 
 namespace Catch {
 template <>

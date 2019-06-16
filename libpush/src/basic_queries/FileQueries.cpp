@@ -11,9 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "libpush/stdafx.h"
 #include "libpush/basic_queries/FileQueries.h"
+
+#include "libpush/Worker.inl"
+#include "libpush/Message.inl"
 
 std::shared_ptr<SourceInput> get_source_input( const String file, Worker &w_ctx ) {
     std::shared_ptr<SourceInput> source_input;

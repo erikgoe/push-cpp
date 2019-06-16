@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "libpushc/stdafx.h"
 #include "libpushc/Util.h"
 
@@ -97,5 +96,5 @@ bool is_operator_token( const String &token ) {
 
     // NOTE: just a simple implementation
     return !( ( token.front() >= 'a' && token.front() <= 'z' ) || ( token.front() >= 'A' && token.front() <= 'Z' ) ||
-              token.front() > 128 );
+              token.front() > (char) 128 );
 }

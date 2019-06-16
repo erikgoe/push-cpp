@@ -21,7 +21,7 @@ target_include_directories(${TEST_NAME}
 
 # linking
 target_link_libraries(${TEST_NAME}
-    
+    Catch2::Catch2
 	${LIB_NAME}
 	${CMAKE_THREAD_LIBS_INIT}
 )

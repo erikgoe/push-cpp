@@ -59,23 +59,32 @@ struct MessageInfo {
 // This is thrown if the compilation is aborted
 class AbortCompilationError : public std::exception {
 public:
-    AbortCompilationError() : std::exception( "abort compilation" ) {}
+    AbortCompilationError() : std::exception() {}
 };
 
 // Weird workaround for global function template specialization
 
+template <MessageType MesT, typename... Args>
+struct get_message_head_impl {
+    static FmtStr impl( Args... args ) {
+        /*static_assert( false,
+                       "No message head information was found for this MessageType. Implement it in \"Message.inl\"" );*/
+        return {};
+    }
+};
+
 // Returns the head of a message including the message text. Will not increment any message count. Use get_message()
 // instead.
 template <MessageType MesT, typename... Args>
-constexpr FmtStr get_message_head( Args... args ) {
+FmtStr get_message_head( Args... args ) {
     return get_message_head_impl<MesT, Args...>::impl( args... );
 }
 
 template <MessageType MesT, typename... Args>
-struct get_message_head_impl {
-    constexpr static FmtStr impl( Args... args ) {
-        static_assert( false,
-                       "No message head information was found for this MessageType. Implement it in \"Message.inl\"" );
+struct get_message_notes_impl {
+    static std::vector<String> impl( Args... args ) {
+        /*static_assert( false,
+                       "No message note information was found for this MessageType. Implement it in \"Message.inl\"" );*/
         return {};
     }
 };
@@ -83,23 +92,14 @@ struct get_message_head_impl {
 // Returns a list of additional notes which can be applied to a message. Will not increment any message count. Use
 // get_message() instead.
 template <MessageType MesT, typename... Args>
-constexpr std::vector<String> get_message_notes( Args... args ) {
+std::vector<String> get_message_notes( Args... args ) {
     return get_message_notes_impl<MesT, Args...>::impl( args... );
 }
-
-template <MessageType MesT, typename... Args>
-struct get_message_notes_impl {
-    constexpr static std::vector<String> impl( Args... args ) {
-        static_assert( false,
-                       "No message note information was found for this MessageType. Implement it in \"Message.inl\"" );
-        return {};
-    }
-};
 
 #define MESSAGE_DEFINITION( id, classid, source_symbol, msg, ... )                                               \
     template <typename... Args>                                                                                  \
     struct get_message_head_impl<id, Args...> {                                                                  \
-        constexpr static FmtStr impl( Args... args ) {                                                           \
+        static FmtStr impl( Args... args ) {                                                           \
             auto at = std::make_tuple( args... );                                                                \
             FmtStr::Color message_class_clr =                                                                    \
                 ( classid == MessageClass::Notification                                                          \
@@ -120,7 +120,7 @@ struct get_message_notes_impl {
     };                                                                                                           \
     template <typename... Args>                                                                                  \
     struct get_message_notes_impl<id, Args...> {                                                                 \
-        constexpr static std::vector<String> impl( Args... args ) {                                              \
+        static std::vector<String> impl( Args... args ) {                                              \
             auto at = std::make_tuple( args... );                                                                \
             return std::vector<String>{ __VA_ARGS__ };                                                           \
         }                                                                                                        \
@@ -130,7 +130,7 @@ struct get_message_notes_impl {
 #define GET_ARG( index ) std::get<index>( at )
 
 // Contains the actual definitions
-#include "libpush/Message.inl"
+#include "libpush/Messages.inl"
 
 #undef GET_ARG
 #undef MESSAGE_PARSE
@@ -141,68 +141,8 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
 
 // Returns a formatted message which can be shown to the user
 template <MessageType MesT, typename... Args>
-constexpr FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
-                              const std::vector<MessageInfo> &notes, Args... head_args ) {
-    FmtStr result = get_message_head<MesT>( head_args... );
-    auto notes_list = get_message_notes<MesT>( head_args... );
-
-    auto g_ctx = w_ctx->global_ctx();
-
-    if ( !g_ctx->jobs_allowed() )
-        throw AbortCompilationError();
-
-    // Calculate some required formatting information
-    size_t last_line = 0;
-    std::map<String, std::list<MessageInfo>> notes_map;
-    std::list<MessageInfo> global_messages;
-    for ( auto &n : notes ) {
-        last_line = std::max( last_line, n.line_end );
-        if ( n.file )
-            notes_map[*n.file].push_back( n );
-        else
-            global_messages.push_back( n );
-    }
-    size_t line_offset = to_string( std::max( last_line, std::max( message.line_begin, message.line_begin ) ) ).size();
-
-    // Print main message
-    if ( message.file ) { // message has no main file
-        notes_map[*message.file].push_front( message );
-        notes_map[*message.file].sort();
-        draw_file( result, *message.file, notes_map[*message.file], notes_list, line_offset, w_ctx );
-        notes_map.erase( *message.file );
-    }
-
-    // Print notes
-    for ( auto &n : notes_map ) {
-        n.second.sort();
-        draw_file( result, n.first, n.second, notes_list, line_offset, w_ctx );
-    }
-
-    // Global messages
-    if ( !global_messages.empty() ) {
-        result += FmtStr::Piece( "  Notes:\n", FmtStr::Color::Blue ); // using notes color
-        for ( auto &m : global_messages ) {
-            result += FmtStr::Piece( "   " + notes_list[m.message_idx] + "\n", m.color );
-        }
-    }
-
-    if ( MesT < MessageType::error ) { // fatal error
-        g_ctx->abort_compilation();
-    } else if ( MesT < MessageType::warning ) { // error
-        if ( g_ctx->error_count++ >= g_ctx->max_allowed_errors ) {
-            w_ctx->print_msg<MessageType::ferr_abort_too_many_errors>( MessageInfo(), {}, g_ctx->error_count.load() );
-        }
-    } else if ( MesT < MessageType::notification ) { // warning
-        if ( g_ctx->warning_count++ >= g_ctx->max_allowed_warnings ) {
-            w_ctx->print_msg<MessageType::ferr_abort_too_many_warnings>( MessageInfo(), {},
-                                                                         g_ctx->warning_count.load() );
-        }
-    } else if ( g_ctx->notification_count++ >= g_ctx->max_allowed_notifications ) { // notification
-        w_ctx->print_msg<MessageType::ferr_abort_too_many_notifications>( MessageInfo(), {},
-                                                                          g_ctx->notification_count.load() );
-    }
-    return result;
-}
+FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
+                              const std::vector<MessageInfo> &notes, Args... head_args );
 
 // Prints
-void print_msg_to_stdout( FmtStr &str );
+void print_msg_to_stdout( FmtStr str );

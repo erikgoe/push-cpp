@@ -16,6 +16,7 @@
 #include "libpush/util/String.h"
 #include "libpush/util/AnyResultWrapper.h"
 #include "libpush/util/FunctionHash.h"
+#include "libpush/Message.h"
 
 template <typename R>
 class Job;
@@ -137,7 +138,7 @@ class JobsBuilder {
     std::shared_ptr<UnitCtx> ctx;
 
 public:
-    JobsBuilder( std::shared_ptr<FunctionSignature> &query_sig, std::shared_ptr<UnitCtx> &ctx ) {
+    JobsBuilder( const std::shared_ptr<FunctionSignature> &query_sig, std::shared_ptr<UnitCtx> &ctx ) {
         this->query_sig = query_sig;
         this->ctx = ctx;
     }
@@ -157,5 +158,3 @@ public:
     
     friend class GlobalCtx;
 };
-
-#include "libpush/Job.inl"

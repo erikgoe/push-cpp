@@ -88,7 +88,7 @@ define_mci_rule( LET_STATEMENT, double_list, "let", assignment -> new_identifier
 define_mci_rule( SELF_EXPRESSION, single_list, "self" ); // the self keyword is the currently executed object in non-static methods
 
 // OOP constructs
-define_mci_rule( STRUCT_DEFINITION, triple_list, "struct", identifier -> new_identifier, expr -> body ); // struct declarations are defined by the keyword "struct" a identifier and the following body.
+define_mci_rule( STRUCT_DEFINITION, triple_list, "struct", identifier -> new_identifier, expr -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
 define_mci_rule( STRUCT_DEFINITION, single_list, "struct" ); // anonymous struct
 define_mci_rule( TRAIT_DEFINITION, triple_list, "trait", identifier -> new_identifier, expr -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
 define_mci_rule( IMPL_DEFINITION, triple_list, "impl", identifier -> type, expr -> body ); // impl-blocks which defines methods for a struct independent of a trait

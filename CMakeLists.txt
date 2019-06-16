@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.6)
 
-# include toolchain file
+# prepare catch and cotire
 if(VCPKG_SOURCE_DIR)
 	set(CMAKE_TOOLCHAIN_FILE "${VCPKG_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
-	set(TEST_WITH_CATCH true)
+	if(NOT DEFINED TEST_WITH_CATCH)
+		set(TEST_WITH_CATCH true)
+	endif()
 endif()
-if(DEV_SOURCE_DIR)
+if(COTIRE_PATH)
 	set(BUILD_COTIRE_PROJ true)
 endif()
 
@@ -15,7 +17,7 @@ project(push)
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 1)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 # static builds for windows
 if (MSVC)
@@ -29,11 +31,15 @@ add_definitions(-DCMAKE_PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}")
 
 # scripts
 if(BUILD_COTIRE_PROJ)
-	include(${DEV_SOURCE_DIR}/.extlib/cotire/cotire.cmake)
+	include(${COTIRE_PATH})
 endif()
 
 # packages
-find_path(CATCH_INCLUDE_DIR NAMES catch.hpp PATH_SUFFIXES Catch2 QUIET)
+find_package(Threads)
+if(TEST_WITH_CATCH)
+	find_package(Catch2 REQUIRED)
+	#find_path(CATCH_INCLUDE_DIR NAMES catch.hpp PATH_SUFFIXES Catch2)
+endif()
 
 # subdirectories
 
