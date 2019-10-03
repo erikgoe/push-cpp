@@ -14,7 +14,7 @@
 #pragma once
 #include "libpushc/stdafx.h"
 
-// Initial compiler query for new units
+// Load a specific prelude by name into a PredudeConfig
 void load_prelude( std::shared_ptr<String> prelude, JobsBuilder &jb, UnitCtx &parent_ctx );
 
 // Loads a prelude file

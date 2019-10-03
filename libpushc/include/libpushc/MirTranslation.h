@@ -14,8 +14,5 @@
 #pragma once
 #include "libpushc/stdafx.h"
 
-// Initial compiler query for new units
-void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &parent_ctx );
-
-// Query all compilation units of the root-unit
-void get_compilation_units( JobsBuilder &jb, UnitCtx &parent_ctx );
+// Create the MIR of the current compilation unit
+void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx );

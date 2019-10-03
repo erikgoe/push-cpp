@@ -14,17 +14,27 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/Compiler.h"
 #include "libpushc/Prelude.h"
+#include "libpushc/Linker.h"
 
 void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &parent_ctx ) {
     auto ctx = std::make_shared<UnitCtx>( std::make_shared<String>( file ), parent_ctx.global_ctx() );
     jb.switch_context( ctx );
     jb.add_job<void>( [file]( Worker &w_ctx ) {
+        // w_ctx.do_query( link_binary, file.to_path().replace_extension( ".exe" ) );
+        // w_ctx.query( link_binary, file.to_path().replace_extension( ".exe" ) )->execute( w_ctx );
+    } );
+}
+
+void get_compilation_units( JobsBuilder &jb, UnitCtx &parent_ctx ) {
+    jb.add_job<std::vector<String>>( []( Worker &w_ctx ) {
+        auto file = *w_ctx.unit_ctx()->root_file;
         auto extension = file.to_path().extension();
         if ( extension == ".proj" || extension == ".prj" ) { // compile project file
-            w_ctx.do_query( load_prelude, std::make_shared<String>( "project" ) );
+            // TODO
         } else { // regular push file
-            w_ctx.do_query( load_prelude, std::make_shared<String>( "push" ) );
+            std::vector<String> result;
+            result.push_back( file );
+            return result;
         }
-        
     } );
 }

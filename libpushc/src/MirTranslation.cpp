@@ -11,11 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "libpushc/stdafx.h"
+#include "libpushc/MirTranslation.h"
+#include "libpushc/AstParser.h"
 
-// Initial compiler query for new units
-void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &parent_ctx );
-
-// Query all compilation units of the root-unit
-void get_compilation_units( JobsBuilder &jb, UnitCtx &parent_ctx );
+void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
+    jb.add_job<void>( []( Worker &w_ctx ) {
+        //w_ctx.do_query( get_ast );
+    } );
+}

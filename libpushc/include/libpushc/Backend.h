@@ -14,8 +14,8 @@
 #pragma once
 #include "libpushc/stdafx.h"
 
-// Initial compiler query for new units
-void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &parent_ctx );
+// Get or create the compiled unit
+void get_object_file( JobsBuilder &jb, UnitCtx &parent_ctx );
 
-// Query all compilation units of the root-unit
-void get_compilation_units( JobsBuilder &jb, UnitCtx &parent_ctx );
+// Create the LLVM IR for this unit
+void get_llvm_ir( JobsBuilder &jb, UnitCtx &parent_ctx );

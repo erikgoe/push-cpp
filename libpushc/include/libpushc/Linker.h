@@ -14,8 +14,5 @@
 #pragma once
 #include "libpushc/stdafx.h"
 
-// Initial compiler query for new units
-void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &parent_ctx );
-
-// Query all compilation units of the root-unit
-void get_compilation_units( JobsBuilder &jb, UnitCtx &parent_ctx );
+// Link the compilation units of the root-unit into the \param out_file
+void link_binary( const String &out_file, JobsBuilder &jb, UnitCtx &parent_ctx );
