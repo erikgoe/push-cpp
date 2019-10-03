@@ -134,7 +134,8 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
         if ( ( e_pair.first != curr_tt || ( !Token::is_sticky( e_pair.first ) && e_pair.second == curr.size() ) ) &&
              !( curr_tt == Token::Type::number && e_pair.first == Token::Type::number_float ) &&
              !( curr_tt == Token::Type::keyword && e_pair.first == Token::Type::identifier ) ) {
-            if ( e_pair.second != curr.size() || ( !Token::is_sticky( e_pair.first ) && curr_tt != Token::Type::count ) ||
+            if ( e_pair.second != curr.size() ||
+                 ( !Token::is_sticky( e_pair.first ) && curr_tt != Token::Type::count ) ||
                  e_pair.first == Token::Type::comment_end ) {
                 if ( e_pair.second != curr.size() ) {
                     // revert last token
@@ -146,6 +147,13 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
                 } else {
                     t.type = e_pair.first;
                     curr_tt = Token::Type::count;
+                    
+                    if ( e_pair.first == Token::Type::comment_end && curr.back() == '\n' ) {
+                        // revert last token as whitespace for the next token
+                        ptr -= e_pair.second;
+                        if ( ptr < buff )
+                            ptr += buff_end - buff;
+                    }
                 }
 
                 t.content = curr;
@@ -153,15 +161,6 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
                 t.column = curr_column + curr_ws.trim_leading_lines().length_grapheme();
                 t.length = curr.length_cp();
                 t.leading_ws = curr_ws.replace_all( "\r\n", "\n" ).replace_all( "\r", "\n" );
-
-                // increment line if needed
-                if ( e_pair.first == Token::Type::comment_end && ( curr.back() == '\r' || curr.back() == '\n' ) ) {
-                    curr_line++;
-                    curr_column = 0;
-                    // replace newline
-                    t.content.pop_back();
-                    t.content.push_back( '\n' );
-                }
 
                 // comment rules
                 if ( in_string == 0 ) { // only if not in string
@@ -246,7 +245,8 @@ std::list<String> FileInput::get_lines( size_t line_begin, size_t line_end, Work
         if ( line_count >= line_begin && *ptr != '\r' && *ptr != '\n' )
             curr_line += *ptr;
 
-        if ( ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' ) || *ptr == '\r' ) { // found a newline
+        if ( ( *ptr == '\n' && *( ptr != buff ? ptr - 1 : buff_end - 1 ) != '\r' ) ||
+             *ptr == '\r' ) { // found a newline
             line_count++;
             if ( line_count > line_begin )
                 lines.push_back( curr_line );
