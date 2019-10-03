@@ -46,7 +46,7 @@ FileInput::~FileInput() {
 }
 
 bool FileInput::fill_buffer() {
-    if ( fstream.bad() || fstream.eof() ) {
+    if ( fstream.bad() || ( fstream.peek() & 0 ) || fstream.eof() ) {
         eof = true;
         return false;
     }
@@ -147,7 +147,7 @@ Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, si
                 } else {
                     t.type = e_pair.first;
                     curr_tt = Token::Type::count;
-                    
+
                     if ( e_pair.first == Token::Type::comment_end && curr.back() == '\n' ) {
                         // revert last token as whitespace for the next token
                         ptr -= e_pair.second;
