@@ -20,7 +20,7 @@ FunctionSignature FunctionSignature::create( FuncT fn, UnitCtx &ctx, const Args 
     FunctionSignature fs;
     std::stringstream ss;
 
-    ss << typeid( fn ).hash_code() << '|' << ctx.id;
+    ss << to_string( reinterpret_cast<size_t>( fn ) ) << '|' << ctx.id;
     create_helper( ss, args... );
 
     fs.data = ss.str();
