@@ -17,12 +17,12 @@
 
 void get_object_file( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) {
-        //w_ctx.do_query( get_llvm_ir );
+        w_ctx.do_query( get_llvm_ir );
     } );
 }
 
 void get_llvm_ir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) {
-        //w_ctx.do_query( get_mir );
+        w_ctx.do_query( get_mir );
     } );
 }

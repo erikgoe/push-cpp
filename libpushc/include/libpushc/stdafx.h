@@ -26,9 +26,3 @@
 #include "libpush/GlobalCtx.inl"
 #include "libpush/util/FunctionHash.inl"
 #include "libpush/Message.inl"
-
-#if defined( _WIN32 )
-namespace fs = std::experimental::filesystem;
-#else
-namespace fs = std::filesystem;
-#endif

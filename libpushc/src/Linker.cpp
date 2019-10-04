@@ -22,17 +22,17 @@ void build_unit( const String &unit_path, JobsBuilder &jb, UnitCtx &parent_ctx )
     jb.switch_context( ctx );
 
     jb.add_job<void>( []( Worker &w_ctx ) {
-        //w_ctx.do_query( get_object_file );
+        w_ctx.do_query( get_object_file );
     } );
 }
 
 void link_binary( const String &out_file, JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( [out_file]( Worker &w_ctx ) {
-        /*auto jc = w_ctx.do_query( get_compilation_units );
+        auto jc = w_ctx.do_query( get_compilation_units );
         auto units = jc->jobs.front()->to<std::vector<String>>();
 
         for ( auto &unit : units ) {
             w_ctx.do_query( build_unit, unit );
-        }*/
+        }
     } );
 }

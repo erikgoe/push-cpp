@@ -20,6 +20,11 @@ struct HashSerializer {
 public:
     void operator()( std::stringstream &ss, const T &obj ) { ss << '|' << obj; }
 };
+template <>
+struct HashSerializer<void> {
+public:
+    void operator()( std::stringstream &ss ) {}
+};
 template <typename Entry>
 struct HashSerializer<std::list<Entry>> {
 public:
@@ -53,6 +58,9 @@ class FunctionSignature {
     String data;
 
     // General serializing
+    static void create_helper( std::stringstream &ss ) {
+        HashSerializer<void>{}( ss );
+    }
     template <typename T>
     static void create_helper( std::stringstream &ss, const T &first ) {
         HashSerializer<T>{}( ss, first );

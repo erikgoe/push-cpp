@@ -17,6 +17,6 @@
 
 void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) {
-        //w_ctx.do_query( get_ast );
+        w_ctx.do_query( get_ast );
     } );
 }

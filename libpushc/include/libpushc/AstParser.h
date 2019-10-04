@@ -17,5 +17,5 @@
 // Create the Abstract Syntax tree of the current compilation unit
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx );
 
-// Parse the AST from an input file
+// Parse the AST from an input file (of this compilation unit)
 void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx );
