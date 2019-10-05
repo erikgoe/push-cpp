@@ -1,1 +1,6 @@
 #prelude(push)
+
+/// Basic function without anything special
+function {
+    let val = 5;
+}
