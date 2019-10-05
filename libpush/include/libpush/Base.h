@@ -70,6 +70,11 @@ namespace fs = std::experimental::filesystem;
 namespace fs = std::filesystem;
 #endif
 
+template <typename T>
+using sptr = std::shared_ptr<T>;
+
+using std::make_shared;
+
 inline void Sleep( f64 ms_duration ) {
     std::this_thread::sleep_for( std::chrono::duration<f64, std::milli>( ms_duration ) );
 }

@@ -19,9 +19,9 @@
 #include "libpush/Worker.inl"
 #include "libpush/Message.inl"
 
-FileInput::FileInput( const String &file, size_t buffer_size, size_t max_read, std::shared_ptr<Worker> w_ctx ) {
+FileInput::FileInput( const String &file, size_t buffer_size, size_t max_read, sptr<Worker> w_ctx ) {
     this->w_ctx = w_ctx;
-    filename = std::make_shared<String>( file );
+    filename = make_shared<String>( file );
     fstream.open( file, std::ios_base::binary );
 
     if ( buffer_size == 0 )
@@ -75,8 +75,8 @@ bool FileInput::fill_buffer() {
         return false;
 }
 
-std::shared_ptr<SourceInput> FileInput::open_new_file( const String &file, std::shared_ptr<Worker> w_ctx ) {
-    return std::make_shared<FileInput>( file, buff_end - buff, max_read, w_ctx );
+sptr<SourceInput> FileInput::open_new_file( const String &file, sptr<Worker> w_ctx ) {
+    return make_shared<FileInput>( file, buff_end - buff, max_read, w_ctx );
 }
 
 bool FileInput::file_exists( const String &file ) {

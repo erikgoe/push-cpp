@@ -280,7 +280,7 @@ int CLI::execute() {
             thread_count = get_cpu_count() * 2;
 
         // Create the compilation contexts
-        auto g_ctx = std::make_shared<GlobalCtx>();
+        auto g_ctx = make_shared<GlobalCtx>();
         auto w_ctx = g_ctx->setup( thread_count );
 
         // Set configs & triplet

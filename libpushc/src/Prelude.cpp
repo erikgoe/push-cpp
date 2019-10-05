@@ -104,14 +104,14 @@ PreludeConfig get_prelude_prelude() {
     return pc;
 }
 
-void load_prelude( std::shared_ptr<String> prelude, JobsBuilder &jb, UnitCtx &ctx ) {
+void load_prelude( sptr<String> prelude, JobsBuilder &jb, UnitCtx &ctx ) {
     jb.add_job<PreludeConfig>( [prelude]( Worker &w_ctx ) {
         auto ctx = w_ctx.unit_ctx();
         PreludeConfig prelude_conf;
         if ( *prelude == "prelude" ) {
             prelude_conf = get_prelude_prelude();
         } else {
-            std::shared_ptr<String> filepath = get_std_dir();
+            sptr<String> filepath = get_std_dir();
             if ( *prelude == "push" ) {
                 ( *filepath ) += "/prelude/push.push";
             } else if ( *prelude == "project" ) {
@@ -121,7 +121,7 @@ void load_prelude( std::shared_ptr<String> prelude, JobsBuilder &jb, UnitCtx &ct
             }
             ctx->prelude_conf = get_prelude_prelude();
             prelude_conf =
-                *w_ctx.do_query( load_prelude_file, filepath )->jobs.front()->to<std::shared_ptr<PreludeConfig>>();
+                *w_ctx.do_query( load_prelude_file, filepath )->jobs.front()->to<sptr<PreludeConfig>>();
         }
 
         return prelude_conf;
@@ -129,13 +129,13 @@ void load_prelude( std::shared_ptr<String> prelude, JobsBuilder &jb, UnitCtx &ct
 }
 
 // Extract mci rule into a PreludeConfig
-bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<SourceInput> &input, Worker &w_ctx );
+bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker &w_ctx );
 
-void load_prelude_file( std::shared_ptr<String> path, JobsBuilder &jb, UnitCtx &ctx ) {
-    jb.add_job<std::shared_ptr<PreludeConfig>>( [path]( Worker &w_ctx ) {
+void load_prelude_file( sptr<String> path, JobsBuilder &jb, UnitCtx &ctx ) {
+    jb.add_job<sptr<PreludeConfig>>( [path]( Worker &w_ctx ) {
         auto input = get_source_input( *path, w_ctx );
         input->configure( w_ctx.unit_ctx()->prelude_conf.token_conf );
-        auto conf = std::make_shared<PreludeConfig>();
+        auto conf = make_shared<PreludeConfig>();
         bool parse_error = false;
 
         while ( true ) {
@@ -181,7 +181,7 @@ void create_not_supported_error_msg( Worker &w_ctx, const Token &token, const St
 }
 
 // Translate strings like "semicolon" into ";"
-String parse_string_literal( std::shared_ptr<SourceInput> &input, Worker &w_ctx ) {
+String parse_string_literal( sptr<SourceInput> &input, Worker &w_ctx ) {
     auto token = input->preview_token();
     if ( token.type == Token::Type::string_begin ) { // regular string
         return parse_string( input, w_ctx );
@@ -229,7 +229,7 @@ String parse_string_literal( std::shared_ptr<SourceInput> &input, Worker &w_ctx 
 }
 
 // Returns the size of a syntax list
-size_t parse_list_size( std::shared_ptr<SourceInput> &input ) {
+size_t parse_list_size( sptr<SourceInput> &input ) {
     auto token = input->get_token();
     if ( token.content == "single_list" || token.content == "uny_op_left" || token.content == "uny_op_right" )
         return 1;
@@ -247,8 +247,8 @@ size_t parse_list_size( std::shared_ptr<SourceInput> &input ) {
 
 // Parses a syntax definition and adds keywords or operators to the prelude configuration. Returns true if was
 // successful.
-bool parse_syntax( Syntax &output, std::shared_ptr<PreludeConfig> &conf, size_t list_size,
-                   std::shared_ptr<SourceInput> &input, Worker &w_ctx ) {
+bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size,
+                   sptr<SourceInput> &input, Worker &w_ctx ) {
     for ( size_t i = 0; i < list_size; i++ ) {
         auto token = input->preview_token();
         String type; // or operator/keyword
@@ -305,7 +305,7 @@ bool parse_syntax( Syntax &output, std::shared_ptr<PreludeConfig> &conf, size_t 
 
 // Parses a simple operator definition and adds keywords or operators to the prelude configuration. Returns true if was
 // successful.
-bool parse_operator( Operator &output, std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<SourceInput> &input,
+bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInput> &input,
                      Worker &w_ctx ) {
     String operator_type = input->preview_token().content;
     size_t list_size = parse_list_size( input );
@@ -360,7 +360,7 @@ bool parse_operator( Operator &output, std::shared_ptr<PreludeConfig> &conf, std
     return true;
 }
 
-bool parse_mci_rule( std::shared_ptr<PreludeConfig> &conf, std::shared_ptr<SourceInput> &input, Worker &w_ctx ) {
+bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker &w_ctx ) {
     auto filename = input->get_filename();
 
     auto token = input->get_token();

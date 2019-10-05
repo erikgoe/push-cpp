@@ -21,7 +21,7 @@
 class Worker : public std::enable_shared_from_this<Worker> {
     std::unique_ptr<std::thread> thread;
     std::atomic_bool finish; // will stop if is set to true
-    std::shared_ptr<GlobalCtx> g_ctx;
+    sptr<GlobalCtx> g_ctx;
 
     Mutex mtx;
     ConditionVariable cv;
@@ -29,11 +29,11 @@ class Worker : public std::enable_shared_from_this<Worker> {
 public:
     // Context data
     size_t id; // id of this worker
-    std::shared_ptr<BasicJob> curr_job;
+    sptr<BasicJob> curr_job;
 
 
     // Basic constructor
-    Worker( std::shared_ptr<GlobalCtx> g_ctx, size_t id );
+    Worker( sptr<GlobalCtx> g_ctx, size_t id );
 
     // starts a new thread and executes free jobs from the GlobalCtx
     void work();
@@ -53,10 +53,10 @@ public:
     auto do_query( FuncT fn, const Args &... args ) -> decltype( auto );
 
     // Returns the global context used by this worker
-    std::shared_ptr<GlobalCtx> global_ctx() { return g_ctx; }
+    sptr<GlobalCtx> global_ctx() { return g_ctx; }
 
     // Returns the unit context for the current job
-    std::shared_ptr<UnitCtx> unit_ctx() { return curr_job->ctx; }
+    sptr<UnitCtx> unit_ctx() { return curr_job->ctx; }
 
     // Call this method in a job which does access volatile resources
     void set_curr_job_volatile();

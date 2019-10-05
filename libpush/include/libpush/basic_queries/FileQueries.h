@@ -17,10 +17,10 @@
 #include "libpush/UnitCtx.h"
 
 // NOT A QUERY! Returns a source input defined by the current prefs
-std::shared_ptr<SourceInput> get_source_input( const String file, Worker &w_ctx );
+sptr<SourceInput> get_source_input( const String file, Worker &w_ctx );
 
 // NOT A QUERY! Returns the path to the installed std-library path
-std::shared_ptr<String> get_std_dir();
+sptr<String> get_std_dir();
 
 // Extracts source lines from any file
 void get_source_lines( const String file, size_t line_begin, size_t line_end, JobsBuilder &jb, UnitCtx &ctx );

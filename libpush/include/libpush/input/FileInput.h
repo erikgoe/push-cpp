@@ -42,10 +42,10 @@ class FileInput : public SourceInput {
                                      size_t &curr_column, Token::Type &curr_tt );
 
 public:
-    FileInput( const String &file, size_t buffer_size, size_t max_read, std::shared_ptr<Worker> w_ctx );
+    FileInput( const String &file, size_t buffer_size, size_t max_read, sptr<Worker> w_ctx );
     ~FileInput();
 
-    std::shared_ptr<SourceInput> open_new_file( const String &file, std::shared_ptr<Worker> w_ctx );
+    sptr<SourceInput> open_new_file( const String &file, sptr<Worker> w_ctx );
     
     static bool file_exists( const String &file );
 

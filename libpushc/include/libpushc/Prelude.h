@@ -15,7 +15,7 @@
 #include "libpushc/stdafx.h"
 
 // Load a specific prelude by name into a PredudeConfig
-void load_prelude( std::shared_ptr<String> prelude, JobsBuilder &jb, UnitCtx &parent_ctx );
+void load_prelude( sptr<String> prelude, JobsBuilder &jb, UnitCtx &parent_ctx );
 
 // Loads a prelude file
-void load_prelude_file( std::shared_ptr<String> path, JobsBuilder &jb, UnitCtx &ctx );
+void load_prelude_file( sptr<String> path, JobsBuilder &jb, UnitCtx &ctx );

@@ -69,7 +69,7 @@ void highlight_lines( std::list<std::tuple<size_t, size_t, size_t, FmtStr::Color
 }
 
 void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo> &notes,
-                const std::vector<String> &note_messages, size_t line_offset, std::shared_ptr<Worker> w_ctx ) {
+                const std::vector<String> &note_messages, size_t line_offset, sptr<Worker> w_ctx ) {
     auto note_color = FmtStr::Color::Blue;
     auto regular_color = FmtStr::Color::Black;
 

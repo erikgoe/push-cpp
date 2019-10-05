@@ -14,7 +14,7 @@
 #pragma once
 
 template <MessageType MesT, typename... Args>
-FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
+FmtStr get_message( sptr<Worker> w_ctx, const MessageInfo &message,
                               const std::vector<MessageInfo> &notes, Args... head_args ) {
     FmtStr result = get_message_head<MesT>( head_args... );
     auto notes_list = get_message_notes<MesT>( head_args... );

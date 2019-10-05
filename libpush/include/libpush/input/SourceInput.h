@@ -43,14 +43,14 @@ struct Token {
     } type;
 
     String content;
-    std::shared_ptr<String> file; // The actual access goes through the SourceInput
+    sptr<String> file; // The actual access goes through the SourceInput
     size_t line = 0;
     size_t column = 0;
     size_t length = 0;
     String leading_ws; // contains the whitspace in front of this token
 
     Token() {}
-    Token( Type type, const String &content, std::shared_ptr<String> file, size_t line, size_t column, size_t length,
+    Token( Type type, const String &content, sptr<String> file, size_t line, size_t column, size_t length,
            const String &leading_ws ) {
         this->type = type;
         this->content = content;
@@ -135,8 +135,8 @@ struct TokenConfig {
 class SourceInput {
 protected:
     TokenConfig cfg;
-    std::shared_ptr<Worker> w_ctx;
-    std::shared_ptr<String> filename;
+    sptr<Worker> w_ctx;
+    sptr<String> filename;
     size_t revert_size; // max size of a operator, etc.
 
     // returns the type and (bounded) size of the last characters of a string
@@ -150,10 +150,10 @@ public:
     virtual void configure( const TokenConfig &cfg );
 
     // Opens a new source input for the given file
-    virtual std::shared_ptr<SourceInput> open_new_file( const String &file, std::shared_ptr<Worker> w_ctx ) = 0;
+    virtual sptr<SourceInput> open_new_file( const String &file, sptr<Worker> w_ctx ) = 0;
 
     // Returns the used filepath
-    virtual std::shared_ptr<String> get_filename() { return filename; }
+    virtual sptr<String> get_filename() { return filename; }
 
     // Get the next token from the stream.
     virtual Token get_token() = 0;

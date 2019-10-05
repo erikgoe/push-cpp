@@ -18,7 +18,7 @@
 
 // Local linker query, to build a new unit in its own context
 void build_unit( const String &unit_path, JobsBuilder &jb, UnitCtx &parent_ctx ) {
-    auto ctx = std::make_shared<UnitCtx>( std::make_shared<String>( unit_path ), parent_ctx.global_ctx() );
+    auto ctx = make_shared<UnitCtx>( make_shared<String>( unit_path ), parent_ctx.global_ctx() );
     jb.switch_context( ctx );
 
     jb.add_job<void>( []( Worker &w_ctx ) {

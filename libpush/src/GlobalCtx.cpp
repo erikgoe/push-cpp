@@ -18,7 +18,7 @@
 #include "libpush/UnitCtx.h"
 
 
-std::shared_ptr<Worker> GlobalCtx::setup( size_t thread_count, size_t cache_map_reserve ) {
+sptr<Worker> GlobalCtx::setup( size_t thread_count, size_t cache_map_reserve ) {
     if ( thread_count < 1 ) {
         LOG_ERR( "Must be at least one worker." );
     }
@@ -34,11 +34,11 @@ std::shared_ptr<Worker> GlobalCtx::setup( size_t thread_count, size_t cache_map_
     query_cache.reserve( cache_map_reserve );
 
     // Worker
-    std::shared_ptr<Worker> main_worker = std::make_shared<Worker>( shared_from_this(), 0 );
+    sptr<Worker> main_worker = make_shared<Worker>( shared_from_this(), 0 );
     worker.push_back( main_worker );
 
     for ( size_t i = 1; i < thread_count; i++ ) {
-        std::shared_ptr<Worker> w = std::make_shared<Worker>( shared_from_this(), i );
+        sptr<Worker> w = make_shared<Worker>( shared_from_this(), i );
         w->work();
         worker.push_back( w );
     }
@@ -47,8 +47,8 @@ std::shared_ptr<Worker> GlobalCtx::setup( size_t thread_count, size_t cache_map_
     return main_worker;
 }
 
-std::shared_ptr<UnitCtx> GlobalCtx::get_global_unit_ctx() {
-    return std::make_shared<UnitCtx>( std::make_shared<String>( "" ), shared_from_this() );
+sptr<UnitCtx> GlobalCtx::get_global_unit_ctx() {
+    return make_shared<UnitCtx>( make_shared<String>( "" ), shared_from_this() );
 }
 
 void GlobalCtx::wait_finished() {
@@ -57,8 +57,8 @@ void GlobalCtx::wait_finished() {
     }
 }
 
-std::shared_ptr<BasicJob> GlobalCtx::get_free_job() {
-    std::shared_ptr<BasicJob> ret_job;
+sptr<BasicJob> GlobalCtx::get_free_job() {
+    sptr<BasicJob> ret_job;
 
     Lock lock( job_mtx );
     while ( !open_jobs.empty() ) {

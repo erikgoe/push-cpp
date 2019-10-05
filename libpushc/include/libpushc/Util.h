@@ -15,10 +15,10 @@
 #include "libpushc/stdafx.h"
 
 // NOT A QUERY! Consumes a comment till the end
-void consume_comment( std::shared_ptr<SourceInput> &input, TokenConfig &conf );
+void consume_comment( sptr<SourceInput> &input, TokenConfig &conf );
 
 // Parse the content of a string
-String parse_string( std::shared_ptr<SourceInput> &input, Worker &w_ctx );
+String parse_string( sptr<SourceInput> &input, Worker &w_ctx );
 
 // Representation of any number
 struct Number {
@@ -63,7 +63,7 @@ struct Number {
 };
 
 // Pares a value
-Number parse_number( std::shared_ptr<SourceInput> &input, Worker &w_ctx, std::shared_ptr<PreludeConfig> &conf );
+Number parse_number( sptr<SourceInput> &input, Worker &w_ctx, sptr<PreludeConfig> &conf );
 
 // Returns true if \param element is in \param collection
 template <typename T, typename Collection>

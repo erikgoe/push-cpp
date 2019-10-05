@@ -22,18 +22,18 @@ class UnitCtx {
     static std::vector<String> known_files;
     static Mutex known_files_mtx;
 
-    std::shared_ptr<GlobalCtx> g_ctx;
+    sptr<GlobalCtx> g_ctx;
 
 public:
     // General data
-    std::shared_ptr<String> root_file; // main file of this compilation unit
+    sptr<String> root_file; // main file of this compilation unit
     size_t id; // uniquely identifies this compilation unit
 
     // Prelude configuration
     PreludeConfig prelude_conf;
     
     // Create a new unit context
-    UnitCtx( const std::shared_ptr<String> &filepath, std::shared_ptr<GlobalCtx> g_ctx ) {
+    UnitCtx( const sptr<String> &filepath, sptr<GlobalCtx> g_ctx ) {
         this->g_ctx = g_ctx;
         root_file = filepath;
 
@@ -48,5 +48,5 @@ public:
     }
 
     // Returns the global context
-    std::shared_ptr<GlobalCtx> global_ctx() { return g_ctx; }
+    sptr<GlobalCtx> global_ctx() { return g_ctx; }
 };

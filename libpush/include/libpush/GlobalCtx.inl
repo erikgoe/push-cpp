@@ -28,20 +28,20 @@ using return_t = typename ReturnType<T>::type;
 
 
 template <typename FuncT, typename... Args>
-auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
-    std::shared_ptr<UnitCtx> ctx;
+auto GlobalCtx::query_impl( FuncT fn, sptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
+    sptr<UnitCtx> ctx;
     if ( w_ctx && w_ctx->curr_job )
         ctx = w_ctx->curr_job->ctx;
     else
         ctx = get_global_unit_ctx();
 
     auto jc =
-        std::make_shared<JobCollection<return_t<decltype(fn)>>>();
+        make_shared<JobCollection<return_t<decltype(fn)>>>();
 
     auto fn_sig = FunctionSignature::create( fn, *ctx, args... );
     {
         Lock lock( query_cache_mtx );
-        std::shared_ptr<QueryCacheHead> head;
+        sptr<QueryCacheHead> head;
         if ( query_cache.find( fn_sig ) != query_cache.end() ) { // found cached
             head = query_cache[fn_sig];
             if ( !requires_run( *head ) ) { // cached state is valid
@@ -54,7 +54,7 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
                     head->jc->as_jc_ptr<return_t<decltype(fn)>>();
             }
         } else { // create new cache entry
-            head = std::make_shared<QueryCacheHead>( fn_sig, std::static_pointer_cast<BasicJobCollection>( jc ) );
+            head = make_shared<QueryCacheHead>( fn_sig, std::static_pointer_cast<BasicJobCollection>( jc ) );
             query_cache[fn_sig] = head;
         }
 
@@ -71,7 +71,7 @@ auto GlobalCtx::query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args 
         }
     }
 
-    JobsBuilder jb( std::make_shared<FunctionSignature>( fn_sig ), ctx );
+    JobsBuilder jb( make_shared<FunctionSignature>( fn_sig ), ctx );
 
     if ( abort_new_jobs ) // Abort because some other thread has stopped execution
         throw AbortCompilationError();
@@ -115,6 +115,6 @@ auto GlobalCtx::query( FuncT fn, Worker &w_ctx, const Args &... args ) -> declty
     return query_impl( fn, w_ctx.shared_from_this(), args... );
 }
 template <typename FuncT, typename... Args>
-auto GlobalCtx::query( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
+auto GlobalCtx::query( FuncT fn, sptr<Worker> w_ctx, const Args &... args ) -> decltype( auto ) {
     return query_impl( fn, w_ctx, args... );
 }

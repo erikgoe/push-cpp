@@ -49,9 +49,9 @@ TEST_CASE( "Message head", "[message]" ) {
 }
 
 TEST_CASE( "Message body", "[message]" ) {
-    auto g_ctx = std::make_shared<GlobalCtx>();
-    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 2 );
-    auto file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
+    auto g_ctx = make_shared<GlobalCtx>();
+    sptr<Worker> w_ctx = g_ctx->setup( 1, 2 );
+    auto file = make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
 
     { // Simple message
         auto output = get_message<MessageType::test_message>(
@@ -176,8 +176,8 @@ TEST_CASE( "Message body", "[message]" ) {
 }
 
 TEST_CASE( "Message count", "[message]" ) {
-    auto g_ctx = std::make_shared<GlobalCtx>();
-    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 4 );
+    auto g_ctx = make_shared<GlobalCtx>();
+    sptr<Worker> w_ctx = g_ctx->setup( 1, 4 );
 
     g_ctx->set_pref<SizeSV>( PrefType::max_notifications, 10 );
     g_ctx->update_global_prefs();

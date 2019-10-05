@@ -17,7 +17,7 @@
 #include "libpushc/Linker.h"
 
 void compile_new_unit( const String &file, JobsBuilder &jb, UnitCtx &parent_ctx ) {
-    auto ctx = std::make_shared<UnitCtx>( std::make_shared<String>( file ), parent_ctx.global_ctx() );
+    auto ctx = make_shared<UnitCtx>( make_shared<String>( file ), parent_ctx.global_ctx() );
     jb.switch_context( ctx );
     jb.add_job<void>( [file]( Worker &w_ctx ) {
         w_ctx.do_query( link_binary, file.to_path().replace_extension( ".exe" ).string() );

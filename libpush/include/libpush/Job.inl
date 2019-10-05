@@ -24,13 +24,13 @@ bool JobCollection<T>::is_finished() {
 }
 
 template <typename T>
-std::shared_ptr<JobCollection<T>> JobCollection<T>::wait() {
+sptr<JobCollection<T>> JobCollection<T>::wait() {
     g_ctx->wait_job_collection_finished( *this );
     return as_jc_ptr<T>();
 }
 
 template <typename T>
-std::shared_ptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool prevent_idle ) {
+sptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool prevent_idle ) {
     // handle open jobs
     auto prev_job = w_ctx.curr_job;
     for ( auto &job : jobs ) {

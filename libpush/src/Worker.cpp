@@ -16,7 +16,7 @@
 #include "libpush/Worker.h"
 #include "libpush/Message.h"
 
-Worker::Worker( std::shared_ptr<GlobalCtx> g_ctx, size_t id ) {
+Worker::Worker( sptr<GlobalCtx> g_ctx, size_t id ) {
     finish = false;
     this->g_ctx = g_ctx;
     this->id = id;

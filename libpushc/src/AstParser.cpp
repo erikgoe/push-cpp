@@ -15,19 +15,21 @@
 #include "libpushc/AstParser.h"
 #include "libpushc/Prelude.h"
 
+using TT = Token::Type;
+
 // Consume any amount of comments if any
 void consume_comment( SourceInput &input ) {
-    while ( input.preview_token().type == Token::Type::comment_begin ) {
+    while ( input.preview_token().type == TT::comment_begin ) {
         input.get_token(); // consume consume comment begin
         // Consume any token until the comment ends
-        while ( input.get_token().type != Token::Type::comment_end )
+        while ( input.get_token().type != TT::comment_end )
             ;
     }
 }
 
 // Check for an expected token and returns it. All preceding comments are ignored
 template <MessageType MesT>
-Token expect_token_or_comment( Token::Type type, SourceInput &input, Worker &worker ) {
+Token expect_token_or_comment( TT type, SourceInput &input, Worker &worker ) {
     consume_comment( input );
     Token t = input.get_token();
     if ( t.type != type ) {
@@ -39,12 +41,12 @@ Token expect_token_or_comment( Token::Type type, SourceInput &input, Worker &wor
 
 // Parse a following string. Including the string begin and end tokens
 String extract_string( SourceInput &input, Worker &worker ) {
-    expect_token_or_comment<MessageType::err_expected_string>( Token::Type::string_begin, input, worker );
+    expect_token_or_comment<MessageType::err_expected_string>( TT::string_begin, input, worker );
 
     String content;
     Token t;
-    while ( ( t = input.get_token() ).type != Token::Type::string_end ) {
-        if ( t.type == Token::Type::eof ) {
+    while ( ( t = input.get_token() ).type != TT::string_end ) {
+        if ( t.type == TT::eof ) {
             worker.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
             break;
         }
@@ -61,7 +63,7 @@ void select_prelude( SourceInput &input, Worker &worker ) {
     // Load prelude-prelude first
     log( "" );
     worker.unit_ctx()->prelude_conf =
-        worker.do_query( load_prelude, std::make_shared<String>( "prelude" ) )->jobs.front()->to<PreludeConfig>();
+        worker.do_query( load_prelude, make_shared<String>( "prelude" ) )->jobs.front()->to<PreludeConfig>();
     input.configure( worker.unit_ctx()->prelude_conf.token_conf );
 
     // Consume any leading comment
@@ -69,37 +71,37 @@ void select_prelude( SourceInput &input, Worker &worker ) {
 
     // Parse prelude command
     Token t = input.preview_token();
-    if ( t.type == Token::Type::op && t.content == "#" ) {
+    if ( t.type == TT::op && t.content == "#" ) {
         t = input.preview_next_token();
-        if ( t.type != Token::Type::identifier || t.content != "prelude" ) {
+        if ( t.type != TT::identifier || t.content != "prelude" ) {
             worker.print_msg<MessageType::err_malformed_prelude_command>( MessageInfo( t, 0, FmtStr::Color::Red ),
                                                                           std::vector<MessageInfo>{},
-                                                                          Token::get_name( Token::Type::identifier ) );
+                                                                          Token::get_name( TT::identifier ) );
         }
         input.get_token(); // consume
         input.get_token(); // consume
 
         // Found a prelude
-        expect_token_or_comment<MessageType::err_malformed_prelude_command>( Token::Type::term_begin, input, worker );
+        expect_token_or_comment<MessageType::err_malformed_prelude_command>( TT::term_begin, input, worker );
 
         t = input.preview_token();
-        if ( t.type == Token::Type::identifier ) {
+        if ( t.type == TT::identifier ) {
             input.get_token(); // consume
-            worker.do_query( load_prelude, std::make_shared<String>( t.content ) );
-        } else if ( t.type == Token::Type::string_begin ) {
+            worker.do_query( load_prelude, make_shared<String>( t.content ) );
+        } else if ( t.type == TT::string_begin ) {
             String path = extract_string( input, worker );
-            worker.do_query( load_prelude_file, std::make_shared<String>( path ) );
+            worker.do_query( load_prelude_file, make_shared<String>( path ) );
         } else {
             // invalid prelude identifier
             worker.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
             // load default prelude as fallback
-            worker.do_query( load_prelude, std::make_shared<String>( "push" ) );
+            worker.do_query( load_prelude, make_shared<String>( "push" ) );
         }
 
-        expect_token_or_comment<MessageType::err_malformed_prelude_command>( Token::Type::term_end, input, worker );
+        expect_token_or_comment<MessageType::err_malformed_prelude_command>( TT::term_end, input, worker );
     } else {
         // Load default prelude
-        worker.do_query( load_prelude, std::make_shared<String>( "push" ) );
+        worker.do_query( load_prelude, make_shared<String>( "push" ) );
     }
 }
 

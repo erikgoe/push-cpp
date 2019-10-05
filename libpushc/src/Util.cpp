@@ -14,7 +14,7 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/Util.h"
 
-void consume_comment( std::shared_ptr<SourceInput> &input, TokenConfig &conf ) {
+void consume_comment( sptr<SourceInput> &input, TokenConfig &conf ) {
     std::stack<String> comment_begin; // stack of token which start a comment
     do { // consume comment
         auto token = input->get_token();
@@ -34,7 +34,7 @@ void consume_comment( std::shared_ptr<SourceInput> &input, TokenConfig &conf ) {
     } while ( !comment_begin.empty() );
 }
 
-String parse_string( std::shared_ptr<SourceInput> &input, Worker &w_ctx ) {
+String parse_string( sptr<SourceInput> &input, Worker &w_ctx ) {
     auto token = input->get_token();
     if ( token.type != Token::Type::string_begin ) {
         LOG_ERR( "String does not start with Token::Type::string_begin." );
@@ -63,7 +63,7 @@ String parse_string( std::shared_ptr<SourceInput> &input, Worker &w_ctx ) {
     return ret;
 }
 
-Number parse_number( std::shared_ptr<SourceInput> &input, Worker &w_ctx, std::shared_ptr<PreludeConfig> &conf ) {
+Number parse_number( sptr<SourceInput> &input, Worker &w_ctx, sptr<PreludeConfig> &conf ) {
     Number num;
     String value;
 

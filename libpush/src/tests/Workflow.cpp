@@ -62,11 +62,11 @@ u32 compile_binary( const std::list<String> files, JobsBuilder &jb, UnitCtx &ctx
 }
 
 TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
-    auto g_ctx = std::make_shared<GlobalCtx>();
+    auto g_ctx = make_shared<GlobalCtx>();
 
     // LOG( "Start pass" );
-    std::shared_ptr<Worker> w_ctx;
-    std::shared_ptr<JobCollection<u32>> jc;
+    sptr<Worker> w_ctx;
+    sptr<JobCollection<u32>> jc;
     String check_result;
     SECTION( "simple files" ) {
         SECTION( "single threaded" ) { w_ctx = g_ctx->setup( 20 ); }
@@ -105,8 +105,8 @@ TEST_CASE( "Infrastructure", "[basic_workflow]" ) {
 }
 
 TEST_CASE( "Query caching", "[basic_workflow]" ) {
-    auto g_ctx = std::make_shared<GlobalCtx>();
-    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 8 );
+    auto g_ctx = make_shared<GlobalCtx>();
+    sptr<Worker> w_ctx = g_ctx->setup( 1, 8 );
 
     w_ctx->query( get_binary_from_source, std::list<String>{"a.b"} )->execute( *w_ctx )->wait();
     w_ctx->query( get_binary_from_source, std::list<String>{"a.b"} )->execute( *w_ctx )->wait();

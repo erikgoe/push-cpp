@@ -30,14 +30,14 @@ enum class MessageClass {
 };
 // Contains information about the sourcecode of a message
 struct MessageInfo {
-    std::shared_ptr<String> file;
+    sptr<String> file;
     u32 line_begin = 0, line_end = 0;
     u32 column = 0, length = 0;
     u32 message_idx = 0;
     FmtStr::Color color = FmtStr::Color::Blue;
 
     MessageInfo() {}
-    MessageInfo( std::shared_ptr<String> file, u32 line_begin, u32 line_end, u32 column, u32 length, u32 message_idx,
+    MessageInfo( sptr<String> file, u32 line_begin, u32 line_end, u32 column, u32 length, u32 message_idx,
                  FmtStr::Color color = FmtStr::Color::Blue ) {
         this->file = file;
         this->line_begin = line_begin;
@@ -142,11 +142,11 @@ std::vector<String> get_message_notes( Args... args ) {
 
 // Internally used by get_message() to print the messages for one file
 void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo> &notes,
-                const std::vector<String> &note_messages, size_t line_offset, std::shared_ptr<Worker> w_ctx );
+                const std::vector<String> &note_messages, size_t line_offset, sptr<Worker> w_ctx );
 
 // Returns a formatted message which can be shown to the user
 template <MessageType MesT, typename... Args>
-FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message, const std::vector<MessageInfo> &notes,
+FmtStr get_message( sptr<Worker> w_ctx, const MessageInfo &message, const std::vector<MessageInfo> &notes,
                     Args... head_args );
 
 // Prints

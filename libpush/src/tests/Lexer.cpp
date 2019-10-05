@@ -42,8 +42,8 @@ struct StringMaker<Token> {
 } // namespace Catch
 
 TEST_CASE( "Basic lexing", "[lexer]" ) {
-    auto g_ctx = std::make_shared<GlobalCtx>();
-    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
+    auto g_ctx = make_shared<GlobalCtx>();
+    sptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
 
     FileInput fin( CMAKE_PROJECT_ROOT "/Test/lexer.push", 5000, 4096, w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();
@@ -69,7 +69,7 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     LOG( "Lexer took " + to_string( std::chrono::duration_cast<std::chrono::microseconds>( duration ).count() ) +
          " microseconds." );
 
-    auto test_file = std::make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
+    auto test_file = make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
     std::list<Token> token_check_list{
         Token( Token::Type::comment_begin, "//", test_file, 1, 1, 2, "" ),
         Token( Token::Type::identifier, "testing", test_file, 1, 4, 7, " " ),
@@ -140,8 +140,8 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
 
 #ifndef _DEBUG
 TEST_CASE( "Stress test lexing", "[lexer]" ) {
-    auto g_ctx = std::make_shared<GlobalCtx>();
-    std::shared_ptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
+    auto g_ctx = make_shared<GlobalCtx>();
+    sptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
 
     FileInput fin( CMAKE_PROJECT_ROOT "/Test/gibberish.txt", 50, 30, w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();

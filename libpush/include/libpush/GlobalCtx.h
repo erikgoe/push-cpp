@@ -28,12 +28,12 @@ struct QueryCacheHead {
         0b111; // the cached value is valid but must be recalculated the next incremental build
 
     FunctionSignature func; // signature of the query
-    std::shared_ptr<BasicJobCollection> jc; // cached data
+    sptr<BasicJobCollection> jc; // cached data
     u8 state = STATE_RED; // current state of the query
     u32 complexity = 0; // TODO
-    std::list<std::shared_ptr<QueryCacheHead>> sub_dag; // queries which are called in this query
+    std::list<sptr<QueryCacheHead>> sub_dag; // queries which are called in this query
 
-    QueryCacheHead( const FunctionSignature &func, const std::shared_ptr<BasicJobCollection> &jc ) {
+    QueryCacheHead( const FunctionSignature &func, const sptr<BasicJobCollection> &jc ) {
         this->func = func;
         this->jc = jc;
     }
@@ -42,13 +42,13 @@ struct QueryCacheHead {
 // Manages compilation queries, jobs, workers and settings.
 class GlobalCtx : public std::enable_shared_from_this<GlobalCtx> {
     // Stores a list of all worker threads including the main thread
-    std::list<std::shared_ptr<Worker>> worker;
+    std::list<sptr<Worker>> worker;
 
 
     // Handles access to open_jobs, no_jobs, jobs_cv from multiple threads
     Mutex job_mtx;
     // All jobs which have to be executed
-    std::stack<std::shared_ptr<BasicJob>> open_jobs;
+    std::stack<sptr<BasicJob>> open_jobs;
     // Is true if no free jobs exist. Helps to wake up threads when new jobs occur.
     bool no_jobs = false;
     // Enables waiting for jobs
@@ -60,7 +60,7 @@ class GlobalCtx : public std::enable_shared_from_this<GlobalCtx> {
 
     Mutex query_cache_mtx;
     // Enables caching of queries
-    std::unordered_map<FunctionSignature, std::shared_ptr<QueryCacheHead>> query_cache;
+    std::unordered_map<FunctionSignature, sptr<QueryCacheHead>> query_cache;
 
 
     Mutex pref_mtx; // used for async preference access
@@ -68,7 +68,7 @@ class GlobalCtx : public std::enable_shared_from_this<GlobalCtx> {
 
 
     template <typename FuncT, typename... Args>
-    auto query_impl( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto );
+    auto query_impl( FuncT fn, sptr<Worker> w_ctx, const Args &... args ) -> decltype( auto );
 
 public:
     // Public data
@@ -84,7 +84,7 @@ public:
 
     // Initialize the global context and the whole compiler infrastructure and return the main worker. \param
     // thread_count is the total amount of workers (including this thread).
-    std::shared_ptr<Worker> setup( size_t thread_count, size_t cache_map_reserve = 256 );
+    sptr<Worker> setup( size_t thread_count, size_t cache_map_reserve = 256 );
 
     // In incremental build this method should be called before a new run
     void reset() {
@@ -110,10 +110,10 @@ public:
     // \param args defines the argument provided for the query implementation. The first job from the query is
     // reserved for the calling worker and is thus not in the open_jobs list.
     template <typename FuncT, typename... Args>
-    auto query( FuncT fn, std::shared_ptr<Worker> w_ctx, const Args &... args ) -> decltype( auto );
+    auto query( FuncT fn, sptr<Worker> w_ctx, const Args &... args ) -> decltype( auto );
 
     // Returns the root unit context. Use it only to create new build queries.
-    std::shared_ptr<UnitCtx> get_global_unit_ctx();
+    sptr<UnitCtx> get_global_unit_ctx();
 
     // Waits until all workers have finished. Call this method only from the main thread.
     void wait_finished();
@@ -121,7 +121,7 @@ public:
     // Returns a free job or nullptr if no free job exist.
     // The returned job will always have the "free" status.
     // NOTE: nullptr is returned if no free jobs where found.
-    std::shared_ptr<BasicJob> get_free_job();
+    sptr<BasicJob> get_free_job();
 
     // Cancel all waiting jobs and abort compilation (AbortCompilationError is thrown)
     void abort_compilation();
@@ -155,7 +155,7 @@ public:
 
     // Prints a message to the user
     template <MessageType MesT, typename... Args>
-    void print_msg( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
+    void print_msg( sptr<Worker> w_ctx, const MessageInfo &message,
                               const std::vector<MessageInfo> &notes, Args... head_args ) {
         print_msg_to_stdout( get_message<MesT>( w_ctx, message, notes, head_args... ) );
         if ( MesT < MessageType::error ) // fatal error
