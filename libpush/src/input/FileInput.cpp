@@ -80,7 +80,7 @@ std::shared_ptr<SourceInput> FileInput::open_new_file( const String &file, std::
 }
 
 bool FileInput::file_exists( const String &file ) {
-    return fs::exists( file.to_path() );
+    return fs::exists( file.to_path() ) && fs::is_regular_file( file.to_path() );
 }
 
 Token FileInput::get_token_impl( char *&ptr, u32 &in_string, u32 &in_comment, size_t &curr_line, size_t &curr_column,
