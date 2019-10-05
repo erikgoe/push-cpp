@@ -70,6 +70,41 @@ struct Token {
                ( file == other.file || ( file && other.file && *file == *other.file ) ) && line == other.line &&
                column == other.column && length == other.length && leading_ws == other.leading_ws;
     }
+
+    // Returns a human readable representation of a token type
+    static const String get_name( Type type ) {
+        return type == Type::stat_divider
+                   ? "end of expression"
+                   : type == Type::block_begin
+                         ? "begin of block"
+                         : type == Type::block_end
+                               ? "end of block"
+                               : type == Type::term_begin || type == Type::term_end
+                                     ? "parenthesis"
+                                     : type == Type::comment_begin
+                                           ? "begin of comment"
+                                           : type == Type::comment_end
+                                                 ? "end of comment"
+                                                 : type == Type::number || type == Type::number_float
+                                                       ? "number literal"
+                                                       : type == Type::encoded_char
+                                                             ? "encoded character literal"
+                                                             : type == Type::string_begin
+                                                                   ? "begin of string"
+                                                                   : type == Type::string_end
+                                                                         ? "end of string"
+                                                                         : type == Type::op
+                                                                               ? "operator"
+                                                                               : type == Type::keyword
+                                                                                     ? "keyword"
+                                                                                     : type == Type::identifier
+                                                                                           ? "identifier"
+                                                                                           : type == Type::eof
+                                                                                                 ? "end of file"
+                                                                                                 : type == Type::ws
+                                                                                                       ? "whitespace"
+                                                                                                       : "token";
+    }
 };
 
 // Very basic set of rules to define how strings are divided into token lists

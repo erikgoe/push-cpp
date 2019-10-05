@@ -116,6 +116,8 @@ void load_prelude( std::shared_ptr<String> prelude, JobsBuilder &jb, UnitCtx &ct
                 ( *filepath ) += "/prelude/push.push";
             } else if ( *prelude == "project" ) {
                 ( *filepath ) += "/prelude/project.push";
+            } else {
+                w_ctx.print_msg<MessageType::err_invalid_prelude>( MessageInfo() );
             }
             ctx->prelude_conf = get_prelude_prelude();
             prelude_conf =

@@ -51,6 +51,9 @@ struct MessageInfo {
         this->message_idx = message_idx;
         this->color = color;
     }
+    MessageInfo( const Token &t, u32 message_idx = 0, FmtStr::Color color = FmtStr::Color::Blue )
+            : MessageInfo( t.file, t.line, t.line, t.column, t.length, message_idx, color ) {}
+
     bool operator<( const MessageInfo &other ) const {
         return ( file == other.file ? line_begin < other.line_begin : file < other.file );
     }
@@ -68,7 +71,8 @@ template <MessageType MesT, typename... Args>
 struct get_message_head_impl {
     static FmtStr impl( Args... args ) {
         /*static_assert( false,
-                       "No message head information was found for this MessageType. Implement it in \"Message.inl\"" );*/
+                       "No message head information was found for this MessageType. Implement it in \"Message.inl\""
+           );*/
         return {};
     }
 };
@@ -84,7 +88,8 @@ template <MessageType MesT, typename... Args>
 struct get_message_notes_impl {
     static std::vector<String> impl( Args... args ) {
         /*static_assert( false,
-                       "No message note information was found for this MessageType. Implement it in \"Message.inl\"" );*/
+                       "No message note information was found for this MessageType. Implement it in \"Message.inl\""
+           );*/
         return {};
     }
 };
@@ -99,7 +104,7 @@ std::vector<String> get_message_notes( Args... args ) {
 #define MESSAGE_DEFINITION( id, classid, source_symbol, msg, ... )                                               \
     template <typename... Args>                                                                                  \
     struct get_message_head_impl<id, Args...> {                                                                  \
-        static FmtStr impl( Args... args ) {                                                           \
+        static FmtStr impl( Args... args ) {                                                                     \
             auto at = std::make_tuple( args... );                                                                \
             FmtStr::Color message_class_clr =                                                                    \
                 ( classid == MessageClass::Notification                                                          \
@@ -120,7 +125,7 @@ std::vector<String> get_message_notes( Args... args ) {
     };                                                                                                           \
     template <typename... Args>                                                                                  \
     struct get_message_notes_impl<id, Args...> {                                                                 \
-        static std::vector<String> impl( Args... args ) {                                              \
+        static std::vector<String> impl( Args... args ) {                                                        \
             auto at = std::make_tuple( args... );                                                                \
             return std::vector<String>{ __VA_ARGS__ };                                                           \
         }                                                                                                        \
@@ -141,8 +146,8 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
 
 // Returns a formatted message which can be shown to the user
 template <MessageType MesT, typename... Args>
-FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message,
-                              const std::vector<MessageInfo> &notes, Args... head_args );
+FmtStr get_message( std::shared_ptr<Worker> w_ctx, const MessageInfo &message, const std::vector<MessageInfo> &notes,
+                    Args... head_args );
 
 // Prints
 void print_msg_to_stdout( FmtStr str );

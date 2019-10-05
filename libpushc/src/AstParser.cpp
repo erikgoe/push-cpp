@@ -13,15 +13,108 @@
 
 #include "libpushc/stdafx.h"
 #include "libpushc/AstParser.h"
+#include "libpushc/Prelude.h"
+
+// Consume any amount of comments if any
+void consume_comment( SourceInput &input ) {
+    while ( input.preview_token().type == Token::Type::comment_begin ) {
+        input.get_token(); // consume consume comment begin
+        // Consume any token until the comment ends
+        while ( input.get_token().type != Token::Type::comment_end )
+            ;
+    }
+}
+
+// Check for an expected token and returns it. All preceding comments are ignored
+template <MessageType MesT>
+Token expect_token_or_comment( Token::Type type, SourceInput &input, Worker &worker ) {
+    consume_comment( input );
+    Token t = input.get_token();
+    if ( t.type != type ) {
+        worker.print_msg<MesT>( MessageInfo( t, 0, FmtStr::Color::Red ), std::vector<MessageInfo>{},
+                                Token::get_name( type ) );
+    }
+    return t;
+}
+
+// Parse a following string. Including the string begin and end tokens
+String extract_string( SourceInput &input, Worker &worker ) {
+    expect_token_or_comment<MessageType::err_expected_string>( Token::Type::string_begin, input, worker );
+
+    String content;
+    Token t;
+    while ( ( t = input.get_token() ).type != Token::Type::string_end ) {
+        if ( t.type == Token::Type::eof ) {
+            worker.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
+            break;
+        }
+        content += t.leading_ws + t.content;
+    }
+    content += t.leading_ws;
+
+    return content;
+}
+
+// Checks if a prelude is defined and loads the proper prelude.
+// Should be called at the beginning of a file
+void select_prelude( SourceInput &input, Worker &worker ) {
+    // Load prelude-prelude first
+    log( "" );
+    worker.unit_ctx()->prelude_conf =
+        worker.do_query( load_prelude, std::make_shared<String>( "prelude" ) )->jobs.front()->to<PreludeConfig>();
+    input.configure( worker.unit_ctx()->prelude_conf.token_conf );
+
+    // Consume any leading comment
+    consume_comment( input );
+
+    // Parse prelude command
+    Token t = input.preview_token();
+    if ( t.type == Token::Type::op && t.content == "#" ) {
+        t = input.preview_next_token();
+        if ( t.type != Token::Type::identifier || t.content != "prelude" ) {
+            worker.print_msg<MessageType::err_malformed_prelude_command>( MessageInfo( t, 0, FmtStr::Color::Red ),
+                                                                          std::vector<MessageInfo>{},
+                                                                          Token::get_name( Token::Type::identifier ) );
+        }
+        input.get_token(); // consume
+        input.get_token(); // consume
+
+        // Found a prelude
+        expect_token_or_comment<MessageType::err_malformed_prelude_command>( Token::Type::term_begin, input, worker );
+
+        t = input.preview_token();
+        if ( t.type == Token::Type::identifier ) {
+            input.get_token(); // consume
+            worker.do_query( load_prelude, std::make_shared<String>( t.content ) );
+        } else if ( t.type == Token::Type::string_begin ) {
+            String path = extract_string( input, worker );
+            worker.do_query( load_prelude_file, std::make_shared<String>( path ) );
+        } else {
+            // invalid prelude identifier
+            worker.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
+            // load default prelude as fallback
+            worker.do_query( load_prelude, std::make_shared<String>( "push" ) );
+        }
+
+        expect_token_or_comment<MessageType::err_malformed_prelude_command>( Token::Type::term_end, input, worker );
+    } else {
+        // Load default prelude
+        worker.do_query( load_prelude, std::make_shared<String>( "push" ) );
+    }
+}
 
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
-    jb.add_job<void>( []( Worker &w_ctx ) {
-        w_ctx.do_query( parse_ast );
-    } );
+    jb.add_job<void>( []( Worker &w_ctx ) { w_ctx.do_query( parse_ast ); } );
 }
 
 void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) {
+        auto input = get_source_input( *w_ctx.unit_ctx()->root_file, w_ctx );
+        if ( !input )
+            return;
 
+        select_prelude( *input, w_ctx );
+
+        
     } );
 }

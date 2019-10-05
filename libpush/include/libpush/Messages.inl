@@ -33,6 +33,11 @@ enum class MessageType {
     err_feature_curr_not_supported,
     err_parse_number,
 
+    err_unexpected_eof,
+    err_malformed_prelude_command,
+    err_expected_string,
+    err_invalid_prelude,
+
     warning = 5000,
 
     notification = 10000,
@@ -57,6 +62,7 @@ MESSAGE_DEFINITION( MessageType::ferr_file_not_found, MessageClass::FatalError, 
 MESSAGE_DEFINITION( MessageType::ferr_failed_prelude, MessageClass::FatalError, "I",
                     "Failed to load prelude \"" + GET_ARG( 0 ) + "\"." );
 
+
 MESSAGE_DEFINITION( MessageType::err_unknown_source_input_pref, MessageClass::Error, "I",
                     "Unknown source input type `" + GET_ARG( 0 ) + "` for file `" + GET_ARG( 1 ) + "`." );
 MESSAGE_DEFINITION( MessageType::err_unexpected_eof_at_line_query, MessageClass::Error, "I",
@@ -79,8 +85,16 @@ MESSAGE_DEFINITION( MessageType::err_parse_mci_rule, MessageClass::Error, "I", "
 MESSAGE_DEFINITION( MessageType::err_unknown_mci, MessageClass::Error, "I", "Unknown MCI `" + GET_ARG( 0 ) + "`.", "" );
 MESSAGE_DEFINITION( MessageType::err_feature_curr_not_supported, MessageClass::Error, "X",
                     "The feature `" + GET_ARG( 0 ) + "` is not suppported in this compiler version.", "" );
-MESSAGE_DEFINITION( MessageType::err_parse_number, MessageClass::Error, "I",
-                    "Failed to parse number literal value.", "" );
+MESSAGE_DEFINITION( MessageType::err_parse_number, MessageClass::Error, "I", "Failed to parse number literal value.",
+                    "" );
+
+MESSAGE_DEFINITION( MessageType::err_unexpected_eof, MessageClass::Error, "C", "Unexpected end of file.", "" );
+MESSAGE_DEFINITION( MessageType::err_malformed_prelude_command, MessageClass::Error, "C",
+                    "Malformed prelude command. Expected " + GET_ARG( 0 ) + ".", "" );
+MESSAGE_DEFINITION( MessageType::err_expected_string, MessageClass::Error, "C", "Expected string.", "" );
+MESSAGE_DEFINITION( MessageType::err_invalid_prelude, MessageClass::Error, "C",
+                    "The given prelude name or path is invalid.", "" );
+
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",
                     "global information text" );

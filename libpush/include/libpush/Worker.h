@@ -63,5 +63,6 @@ public:
 
     // Prints a message to the user
     template <MessageType MesT, typename... Args>
-    constexpr void print_msg( const MessageInfo &message, const std::vector<MessageInfo> &notes, Args... head_args );
+    constexpr void print_msg( const MessageInfo &message,
+                              const std::vector<MessageInfo> &notes = std::vector<MessageInfo>(), Args... head_args );
 };
