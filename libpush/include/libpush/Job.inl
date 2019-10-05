@@ -32,13 +32,14 @@ std::shared_ptr<JobCollection<T>> JobCollection<T>::wait() {
 template <typename T>
 std::shared_ptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool prevent_idle ) {
     // handle open jobs
+    auto prev_job = w_ctx.curr_job;
     for ( auto &job : jobs ) {
         w_ctx.curr_job = job;
         job->run( w_ctx ); // the job itself will check if it's free
         if ( !g_ctx->jobs_allowed() )
             throw AbortCompilationError();
     }
-    w_ctx.curr_job = nullptr;
+    w_ctx.curr_job = prev_job;
 
     // prevent idle when jobs are still executed
     if ( prevent_idle ) {
@@ -52,7 +53,7 @@ std::shared_ptr<JobCollection<T>> JobCollection<T>::execute( Worker &w_ctx, bool
             } else
                 break; // Return because there are no more free jobs
         }
-        w_ctx.curr_job = nullptr;
+        w_ctx.curr_job = prev_job;
     }
 
     return as_jc_ptr<T>();
