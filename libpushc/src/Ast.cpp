@@ -12,7 +12,7 @@
 // limitations under the License.
 
 #include "libpushc/stdafx.h"
-#include "libpushc/Expression.h"
+#include "libpushc/Ast.h"
 
 bool SyntaxRule::matches_end( std::vector<sptr<Expr>> &list ) {
     if ( list.size() < expr_list.size() )

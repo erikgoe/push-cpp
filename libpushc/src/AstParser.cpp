@@ -14,6 +14,8 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/AstParser.h"
 #include "libpushc/Prelude.h"
+#include "libpushc/Expression.h"
+#include "libpushc/Ast.h"
 
 using TT = Token::Type;
 
@@ -219,5 +221,9 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
         // parse global scope
         a_ctx.ast.block = parse_scope( *input, w_ctx, a_ctx, TT::eof );
+
+        log( "AST ----------" );
+        log( a_ctx.ast.block->get_debug_repr() );
+        log( "   -----------" );
     } );
 }
