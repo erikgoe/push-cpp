@@ -145,6 +145,9 @@ class FuncDefExpr : public SeparableExpr {
     sptr<SymbolExpr> symbol;
 
 public:
+    FuncDefExpr() {}
+    FuncDefExpr( sptr<SymbolExpr> symbol ) { this->symbol = symbol; }
+
     TypeId get_type() override { return type; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncDefExpr>( other ) != nullptr; }

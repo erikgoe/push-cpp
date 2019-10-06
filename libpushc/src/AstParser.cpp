@@ -114,6 +114,58 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
     input.configure( w_ctx.unit_ctx()->prelude_conf.token_conf );
 }
 
+// Translate a syntax into a syntax rule
+SyntaxRule parse_rule( Syntax &syntax_list ) {
+    SyntaxRule sr;
+    for ( auto &expr : syntax_list ) {
+        if ( expr.first == "expr" ) {
+            sr.expr_list.push_back( make_shared<Expr>() );
+        } else if ( expr.first == "identifier" ) {
+            sr.expr_list.push_back( make_shared<SymbolExpr>() );
+        } else if ( expr.first == "identifier_list" ) {
+            // TODO
+        } else if ( expr.first == "expr_block" ) {
+            sr.expr_list.push_back( make_shared<BlockExpr>() );
+        } else if ( expr.first == "assignment" ) {
+            sr.expr_list.push_back( make_shared<AssignExpr>() );
+        } else if ( expr.first == "iterator" ) {
+            // TODO
+        } else {
+            // Keyword or operator
+            sr.expr_list.push_back( make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "" ) ) );
+        }
+    }
+    return sr;
+}
+
+// Translates the prelude syntax rules into ast syntax rules
+void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
+    auto pc = w_ctx.unit_ctx()->prelude_conf;
+
+    // TODO handle function definitions and declarations separately
+    for ( auto &f : pc.fn_definitions ) {
+        auto new_rule = parse_rule( f.syntax );
+        new_rule.matching_expr = make_shared<FuncDefExpr>();
+        new_rule.create = []( auto &list ) {
+            return make_shared<FuncDefExpr>( std::dynamic_pointer_cast<SymbolExpr>( list.front() ) );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+
+    for ( auto &o : pc.operators ) {
+        auto new_rule = parse_rule( o.op.syntax );
+        new_rule.precedence = o.op.precedence;
+        new_rule.matching_expr = make_shared<OperatorExpr>();
+        new_rule.create = []( auto &list ) {
+            return make_shared<OperatorExpr>(); // TODO
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+
+    // Sort rules after precedence
+    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto l, auto r ) { return l.precedence > r.precedence; } );
+}
+
 // Parses a scope into the ast. Used recursively
 sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token ) {
     std::vector<sptr<Expr>> expr_list;
@@ -181,50 +233,6 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
     }
 }
 
-// Translate a syntax into a syntax rule
-SyntaxRule parse_rule( Syntax &syntax_list ) {
-    SyntaxRule sr;
-    for ( auto &expr : syntax_list ) {
-        if ( expr.first == "expr" ) {
-            sr.expr_list.push_back( make_shared<Expr>() );
-        } else if ( expr.first == "identifier" ) {
-            sr.expr_list.push_back( make_shared<SymbolExpr>() );
-        } else if ( expr.first == "identifier_list" ) {
-            // TODO
-        } else if ( expr.first == "expr_block" ) {
-            sr.expr_list.push_back( make_shared<BlockExpr>() );
-        } else if ( expr.first == "assignment" ) {
-            sr.expr_list.push_back( make_shared<AssignExpr>() );
-        } else if ( expr.first == "iterator" ) {
-            // TODO
-        } else {
-            // Keyword or operator
-            sr.expr_list.push_back( make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "" ) ) );
-        }
-    }
-    return sr;
-}
-
-// Translates the prelude syntax rules into ast syntax rules
-void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
-    auto pc = w_ctx.unit_ctx()->prelude_conf;
-
-    for ( auto &f : pc.fn_definitions ) {
-        auto new_rule = parse_rule( f.syntax );
-        new_rule.matching_expr = make_shared<FuncDefExpr>();
-        a_ctx.rules.push_back( new_rule );
-    }
-
-    for ( auto &o : pc.operators ) {
-        auto new_rule = parse_rule( o.op.syntax );
-        new_rule.precedence = o.op.precedence;
-        new_rule.matching_expr = make_shared<OperatorExpr>();
-        a_ctx.rules.push_back( new_rule );
-    }
-
-    // Sort rules after precedence
-    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto l, auto r ) { return l.precedence > r.precedence; } );
-}
 
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) { w_ctx.do_query( parse_ast ); } );
@@ -258,7 +266,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
             }
             log( " " + to_string( s.id ) + " - " + name );
         }
-        log( " -------------" );
+        log( "--------------" );
         auto duration = std::chrono::system_clock::now() - start_time;
         log( "Took " + to_string( duration.count() / 1000000 ) + " milliseconds" );
     } );
