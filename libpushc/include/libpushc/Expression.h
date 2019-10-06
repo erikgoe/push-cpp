@@ -33,6 +33,8 @@ public:
 
     // Checks if matches the expression
     virtual bool matches( sptr<Expr> other ) { return std::dynamic_pointer_cast<Expr>( other ) != nullptr; }
+
+    virtual String get_debug_repr() { return "EXPR"; }
 };
 
 // Used internally to handle a single token as expr. Must be resolved to other expressions
@@ -49,6 +51,8 @@ public:
         auto o = std::dynamic_pointer_cast<TokenExpr>( other );
         return o != nullptr && t.content == o->t.content;
     }
+
+    String get_debug_repr() override { return "TOKEN \"" + t.content + "\""; }
 };
 
 // Normally the global scope as root-expression
@@ -57,6 +61,13 @@ public:
     std::vector<sptr<Expr>> sub_expr;
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        String str = "GLOBAL { ";
+        for ( auto &s : sub_expr )
+            str += s->get_debug_repr() + ",";
+        return str + " }";
+    }
 };
 
 // A Block with multiple expressions
@@ -67,17 +78,26 @@ public:
     TypeId get_type() override { return sub_expr.empty() ? TYPE_UNIT : sub_expr.back()->get_type(); }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<BlockExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        String str = "BLOCK { ";
+        for ( auto &s : sub_expr )
+            str += s->get_debug_repr() + ",";
+        return str + " }";
+    }
 };
 
 // A simple symbol/identifier (variable, function, etc.)
 class SymbolExpr : public Expr {
+public:
     TypeId type;
     SymbolId symbol;
 
-public:
     TypeId get_type() override { return type; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "SYMBOL (" + to_string( symbol ) + ")"; }
 };
 
 // Base class for a simple literal
@@ -92,6 +112,13 @@ public:
     TypeId get_type() override { return type; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<LiteralExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        String str = "BLOB_LITERAL (";
+        for ( auto &b : blob )
+            str += to_string( b->get_debug_repr() ) + ","; // TODO hex representation
+        return str + ")";
+    }
 };
 
 // An expression which can be broken into multiple sub-expressions by other rvalues/operators
@@ -121,6 +148,8 @@ public:
     TypeId get_type() override { return type; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncDefExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "FUNC_DEF (" + to_string( type ) + " " + symbol->get_debug_repr() + ")"; }
 };
 
 // Specifies a new funcion
@@ -132,6 +161,7 @@ public:
     TypeId get_type() override { return head->get_type(); }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncExpr>( other ) != nullptr; }
+    String get_debug_repr() override { return "FUNC (" + head->get_debug_repr() + " " + body->get_debug_repr() + ")"; }
 };
 
 class OperatorExpr : public SeparableExpr {
@@ -143,6 +173,10 @@ public:
     TypeId get_type() override { return lvalue->get_type(); }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<OperatorExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "OPERATOR (" + lvalue->get_debug_repr() + " " + op + " " + rvalue->get_debug_repr() + ")";
+    }
 };
 
 // Assigns a rvalue to a lvalue

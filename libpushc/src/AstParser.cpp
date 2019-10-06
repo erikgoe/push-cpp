@@ -73,6 +73,7 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 
     // Parse prelude command
     Token t = input.preview_token();
+    PreludeConfig p_conf;
     if ( t.type == TT::op && t.content == "#" ) {
         t = input.preview_next_token();
         if ( t.type != TT::identifier || t.content != "prelude" ) {
@@ -89,22 +90,28 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
         t = input.preview_token();
         if ( t.type == TT::identifier ) {
             input.get_token(); // consume
-            w_ctx.do_query( load_prelude, make_shared<String>( t.content ) );
+            p_conf = w_ctx.do_query( load_prelude, make_shared<String>( t.content ) )->jobs.back()->to<PreludeConfig>();
         } else if ( t.type == TT::string_begin ) {
             String path = extract_string( input, w_ctx );
-            w_ctx.do_query( load_prelude_file, make_shared<String>( path ) );
+            p_conf = *w_ctx.do_query( load_prelude_file, make_shared<String>( path ) )
+                          ->jobs.back()
+                          ->to<sptr<PreludeConfig>>();
         } else {
             // invalid prelude identifier
             w_ctx.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
             // load default prelude as fallback
-            w_ctx.do_query( load_prelude, make_shared<String>( "push" ) );
+            p_conf = w_ctx.do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
         }
 
         expect_token_or_comment<MessageType::err_malformed_prelude_command>( TT::term_end, input, w_ctx );
     } else {
         // Load default prelude
-        w_ctx.do_query( load_prelude, make_shared<String>( "push" ) );
+        p_conf = w_ctx.do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
     }
+
+    // Load the actual configuration
+    w_ctx.unit_ctx()->prelude_conf = p_conf;
+    input.configure( w_ctx.unit_ctx()->prelude_conf.token_conf );
 }
 
 // Parses a scope into the ast. Used recursively
@@ -113,6 +120,7 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
 
     while ( true ) {
         // Load the next token
+        consume_comment( input );
         auto t = input.get_token();
         if ( t.type == end_token ) {
             break;
@@ -120,10 +128,26 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
             w_ctx.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
             break;
         } else if ( t.type == TT::block_begin || t.type == TT::term_begin ) {
+            // TODO change a_ctx.next_symbol.name_chain to procede into new scope
             expr_list.push_back(
                 parse_scope( input, w_ctx, a_ctx, ( t.type == TT::block_begin ? TT::block_end : TT::term_end ) ) );
+            continue;
+        } else if ( t.type == TT::identifier ) {
+            auto expr = make_shared<SymbolExpr>();
+
+            // Create a new symbol TODO maybe extract into own function
+            expr->symbol = a_ctx.next_symbol.id++;
+            auto &sm = a_ctx.ast.symbol_map;
+            if ( sm.size() <= expr->symbol )
+                sm.resize( expr->symbol + 1 );
+            sm[expr->symbol].id = expr->symbol;
+            sm[expr->symbol].name_chain = a_ctx.next_symbol.name_chain;
+            sm[expr->symbol].name_chain.push_back( t.content );
+
+            expr_list.push_back( expr );
+        } else {
+            expr_list.push_back( make_shared<TokenExpr>( t ) );
         }
-        expr_list.push_back( make_shared<TokenExpr>( t ) );
 
         // Test new token
         bool recheck = false; // used to test if a new rule matches after one was applied
@@ -199,7 +223,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     }
 
     // Sort rules after precedence
-    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto l, auto r ) { return l.precedence - r.precedence; } );
+    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto l, auto r ) { return l.precedence > r.precedence; } );
 }
 
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
@@ -208,6 +232,7 @@ void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
 void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) {
+        auto start_time = std::chrono::system_clock::now();
         auto input = get_source_input( *w_ctx.unit_ctx()->root_file, w_ctx );
         if ( !input )
             return;
@@ -222,8 +247,19 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         // parse global scope
         a_ctx.ast.block = parse_scope( *input, w_ctx, a_ctx, TT::eof );
 
+        // DEBUG print AST
         log( "AST ----------" );
-        log( a_ctx.ast.block->get_debug_repr() );
-        log( "   -----------" );
+        log( " " + a_ctx.ast.block->get_debug_repr().replace_all( "{", "{\n" ).replace_all( "}", "\n }" ) );
+        log( "SYMBOLS ------" );
+        for ( auto &s : a_ctx.ast.symbol_map ) {
+            String name;
+            for ( auto &c : s.name_chain ) {
+                name += "::" + c;
+            }
+            log( " " + to_string( s.id ) + " - " + name );
+        }
+        log( " -------------" );
+        auto duration = std::chrono::system_clock::now() - start_time;
+        log( "Took " + to_string( duration.count() / 1000000 ) + " milliseconds" );
     } );
 }
