@@ -5,6 +5,7 @@ add_library(${LIB_NAME}
     AstParser.cpp
     Backend.cpp
     Compiler.cpp
+    Expression.cpp
     Linker.cpp
     MirTranslation.cpp
     Prelude.cpp

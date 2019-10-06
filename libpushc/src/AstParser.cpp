@@ -105,10 +105,99 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
     }
 }
 
-void parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx ) {
-    std::vector<Expr> expr_list;
+// Parses a scope into the ast. Used recursively
+sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token ) {
+    std::vector<sptr<Expr>> expr_list;
 
+    while ( true ) {
+        // Load the next token
+        auto t = input.get_token();
+        if ( t.type == end_token ) {
+            break;
+        } else if ( t.type == TT::eof ) {
+            w_ctx.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
+            break;
+        } else if ( t.type == TT::block_begin || t.type == TT::term_begin ) {
+            expr_list.push_back(
+                parse_scope( input, w_ctx, a_ctx, ( t.type == TT::block_begin ? TT::block_end : TT::term_end ) ) );
+        }
+        expr_list.push_back( make_shared<TokenExpr>( t ) );
 
+        // Test new token
+        bool recheck = false; // used to test if a new rule matches after one was applied
+        do {
+            recheck = false;
+            for ( auto &rule : a_ctx.rules ) {
+                if ( rule.matches_end( expr_list ) ) {
+                    u8 rule_length = rule.expr_list.size();
+                    std::vector<sptr<Expr>> tmp( expr_list.end() - rule_length, expr_list.end() );
+                    expr_list.resize( expr_list.size() - rule_length );
+                    expr_list.push_back( rule.create( tmp ) );
+                    recheck = true;
+                    break;
+                }
+            }
+        } while ( recheck );
+    }
+
+    // Create block
+    if ( end_token == TT::eof ) {
+        auto block = make_shared<DeclExpr>();
+        block->sub_expr = expr_list;
+        return block;
+    } else if ( end_token == TT::block_end ) {
+        auto block = make_shared<BlockExpr>();
+        block->sub_expr = expr_list;
+        return block;
+    } else {
+        LOG_ERR( "Try to parse a block which is no block" );
+        return nullptr;
+    }
+}
+
+// Translate a syntax into a syntax rule
+SyntaxRule parse_rule( Syntax &syntax_list ) {
+    SyntaxRule sr;
+    for ( auto &expr : syntax_list ) {
+        if ( expr.first == "expr" ) {
+            sr.expr_list.push_back( make_shared<Expr>() );
+        } else if ( expr.first == "identifier" ) {
+            sr.expr_list.push_back( make_shared<SymbolExpr>() );
+        } else if ( expr.first == "identifier_list" ) {
+            // TODO
+        } else if ( expr.first == "expr_block" ) {
+            sr.expr_list.push_back( make_shared<BlockExpr>() );
+        } else if ( expr.first == "assignment" ) {
+            sr.expr_list.push_back( make_shared<AssignExpr>() );
+        } else if ( expr.first == "iterator" ) {
+            // TODO
+        } else {
+            // Keyword or operator
+            sr.expr_list.push_back( make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "" ) ) );
+        }
+    }
+    return sr;
+}
+
+// Translates the prelude syntax rules into ast syntax rules
+void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
+    auto pc = w_ctx.unit_ctx()->prelude_conf;
+
+    for ( auto &f : pc.fn_definitions ) {
+        auto new_rule = parse_rule( f.syntax );
+        new_rule.matching_expr = make_shared<FuncDefExpr>();
+        a_ctx.rules.push_back( new_rule );
+    }
+
+    for ( auto &o : pc.operators ) {
+        auto new_rule = parse_rule( o.op.syntax );
+        new_rule.precedence = o.op.precedence;
+        new_rule.matching_expr = make_shared<OperatorExpr>();
+        a_ctx.rules.push_back( new_rule );
+    }
+
+    // Sort rules after precedence
+    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto l, auto r ) { return l.precedence - r.precedence; } );
 }
 
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
@@ -125,10 +214,10 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
         // Create a new AST context
         AstCtx a_ctx;
-        a_ctx.ast.block = make_shared<BlockExpr>();
         a_ctx.next_symbol.id = 1;
+        load_syntax_rules( w_ctx, a_ctx );
 
         // parse global scope
-        parse_scope( *input, w_ctx, a_ctx );
+        a_ctx.ast.block = parse_scope( *input, w_ctx, a_ctx, TT::eof );
     } );
 }
