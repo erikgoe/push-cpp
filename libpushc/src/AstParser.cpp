@@ -105,8 +105,10 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
     }
 }
 
-void expect_declarative_scope( SourceInput &input, Worker &w_ctx ) {
-    
+void parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx ) {
+    std::vector<Expr> expr_list;
+
+
 }
 
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
@@ -121,6 +123,12 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
         select_prelude( *input, w_ctx );
 
-        expect_declarative_scope( input, w_ctx );
+        // Create a new AST context
+        AstCtx a_ctx;
+        a_ctx.ast.block = make_shared<BlockExpr>();
+        a_ctx.next_symbol.id = 1;
+
+        // parse global scope
+        parse_scope( *input, w_ctx, a_ctx );
     } );
 }
