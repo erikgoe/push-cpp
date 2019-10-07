@@ -106,77 +106,77 @@ define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, triple_list, identi
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, identifier_list -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations
-//define_mci_rule( DEFINE_TEMPLATE, call_ext, 1, ltr, "<", ">", identifier -> value, identifier_list -> parameters ); // template arguments are surrounded by angular brackets
-define_mci_rule( SCOPE_ACCESS, bin_op, 1, ltr, "::", expr -> base, expr -> name ); // scope access is a symbol extension
-define_mci_rule( SCOPE_ACCESS, uny_op_left, 1, rtl, "::", expr -> name ); // global scope access
-define_mci_rule( MEMBER_ACCESS, bin_op, 1, ltr, ".", expr -> base, expr -> name ); // member access of a object
-//define_mci_rule( ARRAY_SPECIFIER, call_ext, 1, ltr, "[", "]", identifier -> value, expr -> size ); // array appending to a type or variable. The size may be a number or a static variable, etc.
+//define_mci_rule( DEFINE_TEMPLATE, 1, ltr, triple_list, "<" -> lop, identifier -> value, ">" -> rop ); // template arguments are surrounded by angular brackets
+define_mci_rule( SCOPE_ACCESS, 1, ltr, triple_list, expr -> base, "::", expr -> name ); // scope access is a symbol extension
+define_mci_rule( SCOPE_ACCESS, 1, rtl, triple_list, "::", expr -> name ); // global scope access
+define_mci_rule( MEMBER_ACCESS, 1, ltr, triple_list, expr -> base, ".", expr -> name ); // member access of a object
+//define_mci_rule( ARRAY_SPECIFIER, 1, ltr, triple_list, "[" -> lop, expr -> value, "]" -> rop ); // array appending to a type or variable. The size may be a number or a static variable, etc.
 
 // Operators
-// NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), layout type (uny_op_left, uny_op_right, bin_op), precedence, alignment (ltr or rtl), layout parameters (normally multiple), name in layout (optional: if used in other MCI rules)
-//define_mci_rule( NEW_OPERATOR, std::op::function_call, call_ext, 1, ltr, "(", ")", identifier -> exec, identifier_list -> parameters ); // function calls surround their parameters in parenthesis
+// NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple), syntax alias (optional: if used in other MCI rules)
+//define_mci_rule( NEW_OPERATOR, std::op::function_call, 1, ltr, quadruple_list, identifier -> exec, "(" -> lop, identifier_list -> parameters, ")" -> rop ); // function calls surround their parameters in parenthesis
 
-define_mci_rule( NEW_OPERATOR, std::op::log_not, uny_op_left, 2, rtl, "!", expr -> value ); // define the logical not operator
-define_mci_rule( NEW_OPERATOR, std::op::invert, uny_op_left, 2, rtl, "~", expr -> value ); // define the not/invert operator
-define_mci_rule( NEW_OPERATOR, std::op::negate, uny_op_left, 2, rtl, "-", expr -> value ); // define the negation operator
-define_mci_rule( NEW_OPERATOR, std::op::positive, uny_op_left, 2, rtl, "+", expr -> value ); // define the positive operator (only for symmetry with the negation operator)
-define_mci_rule( NEW_OPERATOR, std::op::increment_prefix, uny_op_left, 2, rtl, "++", expr -> value ); // define the prefix increment operator
-define_mci_rule( NEW_OPERATOR, std::op::decrement_prefix, uny_op_left, 2, rtl, "--", expr -> value ); // define the prefix decrement operator
-define_mci_rule( NEW_OPERATOR, std::op::increment_postfix, uny_op_right, 3, ltr, "++", expr -> value ); // define the postfix increment operator
-define_mci_rule( NEW_OPERATOR, std::op::decrement_postfix, uny_op_right, 3, ltr, "--", expr -> value ); // define the postfix decrement operator
-define_mci_rule( NEW_OPERATOR, std::op::cast_from, bin_op, 4, ltr, "as", expr -> rvalue, expr -> lvalue ); // define the From cast with the as keyword
-define_mci_rule( NEW_OPERATOR, std::op::cast_into, bin_op, 4, ltr, "as", expr -> rvalue, expr -> lvalue ); // define the Into cast with the as keyword
+define_mci_rule( NEW_OPERATOR, std::op::log_not, 2, rtl, double_list, "!" -> op, expr -> value ); // define the logical not operator
+define_mci_rule( NEW_OPERATOR, std::op::invert, 2, rtl, double_list, "~" -> op, expr -> value ); // define the not/invert operator
+define_mci_rule( NEW_OPERATOR, std::op::negate, 2, rtl, double_list, "-" -> op, expr -> value ); // define the negation operator
+define_mci_rule( NEW_OPERATOR, std::op::positive, 2, rtl, double_list, "+" -> op, expr -> value ); // define the positive operator (only for symmetry with the negation operator)
+define_mci_rule( NEW_OPERATOR, std::op::increment_prefix, 2, rtl, double_list, "++" -> op, expr -> value ); // define the prefix increment operator
+define_mci_rule( NEW_OPERATOR, std::op::decrement_prefix, 2, rtl, double_list, "--" -> op, expr -> value ); // define the prefix decrement operator
+define_mci_rule( NEW_OPERATOR, std::op::increment_postfix, 3, ltr, double_list, expr -> value, "++" -> op ); // define the postfix increment operator
+define_mci_rule( NEW_OPERATOR, std::op::decrement_postfix, 3, ltr, double_list, expr -> value, "--" -> op ); // define the postfix decrement operator
+define_mci_rule( NEW_OPERATOR, std::op::cast_from, 4, ltr, triple_list, expr -> lvalue, "as" -> op, expr -> rvalue ); // define the From cast with the as keyword
+define_mci_rule( NEW_OPERATOR, std::op::cast_into, 4, ltr, triple_list, expr -> lvalue, "as" -> op, expr -> rvalue ); // define the Into cast with the as keyword
 
-define_mci_rule( NEW_OPERATOR, std::op::multiplication, bin_op, 5, ltr, "*", expr -> lvalue, expr -> rvalue ); // basic multiplication operator
-define_mci_rule( NEW_OPERATOR, std::op::division, bin_op, 5, ltr, "/", expr -> lvalue, expr -> rvalue ); // basic division operator
-define_mci_rule( NEW_OPERATOR, std::op::remain, bin_op, 5, ltr, "%", expr -> lvalue, expr -> rvalue ); // basic remaining operator
-define_mci_rule( NEW_OPERATOR, std::op::addition, bin_op, 6, ltr, "+", expr -> lvalue, expr -> rvalue ); // basic addition operator
-define_mci_rule( NEW_OPERATOR, std::op::subtraction, bin_op, 6, ltr, "-", expr -> lvalue, expr -> rvalue ); // basic subtraction operator
+define_mci_rule( NEW_OPERATOR, std::op::multiplication, 5, ltr, triple_list, expr -> lvalue, "*" -> op, expr -> rvalue ); // basic multiplication operator
+define_mci_rule( NEW_OPERATOR, std::op::division, 5, ltr, triple_list, expr -> lvalue, "/" -> op, expr -> rvalue ); // basic division operator
+define_mci_rule( NEW_OPERATOR, std::op::remain, 5, ltr, triple_list, expr -> lvalue, "%" -> op, expr -> rvalue ); // basic remaining operator
+define_mci_rule( NEW_OPERATOR, std::op::addition, 6, ltr, triple_list, expr -> lvalue, "+" -> op, expr -> rvalue ); // basic addition operator
+define_mci_rule( NEW_OPERATOR, std::op::subtraction, 6, ltr, triple_list, expr -> lvalue, "-" -> op, expr -> rvalue ); // basic subtraction operator
 
-define_mci_rule( NEW_OPERATOR, std::op::bit_and, bin_op, 7, ltr, "&", expr -> lvalue, expr -> rvalue ); // basic bit "and" operator
-define_mci_rule( NEW_OPERATOR, std::op::bit_xor, bin_op, 8, ltr, "\'", expr -> lvalue, expr -> rvalue ); // basic bit xor operator
-define_mci_rule( NEW_OPERATOR, std::op::bit_or, bin_op, 9, ltr, "|", expr -> lvalue, expr -> rvalue ); // basic bit or operator
-define_mci_rule( NEW_OPERATOR, std::op::bit_shift_left, bin_op, 10, ltr, "<<", expr -> lvalue, expr -> rvalue ); // basic left bit shift operator
-define_mci_rule( NEW_OPERATOR, std::op::bit_shift_right, bin_op, 10, ltr, ">>", expr -> lvalue, expr -> rvalue ); // basic right bit shift operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_and, 7, ltr, triple_list, expr -> lvalue, "&" -> op, expr -> rvalue ); // basic bit "and" operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_xor, 8, ltr, triple_list, expr -> lvalue, "\'" -> op, expr -> rvalue ); // basic bit xor operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_or, 9, ltr, triple_list, expr -> lvalue, "|" -> op, expr -> rvalue ); // basic bit or operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_shift_left, 10, ltr, triple_list, expr -> lvalue, "<<" -> op, expr -> rvalue ); // basic left bit shift operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_shift_right, 10, ltr, triple_list, expr -> lvalue, ">>" -> op, expr -> rvalue ); // basic right bit shift operator
 
-define_mci_rule( NEW_OPERATOR, std::op::iterate_collection, bin_op, 11, ltr, "in", expr -> lvalue, expr -> rvalue, iterator ); // iteration over a collection
+define_mci_rule( NEW_OPERATOR, std::op::iterate_collection, 11, ltr, triple_list, expr -> lvalue, "in" -> op, expr -> rvalue, iterator ); // iteration over a collection
 
-define_mci_rule( NEW_OPERATOR, std::op::smaller, bin_op, 12, ltr, "<", expr -> lvalue, expr -> rvalue ); // regular compare
-define_mci_rule( NEW_OPERATOR, std::op::smaller_or_eql, bin_op, 12, ltr, "<=", expr -> lvalue, expr -> rvalue ); // regular compare (with or eaual)
-define_mci_rule( NEW_OPERATOR, std::op::bigger, bin_op, 12, ltr, ">", expr -> rvalue, expr -> lvalue ); // inverse compare
-define_mci_rule( NEW_OPERATOR, std::op::bigger_or_eql, bin_op, 12, ltr, ">=", expr -> rvalue, expr -> lvalue ); // inverse compare (with or eaual)
-define_mci_rule( NEW_OPERATOR, std::op::is_equal, bin_op, 13, ltr, "==", expr -> rvalue, expr -> lvalue ); // equality comarison
-define_mci_rule( NEW_OPERATOR, std::op::is_not_equal, bin_op, 13, ltr, "!=", expr -> rvalue, expr -> lvalue ); // inequality comarison
+define_mci_rule( NEW_OPERATOR, std::op::smaller, 12, ltr, triple_list, expr -> lvalue, "<" -> op, expr -> rvalue ); // regular compare
+define_mci_rule( NEW_OPERATOR, std::op::smaller_or_eql, 12, ltr, triple_list, expr -> lvalue, "<=" -> op, expr -> rvalue ); // regular compare (with or eaual)
+define_mci_rule( NEW_OPERATOR, std::op::bigger, 12, ltr, triple_list, expr -> lvalue, ">" -> op, expr -> rvalue ); // inverse compare
+define_mci_rule( NEW_OPERATOR, std::op::bigger_or_eql, 12, ltr, triple_list, expr -> lvalue, ">=" -> op, expr -> rvalue ); // inverse compare (with or eaual)
+define_mci_rule( NEW_OPERATOR, std::op::is_equal, 13, ltr, triple_list, expr -> lvalue, "==" -> op, expr -> rvalue ); // equality comarison
+define_mci_rule( NEW_OPERATOR, std::op::is_not_equal, 13, ltr, triple_list, expr -> lvalue, "!=" -> op, expr -> rvalue ); // inequality comarison
 
-define_mci_rule( NEW_OPERATOR, std::op::logic_and, bin_op, 14, ltr, "&&", expr -> lvalue, expr -> rvalue ); // basic logical "and" operator
-define_mci_rule( NEW_OPERATOR, std::op::logic_or, bin_op, 15, ltr, "||", expr -> lvalue, expr -> rvalue ); // basic logical or operator
+define_mci_rule( NEW_OPERATOR, std::op::logic_and, 14, ltr, triple_list, expr -> lvalue, "&&" -> op, expr -> rvalue ); // basic logical "and" operator
+define_mci_rule( NEW_OPERATOR, std::op::logic_or, 15, ltr, triple_list, expr -> lvalue, "||" -> op, expr -> rvalue ); // basic logical or operator
 
-define_mci_rule( NEW_OPERATOR, std::op::assignment, bin_op, 16, rtl, "=", expr -> lvalue, expr -> rvalue, assignment ); // simple assignment
-define_mci_rule( NEW_OPERATOR, std::op::add_assign, bin_op, 16, rtl, "+=", expr -> lvalue, expr -> rvalue, assignment ); // simple add assignment
-define_mci_rule( NEW_OPERATOR, std::op::subtract_assign, bin_op, 16, rtl, "-=", expr -> lvalue, expr -> rvalue, assignment ); // simple subtract assignment
-define_mci_rule( NEW_OPERATOR, std::op::multiply_assign, bin_op, 16, rtl, "*=", expr -> lvalue, expr -> rvalue, assignment ); // simple multiply assignment
-define_mci_rule( NEW_OPERATOR, std::op::divide_assign, bin_op, 16, rtl, "/=", expr -> lvalue, expr -> rvalue, assignment ); // simple divide assignment
-define_mci_rule( NEW_OPERATOR, std::op::remain_assign, bin_op, 16, rtl, "%=", expr -> lvalue, expr -> rvalue, assignment ); // simple remain assignment
-define_mci_rule( NEW_OPERATOR, std::op::and_assign, bin_op, 16, rtl, "&=", expr -> lvalue, expr -> rvalue, assignment ); // simple bit and assignment
-define_mci_rule( NEW_OPERATOR, std::op::xor_assign, bin_op, 16, rtl, "\'=", expr -> lvalue, expr -> rvalue, assignment ); // simple bit xor assignment
-define_mci_rule( NEW_OPERATOR, std::op::or_assign, bin_op, 16, rtl, "|=", expr -> lvalue, expr -> rvalue, assignment ); // simple bit or assignment
-define_mci_rule( NEW_OPERATOR, std::op::shift_left_assign, bin_op, 16, rtl, "<<=", expr -> lvalue, expr -> rvalue, assignment ); // simple left bit shift assignment
-define_mci_rule( NEW_OPERATOR, std::op::shift_right_assign, bin_op, 16, rtl, ">>=", expr -> lvalue, expr -> rvalue, assignment ); // simple right bit shift assignment
-define_mci_rule( NEW_OPERATOR, std::op::default_assign, bin_op, 16, rtl, ":=", expr -> lvalue, expr -> rvalue, assignment ); // simple default operator assignment
+define_mci_rule( NEW_OPERATOR, std::op::assignment, 16, rtl, triple_list, expr -> lvalue, "=" -> op, expr -> rvalue, assignment ); // simple assignment
+define_mci_rule( NEW_OPERATOR, std::op::add_assign, 16, rtl, triple_list, expr -> lvalue, "+=" -> op, expr -> rvalue, assignment ); // simple add assignment
+define_mci_rule( NEW_OPERATOR, std::op::subtract_assign, 16, rtl, triple_list, expr -> lvalue, "-=" -> op, expr -> rvalue, assignment ); // simple subtract assignment
+define_mci_rule( NEW_OPERATOR, std::op::multiply_assign, 16, rtl, triple_list, expr -> lvalue, "*=" -> op, expr -> rvalue, assignment ); // simple multiply assignment
+define_mci_rule( NEW_OPERATOR, std::op::divide_assign, 16, rtl, triple_list, expr -> lvalue, "/=" -> op, expr -> rvalue, assignment ); // simple divide assignment
+define_mci_rule( NEW_OPERATOR, std::op::remain_assign, 16, rtl, triple_list, expr -> lvalue, "%=" -> op, expr -> rvalue, assignment ); // simple remain assignment
+define_mci_rule( NEW_OPERATOR, std::op::and_assign, 16, rtl, triple_list, expr -> lvalue, "&=" -> op, expr -> rvalue, assignment ); // simple bit and assignment
+define_mci_rule( NEW_OPERATOR, std::op::xor_assign, 16, rtl, triple_list, expr -> lvalue, "\'=" -> op, expr -> rvalue, assignment ); // simple bit xor assignment
+define_mci_rule( NEW_OPERATOR, std::op::or_assign, 16, rtl, triple_list, expr -> lvalue, "|=" -> op, expr -> rvalue, assignment ); // simple bit or assignment
+define_mci_rule( NEW_OPERATOR, std::op::shift_left_assign, 16, rtl, triple_list, expr -> lvalue, "<<=" -> op, expr -> rvalue, assignment ); // simple left bit shift assignment
+define_mci_rule( NEW_OPERATOR, std::op::shift_right_assign, 16, rtl, triple_list, expr -> lvalue, ">>=" -> op, expr -> rvalue, assignment ); // simple right bit shift assignment
+define_mci_rule( NEW_OPERATOR, std::op::default_assign, 16, rtl, triple_list, expr -> lvalue, ":=" -> op, expr -> rvalue, assignment ); // simple default operator assignment
 
-define_mci_rule( NEW_OPERATOR, std::op::relation, bin_op, 17, rtl, "=>", expr -> lvalue, expr -> rvalue, relation ); // pair two variables with a relation
-define_mci_rule( NEW_OPERATOR, std::op::comma_combine, bin_op, 18, lrt, ",", expr -> lvalue, expr -> rvalue ); // the comma-linking operator
-define_mci_rule( NEW_OPERATOR, std::op::comma_end, uny_op_right, 18, lrt, ",", expr -> value ); // the comma-linking operator which enables a ending comma in e. g. structs
+define_mci_rule( NEW_OPERATOR, std::op::relation, 17, rtl, triple_list, expr -> lvalue, "=>" -> op, expr -> rvalue, relation ); // pair two variables with a relation
+//define_mci_rule( NEW_OPERATOR, std::op::comma_combine, 18, lrt, triple_list, expr -> lvalue, "," -> op, expr -> rvalue ); // the comma-linking operator
+//define_mci_rule( NEW_OPERATOR, std::op::comma_end, 18, lrt, double_list, expr -> value, "," -> op ); // the comma-linking operator which enables a ending comma in e. g. structs
 
-define_mci_rule( REFERENCE_TYPE, uny_op_left, 2, rtl, "&", expr -> type ); // syntax to define a reference or destruct a reference
-define_mci_rule( TYPE_OF, uny_op_left, 2, rtl, "type_of", expr -> type ); // define the type_of operator
-define_mci_rule( STRUCT_TO_TUPLE, uny_op_right, 2, ltr, "as_tuple", expr -> type ); // define the as_tuple operator
-define_mci_rule( OPERATION_TYPE, bin_op, 4, ltr, ":", expr -> value, expr -> type ); // define the type operator
-define_mci_rule( RANGE_DEFINITION_EXC, bin_op, 10.5, ltr, "..", expr -> lvalue, expr -> rvalue, range ); // define the range operator for 0..5
-define_mci_rule( RANGE_DEFINITION_FROM_EXC, uny_op_right, 10.5, ltr, "..", expr -> value, range ); // define the range operator 5..
-define_mci_rule( RANGE_DEFINITION_TO_EXC, uny_op_left, 10.5, ltr, "..", expr -> value, range ); // define the range operator for ..5
-define_mci_rule( RANGE_DEFINITION_INC, bin_op, 10.5, ltr, "..=", expr -> lvalue, expr -> rvalue, range ); // define the range operator for 0..=5
-define_mci_rule( RANGE_DEFINITION_TO_INC, uny_op_left, 10.5, ltr, "..=", expr -> rvalue, range ); // define the range operator for ..=5
+define_mci_rule( REFERENCE_TYPE, 2, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
+define_mci_rule( TYPE_OF, 2, rtl, double_list, "type_of" -> op, expr -> type ); // define the type_of operator
+define_mci_rule( STRUCT_TO_TUPLE, 2, ltr, double_list, expr -> type, "as_tuple" -> op ); // define the as_tuple operator
+define_mci_rule( OPERATION_TYPE, 4, ltr, triple_list, expr -> value, ":" -> op, expr -> type ); // define the type operator
+define_mci_rule( RANGE_DEFINITION_EXC, 10.5, ltr, triple_list, expr -> lvalue, ".." -> op, expr -> rvalue, range ); // define the range operator for 0..5
+define_mci_rule( RANGE_DEFINITION_FROM_EXC, 10.5, ltr, double_list, expr -> value, ".." -> op, range ); // define the range operator 5..
+define_mci_rule( RANGE_DEFINITION_TO_EXC, 10.5, ltr, double_list, ".." -> op, expr -> value, range ); // define the range operator for ..5
+define_mci_rule( RANGE_DEFINITION_INC, 10.5, ltr, triple_list, expr -> lvalue, "..=" -> op, expr -> rvalue, range ); // define the range operator for 0..=5
+define_mci_rule( RANGE_DEFINITION_TO_INC, 10.5, ltr, double_list, "..=" -> op, expr -> rvalue, range ); // define the range operator for ..=5
 
 // Primitive types
 define_mci_rule( LITERAL_TYPE, TYPE, single_list, "type" ); // definition of the "type" type
