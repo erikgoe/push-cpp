@@ -102,28 +102,29 @@ define_mci_rule( FOR_EXPRESSION, triple_list, "for", iterator -> condition, expr
 define_mci_rule( MATCH_EXPRESSION, triple_list, "match", expr -> selector, expr -> body ); // match keyword which matches an expression
 */
 // Functions
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, triple_list, identifier -> name, identifier_list -> parameters, expr_block -> body ); // a function with a block body
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, identifier_list -> parameters, "->", expr -> body ); // a single-line function
+define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, identifier_list -> parameters, function_def ); // a function head
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, double_list, function_def -> head, expr_block -> body ); // a function with a block body
+//define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, identifier_list -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations
 //define_mci_rule( DEFINE_TEMPLATE, 1, ltr, triple_list, "<" -> lop, identifier -> value, ">" -> rop ); // template arguments are surrounded by angular brackets
-define_mci_rule( SCOPE_ACCESS, 1, ltr, triple_list, expr -> base, "::", expr -> name ); // scope access is a symbol extension
-define_mci_rule( SCOPE_ACCESS, 1, rtl, triple_list, "::", expr -> name ); // global scope access
-define_mci_rule( MEMBER_ACCESS, 1, ltr, triple_list, expr -> base, ".", expr -> name ); // member access of a object
+define_mci_rule( SCOPE_ACCESS, 1, ltr, triple_list, expr -> base, "::" -> op, expr -> name ); // scope access is a symbol extension
+define_mci_rule( SCOPE_ACCESS, 1, rtl, double_list, "::" -> op, expr -> name ); // global scope access
+define_mci_rule( MEMBER_ACCESS, 1, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of a object
 //define_mci_rule( ARRAY_SPECIFIER, 1, ltr, triple_list, "[" -> lop, expr -> value, "]" -> rop ); // array appending to a type or variable. The size may be a number or a static variable, etc.
 
 // Operators
 // NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple), syntax alias (optional: if used in other MCI rules)
-//define_mci_rule( NEW_OPERATOR, std::op::function_call, 1, ltr, quadruple_list, identifier -> exec, "(" -> lop, identifier_list -> parameters, ")" -> rop ); // function calls surround their parameters in parenthesis
+define_mci_rule( NEW_OPERATOR, std::op::function_call, 1, ltr, quadruple_list, identifier -> exec, "(" -> lop, identifier_list -> parameters, ")" -> rop ); // function calls surround their parameters in parenthesis
 
-define_mci_rule( NEW_OPERATOR, std::op::log_not, 2, rtl, double_list, "!" -> op, expr -> value ); // define the logical not operator
-define_mci_rule( NEW_OPERATOR, std::op::invert, 2, rtl, double_list, "~" -> op, expr -> value ); // define the not/invert operator
-define_mci_rule( NEW_OPERATOR, std::op::negate, 2, rtl, double_list, "-" -> op, expr -> value ); // define the negation operator
-define_mci_rule( NEW_OPERATOR, std::op::positive, 2, rtl, double_list, "+" -> op, expr -> value ); // define the positive operator (only for symmetry with the negation operator)
-define_mci_rule( NEW_OPERATOR, std::op::increment_prefix, 2, rtl, double_list, "++" -> op, expr -> value ); // define the prefix increment operator
-define_mci_rule( NEW_OPERATOR, std::op::decrement_prefix, 2, rtl, double_list, "--" -> op, expr -> value ); // define the prefix decrement operator
-define_mci_rule( NEW_OPERATOR, std::op::increment_postfix, 3, ltr, double_list, expr -> value, "++" -> op ); // define the postfix increment operator
-define_mci_rule( NEW_OPERATOR, std::op::decrement_postfix, 3, ltr, double_list, expr -> value, "--" -> op ); // define the postfix decrement operator
+//define_mci_rule( NEW_OPERATOR, std::op::log_not, 2, rtl, double_list, "!" -> op, expr -> value ); // define the logical not operator
+//define_mci_rule( NEW_OPERATOR, std::op::invert, 2, rtl, double_list, "~" -> op, expr -> value ); // define the not/invert operator
+//define_mci_rule( NEW_OPERATOR, std::op::negate, 2, rtl, double_list, "-" -> op, expr -> value ); // define the negation operator
+//define_mci_rule( NEW_OPERATOR, std::op::positive, 2, rtl, double_list, "+" -> op, expr -> value ); // define the positive operator (only for symmetry with the negation operator)
+//define_mci_rule( NEW_OPERATOR, std::op::increment_prefix, 2, rtl, double_list, "++" -> op, expr -> value ); // define the prefix increment operator
+//define_mci_rule( NEW_OPERATOR, std::op::decrement_prefix, 2, rtl, double_list, "--" -> op, expr -> value ); // define the prefix decrement operator
+//define_mci_rule( NEW_OPERATOR, std::op::increment_postfix, 3, ltr, double_list, expr -> value, "++" -> op ); // define the postfix increment operator
+//define_mci_rule( NEW_OPERATOR, std::op::decrement_postfix, 3, ltr, double_list, expr -> value, "--" -> op ); // define the postfix decrement operator
 define_mci_rule( NEW_OPERATOR, std::op::cast_from, 4, ltr, triple_list, expr -> lvalue, "as" -> op, expr -> rvalue ); // define the From cast with the as keyword
 define_mci_rule( NEW_OPERATOR, std::op::cast_into, 4, ltr, triple_list, expr -> lvalue, "as" -> op, expr -> rvalue ); // define the Into cast with the as keyword
 

@@ -115,9 +115,13 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 }
 
 // Translate a syntax into a syntax rule
-SyntaxRule parse_rule( Syntax &syntax_list ) {
-    SyntaxRule sr;
+void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list, const std::map<String, sptr<Expr>> &alias_list ) {
+    sr.expr_list.clear();
+    lm.clear();
+
+    size_t ctr = 0;
     for ( auto &expr : syntax_list ) {
+        lm[expr.second] = ctr;
         if ( expr.first == "expr" ) {
             sr.expr_list.push_back( make_shared<Expr>() );
         } else if ( expr.first == "identifier" ) {
@@ -126,38 +130,46 @@ SyntaxRule parse_rule( Syntax &syntax_list ) {
             // TODO
         } else if ( expr.first == "expr_block" ) {
             sr.expr_list.push_back( make_shared<BlockExpr>() );
-        } else if ( expr.first == "assignment" ) {
-            sr.expr_list.push_back( make_shared<AssignExpr>() );
-        } else if ( expr.first == "iterator" ) {
-            // TODO
         } else {
-            // Keyword or operator
-            sr.expr_list.push_back( make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "" ) ) );
+            if ( alias_list.find( expr.first ) != alias_list.end() ) {
+                sr.expr_list.push_back( alias_list.at( expr.first ) );
+            } else {
+                // Keyword or operator
+                sr.expr_list.push_back( make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "" ) ) );
+            }
         }
+        ctr++;
     }
-    return sr;
 }
 
 // Translates the prelude syntax rules into ast syntax rules
 void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     auto pc = w_ctx.unit_ctx()->prelude_conf;
 
+    SyntaxRule new_rule;
+    LabelMap lm;
+    std::map<String, sptr<Expr>> alias_list;
+
     // TODO handle function definitions and declarations separately
-    for ( auto &f : pc.fn_definitions ) {
-        auto new_rule = parse_rule( f.syntax );
+    for ( auto &f : pc.fn_declarations ) {
+        parse_rule( new_rule, lm, f.syntax, alias_list );
         new_rule.matching_expr = make_shared<FuncDefExpr>();
-        new_rule.create = []( auto &list ) {
-            return make_shared<FuncDefExpr>( std::dynamic_pointer_cast<SymbolExpr>( list.front() ) );
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<FuncDefExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ) );
         };
         a_ctx.rules.push_back( new_rule );
     }
 
     for ( auto &o : pc.operators ) {
-        auto new_rule = parse_rule( o.op.syntax );
+        parse_rule( new_rule, lm, o.op.syntax, alias_list );
         new_rule.precedence = o.op.precedence;
         new_rule.matching_expr = make_shared<OperatorExpr>();
-        new_rule.create = []( auto &list ) {
-            return make_shared<OperatorExpr>(); // TODO
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<OperatorExpr>( std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content,
+                                              list[lm.at( "lvalue" )], list[lm.at( "rvalue" )] );
+        };
+        for ( auto &alias : o.op.aliases ) {
+            alias_list[alias] = new_rule.matching_expr;
         };
         a_ctx.rules.push_back( new_rule );
     }
@@ -170,10 +182,12 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
 sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token ) {
     std::vector<sptr<Expr>> expr_list;
 
+    // Iterate through all tokens in this scope
     while ( true ) {
         // Load the next token
         consume_comment( input );
         auto t = input.get_token();
+
         if ( t.type == end_token ) {
             break;
         } else if ( t.type == TT::eof ) {
@@ -205,6 +219,7 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
         bool recheck = false; // used to test if a new rule matches after one was applied
         do {
             recheck = false;
+            // Check each syntax rule
             for ( auto &rule : a_ctx.rules ) {
                 if ( rule.matches_end( expr_list ) ) {
                     u8 rule_length = rule.expr_list.size();

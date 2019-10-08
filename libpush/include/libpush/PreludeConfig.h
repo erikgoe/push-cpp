@@ -53,6 +53,7 @@ struct Operator {
     f32 precedence = 0; // how operators are combined
     bool ltr = true; // left to right or right to left
     Syntax syntax; // left type -> name pair
+    std::vector<String> aliases; // syntax alias identifiers
 };
 
 // Operator which is implementaed in a library through a trait
@@ -66,6 +67,7 @@ struct FunctionDefinition {
     String function_trait;
     String function_fn; // function in the trait
     Syntax syntax;
+    std::vector<String> aliases; // syntax alias identifiers
 };
 
 // Operator to describe a range
@@ -125,6 +127,7 @@ struct PreludeConfig {
     // TODO OOP constructs
     // TODO control flow
 
+    std::list<FunctionDefinition> fn_declarations; // Function syntax
     std::list<FunctionDefinition> fn_definitions; // Function syntax
 
     // TODO templates

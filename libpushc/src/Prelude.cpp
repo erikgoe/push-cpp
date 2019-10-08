@@ -120,8 +120,7 @@ void load_prelude( sptr<String> prelude, JobsBuilder &jb, UnitCtx &ctx ) {
                 w_ctx.print_msg<MessageType::err_invalid_prelude>( MessageInfo() );
             }
             ctx->prelude_conf = get_prelude_prelude();
-            prelude_conf =
-                *w_ctx.do_query( load_prelude_file, filepath )->jobs.front()->to<sptr<PreludeConfig>>();
+            prelude_conf = *w_ctx.do_query( load_prelude_file, filepath )->jobs.front()->to<sptr<PreludeConfig>>();
         }
 
         return prelude_conf;
@@ -212,7 +211,7 @@ String parse_string_literal( sptr<SourceInput> &input, Worker &w_ctx ) {
         else if ( token.content == "double_quotes" )
             return "\"";
         else if ( token.content == "null" )
-            return String( "\0", 1 );
+            return String( 1, '\0' );
         else if ( token.content == "tree_double_quotes" )
             return "\"\"\"";
         else if ( token.content == "operators" || token.content == "keywords" || token.content == "ascii_oct" ||
@@ -231,9 +230,9 @@ String parse_string_literal( sptr<SourceInput> &input, Worker &w_ctx ) {
 // Returns the size of a syntax list
 size_t parse_list_size( sptr<SourceInput> &input ) {
     auto token = input->get_token();
-    if ( token.content == "single_list" || token.content == "uny_op_left" || token.content == "uny_op_right" )
+    if ( token.content == "single_list" )
         return 1;
-    else if ( token.content == "double_list" || token.content == "bin_op" || token.content == "call_ext" )
+    else if ( token.content == "double_list" )
         return 2;
     else if ( token.content == "triple_list" )
         return 3;
@@ -247,8 +246,8 @@ size_t parse_list_size( sptr<SourceInput> &input ) {
 
 // Parses a syntax definition and adds keywords or operators to the prelude configuration. Returns true if was
 // successful.
-bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size,
-                   sptr<SourceInput> &input, Worker &w_ctx ) {
+bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size, sptr<SourceInput> &input,
+                   Worker &w_ctx ) {
     for ( size_t i = 0; i < list_size; i++ ) {
         auto token = input->preview_token();
         String type; // or operator/keyword
@@ -305,17 +304,13 @@ bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size,
 
 // Parses a simple operator definition and adds keywords or operators to the prelude configuration. Returns true if was
 // successful.
-bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInput> &input,
-                     Worker &w_ctx ) {
-    String operator_type = input->preview_token().content;
-    size_t list_size = parse_list_size( input );
-
+bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker &w_ctx ) {
+    // Precedence
+    output.precedence = static_cast<f32>( parse_number( input, w_ctx, conf ).as_float() );
     Token token;
     CONSUME_COMMA( token );
 
-    output.precedence = static_cast<f32>( parse_number( input, w_ctx, conf ).as_float() );
-    CONSUME_COMMA( token );
-
+    // Alignment
     token = input->get_token();
     if ( token.type != Token::Type::identifier && token.content != "ltr" && token.content != "rtl" ) {
         create_prelude_error_msg( w_ctx, token );
@@ -324,27 +319,16 @@ bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInp
     output.ltr = token.content == "ltr";
     CONSUME_COMMA( token );
 
-    String op_token = parse_string_literal( input, w_ctx );
-    if ( op_token.empty() ) {
-        create_prelude_error_msg( w_ctx, token );
-        return false;
-    }
-    if ( is_operator_token( op_token ) )
-        conf->token_conf.operators.push_back( op_token );
-    else
-        conf->token_conf.keywords.push_back( op_token );
+    // Syntax
+    size_t list_size = parse_list_size( input );
     CONSUME_COMMA( token );
 
     if ( !parse_syntax( output.syntax, conf, list_size, input, w_ctx ) )
         return false;
 
-    if ( operator_type == "uny_op_left" ) {
-        output.syntax.insert( output.syntax.begin(), std::make_pair( op_token, "" ) );
-    } else if ( operator_type == "bin_op" || operator_type == "uny_op_right" ) {
-        output.syntax.insert( ++output.syntax.begin(), std::make_pair( op_token, "" ) );
-    }
+    // TODO add keywords and operators to prelude config
 
-    // Subtype
+    // Alias
     token = input->preview_token();
     if ( token.content == "," ) {
         input->get_token(); // consume
@@ -355,7 +339,8 @@ bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInp
             return false;
         }
 
-        conf->subtypes[token.content].push_back( output );
+        output.aliases.push_back( token.content );
+        // conf->subtypes[token.content].push_back( output ); TODO del subtypes
     }
     return true;
 }
@@ -751,6 +736,48 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
         } else if ( mci == "WHILE_EXPRESSION" ) { // TODO
         } else if ( mci == "FOR_EXPRESSION" ) { // TODO
         } else if ( mci == "MATCH_EXPRESSION" ) { // TODO
+        } else if ( mci == "FUNCTION_DECLARATION" ) {
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            auto trait = token.content;
+            CONSUME_COMMA( token );
+
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            auto function = token.content;
+            CONSUME_COMMA( token );
+
+            Syntax syntax;
+            auto list_size = parse_list_size( input );
+            CONSUME_COMMA( token );
+
+            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+                return false;
+            }
+
+            // Alias TODO extract this into the syntax parsing method
+            std::vector<String> aliases;
+            token = input->preview_token();
+            if ( token.content == "," ) {
+                input->get_token(); // consume
+
+                token = input->get_token();
+                if ( token.type != Token::Type::identifier ) {
+                    create_prelude_error_msg( w_ctx, token );
+                    return false;
+                }
+
+                aliases.push_back( token.content );
+                // conf->subtypes[token.content].push_back( output ); TODO del subtypes
+            }
+
+            conf->fn_declarations.push_back( FunctionDefinition{ trait, function, syntax, aliases } );
         } else if ( mci == "FUNCTION_DEFINITION" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {
@@ -776,7 +803,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
 
-            conf->fn_definitions.push_back( FunctionDefinition{ trait, function, syntax } );
+            conf->fn_definitions.push_back( FunctionDefinition{ trait, function, syntax, {} } );
         } else if ( mci == "DEFINE_TEMPLATE" ) { // TODO
         } else if ( mci == "SCOPE_ACCESS" ) {
             Operator op;

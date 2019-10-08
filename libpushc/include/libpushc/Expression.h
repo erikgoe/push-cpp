@@ -65,7 +65,7 @@ public:
     String get_debug_repr() override {
         String str = "GLOBAL { ";
         for ( auto &s : sub_expr )
-            str += s->get_debug_repr() + ",";
+            str += s->get_debug_repr() + ", ";
         return str + " }";
     }
 };
@@ -82,7 +82,7 @@ public:
     String get_debug_repr() override {
         String str = "BLOCK { ";
         for ( auto &s : sub_expr )
-            str += s->get_debug_repr() + ",";
+            str += s->get_debug_repr() + ", ";
         return str + " }";
     }
 };
@@ -97,7 +97,7 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "SYMBOL (" + to_string( symbol ) + ")"; }
+    String get_debug_repr() override { return "SYMBOL(" + to_string( symbol ) + ")"; }
 };
 
 // Base class for a simple literal
@@ -114,9 +114,9 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<LiteralExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        String str = "BLOB_LITERAL (";
+        String str = "BLOB_LITERAL(";
         for ( auto &b : blob )
-            str += to_string( b->get_debug_repr() ) + ","; // TODO hex representation
+            str += to_string( b->get_debug_repr() ) + "-"; // TODO hex representation
         return str + ")";
     }
 };
@@ -152,7 +152,7 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncDefExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "FUNC_DEF (" + to_string( type ) + " " + symbol->get_debug_repr() + ")"; }
+    String get_debug_repr() override { return "FUNC_DEF(" + to_string( type ) + " " + symbol->get_debug_repr() + ")"; }
 };
 
 // Specifies a new funcion
@@ -164,7 +164,7 @@ public:
     TypeId get_type() override { return head->get_type(); }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncExpr>( other ) != nullptr; }
-    String get_debug_repr() override { return "FUNC (" + head->get_debug_repr() + " " + body->get_debug_repr() + ")"; }
+    String get_debug_repr() override { return "FUNC(" + head->get_debug_repr() + " " + body->get_debug_repr() + ")"; }
 };
 
 class OperatorExpr : public SeparableExpr {
@@ -173,12 +173,19 @@ protected:
     String op;
 
 public:
+    OperatorExpr() {}
+    OperatorExpr( String op, sptr<Expr> lvalue, sptr<Expr> rvalue ) {
+        this->op = op;
+        this->lvalue = lvalue;
+        this->rvalue = rvalue;
+    }
+
     TypeId get_type() override { return lvalue->get_type(); }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<OperatorExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "OPERATOR (" + lvalue->get_debug_repr() + " " + op + " " + rvalue->get_debug_repr() + ")";
+        return "OPERATOR(" + lvalue->get_debug_repr() + " " + op + " " + rvalue->get_debug_repr() + ")";
     }
 };
 
@@ -197,5 +204,5 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SimpleBindExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "BINDING (" + assign->get_debug_repr() + ")"; }
+    String get_debug_repr() override { return "BINDING(" + assign->get_debug_repr() + ")"; }
 };
