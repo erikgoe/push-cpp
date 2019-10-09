@@ -19,12 +19,13 @@ void consume_comment( sptr<SourceInput> &input, TokenConfig &conf ) {
     do { // consume comment
         auto token = input->get_token();
         if ( token.type == Token::Type::comment_begin ) {
-            if ( comment_begin.empty() || conf.nested_comments ) {
+            auto &alo = conf.allowed_level_overlay[comment_begin.top()];
+            if ( comment_begin.empty() || std::find( alo.begin(), alo.end(), token.content ) != alo.end() ) {
                 comment_begin.push( token.content );
             }
         } else if ( token.type == Token::Type::comment_end ) {
             for ( auto pair : conf.comment ) {
-                if ( pair.first == comment_begin.top() && pair.second == token.content ) {
+                if ( pair.second.first == comment_begin.top() && pair.second.second == token.content ) {
                     comment_begin.pop();
                     break;
                 }
@@ -69,14 +70,7 @@ Number parse_number( sptr<SourceInput> &input, Worker &w_ctx, sptr<PreludeConfig
 
     auto token = input->get_token();
     if ( token.type == Token::Type::number ) {
-        value = token.content;
-        num.value.integer = stoll( value );
-        num.type = Number::Type::integer;
-        // TODO unsigned integer
-    } else if ( token.type == Token::Type::number_float ) {
-        value = token.content;
-        num.value.floating_p = stod( value );
-        num.type = Number::Type::floating_p;
+        num = stoll( value );
     } else {
         w_ctx.print_msg<MessageType::err_parse_number>(
             MessageInfo( token.file, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ),

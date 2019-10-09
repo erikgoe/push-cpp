@@ -280,7 +280,7 @@ bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size, 
 // successful.
 bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker &w_ctx ) {
     // Precedence
-    output.precedence = static_cast<f32>( parse_number( input, w_ctx, conf ).as_float() );
+    output.precedence = static_cast<f32>( parse_number( input, w_ctx, conf ) );
     Token token;
     CONSUME_COMMA( token );
 

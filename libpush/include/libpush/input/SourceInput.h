@@ -28,6 +28,7 @@ enum class CharRangeType {
     op,
     integer,
     ws,
+    opt_identifier, // allowed in identifiers
 };
 
 // Result of the lexing process
@@ -125,12 +126,11 @@ struct TokenConfig {
     std::vector<String> stat_divider;
     std::vector<std::pair<String, String>> block; // begin -> end pair
     std::vector<std::pair<String, String>> term; // begin -> end pair
+
     std::map<String, std::pair<String, String>> comment; // begin -> end pair
-
-
     std::map<String, std::pair<String, String>> string; // character or string begin and end pair
     std::map<String, std::pair<String, String>> normal; // begin and end pair of a normal code block inside a special
-    std::map<String, std::vector<String>> allowed_level_overlap; // outer -> inner. E. g. nested comments
+    std::map<String, std::vector<String>> allowed_level_overlay; // outer -> inner. E. g. nested comments
     
     std::pair<u32, u32> allowed_chars; // start char -> end char pair
     std::vector<std::pair<String, String>> char_escapes; // from -> to pairing

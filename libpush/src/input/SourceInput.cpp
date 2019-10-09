@@ -37,10 +37,10 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.char_escapes.push_back( std::make_pair( "\\\"", "\"" ) );
     cfg.char_escapes.push_back( std::make_pair( "\\0", "\0" ) );
     cfg.string["s"] = std::make_pair( "\"", "\"" );
-    cfg.allowed_level_overlap["n"].push_back( "s" );
-    cfg.allowed_level_overlap["n"].push_back( "c" );
-    cfg.allowed_level_overlap["b"].push_back( "b" );
-    cfg.char_ranges[CharRangeType::identifier].push_back( std::make_pair( '0', '9' ) );
+    cfg.allowed_level_overlay["n"].push_back( "s" );
+    cfg.allowed_level_overlay["n"].push_back( "c" );
+    cfg.allowed_level_overlay["b"].push_back( "b" );
+    cfg.char_ranges[CharRangeType::opt_identifier].push_back( std::make_pair( '0', '9' ) );
     cfg.char_ranges[CharRangeType::integer].push_back( std::make_pair( '0', '9' ) );
     cfg.operators.push_back( "," );
     cfg.operators.push_back( "->" );
@@ -72,7 +72,10 @@ std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const String
         // Check if all following chars match the expected type
         bool matches = true;
         for ( size_t i = offset + 1; i < str.size(); i++ ) {
-            if ( ranges_sets[expected].find( str[i] ) == ranges_sets[expected].end() ) {
+            // A special case are identifiers which may also contain opt_identifier(s)
+            if ( ranges_sets[expected].find( str[i] ) == ranges_sets[expected].end() &&
+                 ( expected != CharRangeType::identifier || ranges_sets[CharRangeType::opt_identifier].find( str[i] ) ==
+                                                                ranges_sets[CharRangeType::opt_identifier].end() ) ) {
                 // Different type
                 matches = false;
                 break;

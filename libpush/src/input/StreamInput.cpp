@@ -177,7 +177,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
             }
         }
     }
-    std::vector<String> *alo = level_stack.empty() ? nullptr : &cfg.allowed_level_overlap[level_stack.top().first];
+    std::vector<String> *alo = level_stack.empty() ? nullptr : &cfg.allowed_level_overlay[level_stack.top().first];
     if ( !changed_level ) {
         // Might be a new normal level
         for ( auto &c : cfg.normal ) {

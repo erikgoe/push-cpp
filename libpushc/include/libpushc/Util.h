@@ -20,47 +20,8 @@ void consume_comment( sptr<SourceInput> &input, TokenConfig &conf );
 // Parse the content of a string
 String parse_string( sptr<SourceInput> &input, Worker &w_ctx );
 
-// Representation of any number
-struct Number {
-    enum class Type { integer, unsigned_int, floating_p } type;
-    union Value {
-        i64 integer;
-        u64 unsigned_int;
-        f64 floating_p;
-    } value;
-    String type_postfix;
-
-    f64 as_float() {
-        if ( type == Type::integer )
-            return static_cast<f64>( value.integer );
-        else if ( type == Type::unsigned_int )
-            return static_cast<f64>( value.unsigned_int );
-        else if ( type == Type::floating_p )
-            return value.floating_p;
-        else
-            return 0.;
-    }
-    i64 as_int() {
-        if ( type == Type::integer )
-            return value.integer;
-        else if ( type == Type::unsigned_int )
-            return static_cast<i64>( value.unsigned_int );
-        else if ( type == Type::floating_p )
-            return static_cast<i64>( value.floating_p );
-        else
-            return 0;
-    }
-    u64 as_uint() {
-        if ( type == Type::integer )
-            return static_cast<u64>( value.unsigned_int );
-        else if ( type == Type::unsigned_int )
-            return value.unsigned_int;
-        else if ( type == Type::floating_p )
-            return static_cast<u64>( value.floating_p );
-        else
-            return 0;
-    }
-};
+// Representation of any integer
+using Number = u64;
 
 // Pares a value
 Number parse_number( sptr<SourceInput> &input, Worker &w_ctx, sptr<PreludeConfig> &conf );

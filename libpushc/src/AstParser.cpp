@@ -19,7 +19,7 @@
 
 using TT = Token::Type;
 
-// Consume any amount of comments if any
+// Consume any amount of comments if any TODO use impl in Util.h
 void consume_comment( SourceInput &input ) {
     while ( input.preview_token().type == TT::comment_begin ) {
         input.get_token(); // consume consume comment begin
