@@ -146,3 +146,18 @@ public:
 
     char operator[]( const size_t index ) const { return m_ref[index]; }
 };
+
+namespace std {
+// Creates a hash from a String
+template <>
+struct hash<String> {
+public:
+    size_t operator()( const String &str ) const noexcept { return hash<std::string>{}( str ); }
+};
+// Creates a hash from a StringSlice
+template <>
+struct hash<StringSlice> {
+public:
+    size_t operator()( const StringSlice &str ) const noexcept { return hash<String>{}( str ); }
+};
+}

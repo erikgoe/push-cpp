@@ -135,7 +135,8 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list, const std::m
                 sr.expr_list.push_back( alias_list.at( expr.first ) );
             } else {
                 // Keyword or operator
-                sr.expr_list.push_back( make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "" ) ) );
+                sr.expr_list.push_back(
+                    make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "", TokenLevel::normal ) ) );
             }
         }
         ctr++;
@@ -256,7 +257,7 @@ void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) {
         auto start_time = std::chrono::system_clock::now();
-        auto input = get_source_input( *w_ctx.unit_ctx()->root_file, w_ctx );
+        auto input = get_source_input( w_ctx.unit_ctx()->root_file, w_ctx );
         if ( !input )
             return;
 

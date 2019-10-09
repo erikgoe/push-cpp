@@ -15,6 +15,22 @@
 #include "libpush/Base.h"
 #include "libpush/util/String.h"
 
+// Where in the code a token is
+enum class TokenLevel {
+    normal, // in no special area
+    comment, // in any comment
+    string, // in any string or character
+};
+
+// Groups types of chars together. Sorted after priority descending
+enum class CharRangeType {
+    identifier, // forced identifier
+    op,
+    integer,
+    ws,
+};
+
+// Result of the lexing process
 struct Token {
     enum class Type {
         stat_divider, // statement divider ";"
@@ -27,7 +43,6 @@ struct Token {
         comment_end,
 
         number, // integer type
-        number_float, // any floating type
         encoded_char, // encoded char like "\x26"
         string_begin, // begin of a string "\""
         string_end, // end of a string "\""
@@ -48,10 +63,11 @@ struct Token {
     size_t column = 0;
     size_t length = 0;
     String leading_ws; // contains the whitspace in front of this token
+    TokenLevel tl;
 
     Token() {}
     Token( Type type, const String &content, sptr<String> file, size_t line, size_t column, size_t length,
-           const String &leading_ws ) {
+           const String &leading_ws, TokenLevel tl ) {
         this->type = type;
         this->content = content;
         this->file = file;
@@ -59,16 +75,13 @@ struct Token {
         this->column = column;
         this->length = length;
         this->leading_ws = leading_ws;
-    }
-    static bool is_sticky( Type type ) {
-        return type == Type::number || type == Type::number_float || type == Type::keyword ||
-               type == Type::identifier || type == Type::ws;
+        this->tl = tl;
     }
 
     bool operator==( const Token &other ) const {
         return type == other.type && content == other.content &&
                ( file == other.file || ( file && other.file && *file == *other.file ) ) && line == other.line &&
-               column == other.column && length == other.length && leading_ws == other.leading_ws;
+               column == other.column && length == other.length && leading_ws == other.leading_ws && tl == other.tl;
     }
 
     // Returns a human readable representation of a token type
@@ -85,7 +98,7 @@ struct Token {
                                            ? "begin of comment"
                                            : type == Type::comment_end
                                                  ? "end of comment"
-                                                 : type == Type::number || type == Type::number_float
+                                                 : type == Type::number
                                                        ? "number literal"
                                                        : type == Type::encoded_char
                                                              ? "encoded character literal"
@@ -112,17 +125,17 @@ struct TokenConfig {
     std::vector<String> stat_divider;
     std::vector<std::pair<String, String>> block; // begin -> end pair
     std::vector<std::pair<String, String>> term; // begin -> end pair
-    std::vector<std::pair<String, String>> comment; // begin -> end pair
-    bool nested_comments;
+    std::map<String, std::pair<String, String>> comment; // begin -> end pair
+
     std::pair<u32, u32> allowed_chars; // start char -> end char pair
-    bool nested_strings;
+
     std::vector<std::pair<String, String>> char_escapes; // from -> to pairing
-    std::vector<String> char_encodings; // encoding prefixes
-    std::vector<std::pair<String, String>> string; // character or string begin and end pair
-    std::vector<String> integer_prefix; // allowed prefix tokens for a integer
-    std::vector<String> integer_delimiter; // allowed tokens inside a integer
-    std::vector<String> float_prefix; // allowed prefix tokens for a float
-    std::vector<String> float_delimiter; // allowed tokens inside a float
+    std::map<String, std::pair<String, String>> string; // character or string begin and end pair
+    std::map<String, std::pair<String, String>> normal; // begin and end pair of a normal code block inside a special
+    std::map<String, std::vector<String>> allowed_level_overlap; // outer -> inner. E. g. nested comments
+
+    std::map<CharRangeType, std::vector<std::pair<u32, u32>>> char_ranges; // ranges of characters (e. g. integers)
+
     std::vector<String> operators; // all available operators.
                                    // Should be sorted with longest & most likely operators first
     std::vector<String> keywords; // all available operators
@@ -135,22 +148,33 @@ struct TokenConfig {
 class SourceInput {
 protected:
     TokenConfig cfg;
+    std::unordered_map<String, Token::Type> not_sticky_map; // maps not sticky tokens
+    std::map<CharRangeType, std::unordered_set<u32>> ranges_sets; // maps to elements in char ranges
     sptr<Worker> w_ctx;
     sptr<String> filename;
-    size_t revert_size; // max size of a operator, etc.
+    size_t max_op_size; // max size of a operator (any not-sticky token)
 
-    // returns the type and (bounded) size of the last characters of a string
-    std::pair<Token::Type, size_t> ending_token( const String &str, bool in_string, bool in_comment,
-                                                 const Token::Type curr_tt, size_t curr_line, size_t curr_column );
+    // Adds all chars of a string to a specific char range
+    void insert_in_range( const String &str, CharRangeType range );
+
+    // Checks which token matches the whole string. Returns Token::Type::count if none was found
+    Token::Type find_non_sticky_token( const StringSlice &str );
+
+    // Checks which token matches the longest part at the enf of the string and its size
+    std::pair<Token::Type, size_t> find_last_sticky_token( const StringSlice &str );
 
 public:
+    SourceInput( sptr<Worker> w_ctx, sptr<String> file ) : not_sticky_map( 128 ) {
+        this->w_ctx = w_ctx;
+        this->filename = file;
+    }
     virtual ~SourceInput() {}
 
     // set the TokenConfig configuration
     virtual void configure( const TokenConfig &cfg );
 
     // Opens a new source input for the given file
-    virtual sptr<SourceInput> open_new_file( const String &file, sptr<Worker> w_ctx ) = 0;
+    virtual sptr<SourceInput> open_new_file( sptr<String> file, sptr<Worker> w_ctx ) = 0;
 
     // Returns the used filepath
     virtual sptr<String> get_filename() { return filename; }

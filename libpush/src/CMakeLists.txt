@@ -6,7 +6,7 @@ add_library(${LIB_NAME}
     Message.cpp
     GlobalCtx.cpp
     Worker.cpp
-    input/FileInput.cpp
+    input/StreamInput.cpp
     input/SourceInput.cpp
     UnitCtx.cpp
     util/String.cpp

@@ -20,33 +20,7 @@ PreludeConfig get_prelude_prelude() {
     PreludeConfig pc;
     pc.is_prelude = true;
     pc.is_prelude_library = false;
-    pc.token_conf.stat_divider.push_back( ";" );
-    pc.token_conf.term.push_back( std::make_pair( "(", ")" ) );
-    pc.token_conf.comment.push_back( std::make_pair( "/*", "*/" ) );
-    pc.token_conf.comment.push_back( std::make_pair( "//", "\n" ) );
-    pc.token_conf.comment.push_back( std::make_pair( "//", "\r" ) );
-    pc.token_conf.nested_comments = false;
-    pc.token_conf.allowed_chars = std::make_pair<u32, u32>( 0, 0xffffffff );
-    pc.token_conf.nested_strings = false;
-    pc.token_conf.char_escapes.push_back( std::make_pair( "\\n", "\n" ) );
-    pc.token_conf.char_escapes.push_back( std::make_pair( "\\t", "\t" ) );
-    pc.token_conf.char_escapes.push_back( std::make_pair( "\\v", "\v" ) );
-    pc.token_conf.char_escapes.push_back( std::make_pair( "\\r", "\r" ) );
-    pc.token_conf.char_escapes.push_back( std::make_pair( "\\\\", "\\" ) );
-    pc.token_conf.char_escapes.push_back( std::make_pair( "\\\'", "\'" ) );
-    pc.token_conf.char_escapes.push_back( std::make_pair( "\\\"", "\"" ) );
-    pc.token_conf.char_escapes.push_back( std::make_pair( "\\0", "\0" ) );
-    pc.token_conf.char_encodings.push_back( "\\o" );
-    pc.token_conf.char_encodings.push_back( "\\x" );
-    pc.token_conf.char_encodings.push_back( "\\u" );
-    pc.token_conf.string.push_back( std::make_pair( "\"", "\"" ) );
-    pc.token_conf.integer_prefix.push_back( "0o" );
-    pc.token_conf.integer_prefix.push_back( "0b" );
-    pc.token_conf.integer_prefix.push_back( "0h" );
-    pc.token_conf.float_delimiter.push_back( "." );
-    pc.token_conf.operators.push_back( "," );
-    pc.token_conf.operators.push_back( "->" );
-    pc.token_conf.operators.push_back( "#" );
+    pc.token_conf = TokenConfig::get_prelude_cfg();
 
     pc.exclude_operators = true;
     pc.exclude_keywords = true;
@@ -132,7 +106,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
 
 void load_prelude_file( sptr<String> path, JobsBuilder &jb, UnitCtx &ctx ) {
     jb.add_job<sptr<PreludeConfig>>( [path]( Worker &w_ctx ) {
-        auto input = get_source_input( *path, w_ctx );
+        auto input = get_source_input( path, w_ctx );
         input->configure( w_ctx.unit_ctx()->prelude_conf.token_conf );
         auto conf = make_shared<PreludeConfig>();
         bool parse_error = false;

@@ -24,12 +24,10 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.stat_divider.push_back( ";" );
     cfg.block.push_back( std::make_pair( "{", "}" ) );
     cfg.term.push_back( std::make_pair( "(", ")" ) );
-    cfg.comment.push_back( std::make_pair( "/*", "*/" ) );
-    cfg.comment.push_back( std::make_pair( "//", "\n" ) );
-    cfg.comment.push_back( std::make_pair( "//", "\r" ) );
-    cfg.nested_comments = false;
+    cfg.comment["b"] = std::make_pair( "/*", "*/" );
+    cfg.comment["ln"] = std::make_pair( "//", "\n" );
+    cfg.comment["lr"] = std::make_pair( "//", "\r" );
     cfg.allowed_chars = std::make_pair<u32, u32>( 0, 0xffffffff );
-    cfg.nested_strings = false;
     cfg.char_escapes.push_back( std::make_pair( "\\n", "\n" ) );
     cfg.char_escapes.push_back( std::make_pair( "\\t", "\t" ) );
     cfg.char_escapes.push_back( std::make_pair( "\\v", "\v" ) );
@@ -38,211 +36,142 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.char_escapes.push_back( std::make_pair( "\\\'", "\'" ) );
     cfg.char_escapes.push_back( std::make_pair( "\\\"", "\"" ) );
     cfg.char_escapes.push_back( std::make_pair( "\\0", "\0" ) );
-    cfg.char_encodings.push_back( "\\o" );
-    cfg.char_encodings.push_back( "\\x" );
-    cfg.char_encodings.push_back( "\\u" );
-    cfg.string.push_back( std::make_pair( "\"", "\"" ) );
-    cfg.integer_prefix.push_back( "0o" );
-    cfg.integer_prefix.push_back( "0b" );
-    cfg.integer_prefix.push_back( "0h" );
-    cfg.float_delimiter.push_back( "." );
+    cfg.string["s"] = std::make_pair( "\"", "\"" );
+    cfg.allowed_level_overlap["n"].push_back( "s" );
+    cfg.allowed_level_overlap["n"].push_back( "c" );
+    cfg.char_ranges[CharRangeType::identifier].push_back( std::make_pair( '0', '9' ) );
+    cfg.char_ranges[CharRangeType::integer].push_back( std::make_pair( '0', '9' ) );
     cfg.operators.push_back( "," );
     cfg.operators.push_back( "->" );
+    cfg.operators.push_back( "#" );
     cfg.operators.push_back( "::" );
     return cfg;
 }
 
-std::pair<Token::Type, size_t> SourceInput::ending_token( const String &str, bool in_string, bool in_comment,
-                                                          const Token::Type curr_tt, size_t curr_line,
-                                                          size_t curr_column ) {
-    if ( str.empty() ) {
-        LOG_ERR( "Passed empty string to ending_token()." );
-        return std::make_pair( Token::Type::count, 0 ); // invalid
-    }
-    u8 back = static_cast<u8>( str.back() );
+Token::Type SourceInput::find_non_sticky_token( const StringSlice &str ) {
+    auto tt = not_sticky_map.find( str );
+    return tt == not_sticky_map.end() ? Token::Type::count : tt->second;
+}
 
-    if ( back < cfg.allowed_chars.first || back > cfg.allowed_chars.second ) {
-        w_ctx->print_msg<MessageType::err_lexer_char_not_allowed>(
-            MessageInfo( filename, curr_line, curr_line, curr_column, 1, 0, FmtStr::Color::BoldRed ), {}, back );
+std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const StringSlice &str ) {
+    if ( str.empty() )
+        return std::make_pair( Token::Type::count, 0 );
+
+    CharRangeType expected;
+    size_t offset = 0;
+    for ( ; offset < str.size(); offset++ ) {
+        // Find the type of the first char
+        for ( auto &r : ranges_sets ) {
+            if ( r.second.find( str[offset] ) != r.second.end() ) {
+                expected = r.first;
+                break;
+            }
+        }
+
+        // Check if all following chars match the expected type
+        bool matches = true;
+        for ( size_t i = offset + 1; i < str.size(); i++ ) {
+            if ( ranges_sets[expected].find( str[i] ) == ranges_sets[expected].end() ) {
+                // Different type
+                matches = false;
+                break;
+            }
+        }
+
+        if ( matches )
+            break;
     }
 
-    // NOTE better approach to check elements: hashmaps for each operator size. Would be faster and not need all the
-    // size checks and substr etc.
-    // FIXME wrong comment ending rules may be applied:
-    // "// foo */ bar" ends line comment
-    // "/* foo \nbar*/" ends comment on newline
-    if ( back == ' ' || back == '\n' || back == '\r' || back == '\t' ) {
-        // first check if comments or strings are terminated by this token
-        if ( in_comment ) {
-            for ( auto &tc : cfg.comment ) { // comment delimiter
-                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                    return std::make_pair( Token::Type::comment_end, tc.second.size() );
-            }
-        } else if ( in_string ) {
-            for ( auto &tc : cfg.string ) { // comment delimiter
-                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                    return std::make_pair( Token::Type::string_end, tc.second.size() );
-            }
+    // Check if matching is a keyword
+    Token::Type tt;
+    if ( expected == CharRangeType::identifier ) {
+        if ( std::find( cfg.keywords.begin(), cfg.keywords.end(), String( str.slice( offset ) ) ) !=
+             cfg.keywords.end() ) {
+            tt = Token::Type::keyword;
+        } else {
+            tt = Token::Type::identifier;
         }
-        return std::make_pair( Token::Type::ws, 1 ); // whitespace
-    } else {
-        for ( auto &tc : cfg.stat_divider ) { // statement divider
-            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
-                return std::make_pair( Token::Type::stat_divider, tc.size() );
-        }
-        for ( auto &tc : cfg.comment ) { // comment delimiter
-            if ( in_comment && !cfg.nested_comments ) { // first check comment end
-                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                    return std::make_pair( Token::Type::comment_end, tc.second.size() );
-                if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
-                    return std::make_pair( Token::Type::comment_begin, tc.first.size() );
-            } else {
-                if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
-                    return std::make_pair( Token::Type::comment_begin, tc.first.size() );
-                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                    return std::make_pair( Token::Type::comment_end, tc.second.size() );
-            }
-        }
-        for ( auto &tc : cfg.block ) { // block delimiter
-            if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
-                return std::make_pair( Token::Type::block_begin, tc.first.size() );
-            if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                return std::make_pair( Token::Type::block_end, tc.second.size() );
-        }
-        for ( auto &tc : cfg.term ) { // term delimiter
-            if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
-                return std::make_pair( Token::Type::term_begin, tc.first.size() );
-            if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                return std::make_pair( Token::Type::term_end, tc.second.size() );
-        }
-        if ( curr_tt == Token::Type::encoded_char && ( ( back >= '0' && back <= '9' ) || ( back >= 'A' && back <= 'Z' ) ||
-                                                       ( back >= 'a' && back <= 'z' ) ) ) { // encoded characters
-            return std::make_pair( Token::Type::encoded_char, 1 );
-        }
-        if ( curr_tt != Token::Type::identifier &&
-             ( (back >= '0' && back <= '9' ) ||
-               ( ( curr_tt == Token::Type::number || curr_tt == Token::Type::number_float ) &&
-                 ( ( back >= 'A' && back <= 'F' ) || ( back >= 'a' && back <= 'f' ) ) ) ) ) { // numbers
-            if ( curr_tt == Token::Type::number_float )
-                return std::make_pair( Token::Type::number_float, 1 );
-            else
-                return std::make_pair( Token::Type::number, 1 );
-        }
-        for ( auto &tc : cfg.integer_prefix ) { // integer prefix
-            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
-                return std::make_pair( Token::Type::number, tc.size() );
-        }
-        for ( auto &tc : cfg.float_prefix ) { // float prefix
-            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
-                return std::make_pair( Token::Type::number_float, tc.size() );
-        }
-        if ( curr_tt == Token::Type::number ) {
-            for ( auto &tc : cfg.integer_delimiter ) { // integer delimiter
-                if ( str.size() >= tc.size() &&
-                     str.slice( str.size() - tc.size() ) == tc ) // FIXME can only handle single character delimiter
-                    return std::make_pair( Token::Type::number, tc.size() );
-            }
-        }
-        if ( curr_tt == Token::Type::number_float || curr_tt == Token::Type::number ) {
-            for ( auto &tc : cfg.float_delimiter ) { // float delimiter
-                if ( str.size() >= tc.size() &&
-                     str.slice( str.size() - tc.size() ) == tc ) // FIXME can only handle single character delimiter
-                    return std::make_pair( Token::Type::number_float, tc.size() );
-            }
-        }
-        for ( auto &tc : cfg.char_encodings ) { // encoded characters
-            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
-                return std::make_pair( Token::Type::encoded_char, tc.size() );
-        }
-        for ( auto &tc : cfg.operators ) { // operators
-            if ( str.size() >= tc.size() && str.slice( str.size() - tc.size() ) == tc )
-                return std::make_pair( Token::Type::op, tc.size() );
-        }
-        for ( auto &tc : cfg.keywords ) { // keywords
-            if ( str == tc )
-                return std::make_pair( Token::Type::keyword, tc.size() );
-        }
-        for ( auto &tc : cfg.string ) { // string delimiter
-            if ( in_string && !cfg.nested_strings ) { // first check string end
-                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                    return std::make_pair( Token::Type::string_end, tc.second.size() );
-                if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
-                    return std::make_pair( Token::Type::string_begin, tc.first.size() );
-            } else {
-                if ( str.size() >= tc.first.size() && str.slice( str.size() - tc.first.size() ) == tc.first )
-                    return std::make_pair( Token::Type::string_begin, tc.first.size() );
-                if ( str.size() >= tc.second.size() && str.slice( str.size() - tc.second.size() ) == tc.second )
-                    return std::make_pair( Token::Type::string_end, tc.second.size() );
-            }
-        }
-        return std::make_pair( Token::Type::identifier, 1 ); // anything different
+    } else if ( expected == CharRangeType::op ) {
+        tt = Token::Type::op;
+    } else if ( expected == CharRangeType::integer ) {
+        tt = Token::Type::number;
+    } else if ( expected == CharRangeType::ws ) {
+        tt = Token::Type::ws;
     }
+    return std::make_pair( tt, str.size() - offset );
+}
+
+void SourceInput::insert_in_range( const String &str, CharRangeType range ) {
+    for ( auto &s : str )
+        ranges_sets[range].insert( s );
 }
 
 void SourceInput::configure( const TokenConfig &cfg ) {
-    revert_size = 1; // min 1, to review carriage return character
+    max_op_size = 1; // min 1, to review carriage return character
     this->cfg = cfg;
 
-    for ( auto tc : cfg.stat_divider ) {
-        if ( tc.size() > revert_size )
-            revert_size = tc.size();
+    for ( auto &tc : cfg.stat_divider ) {
+        if ( tc.size() > max_op_size )
+            max_op_size = tc.size();
+        not_sticky_map[tc] = Token::Type::stat_divider;
+        insert_in_range( tc, CharRangeType::op );
     }
-    for ( auto tc : cfg.block ) {
-        if ( tc.first.size() > revert_size )
-            revert_size = tc.first.size();
-        if ( tc.second.size() > revert_size )
-            revert_size = tc.second.size();
+    for ( auto &tc : cfg.block ) {
+        if ( tc.first.size() > max_op_size )
+            max_op_size = tc.first.size();
+        if ( tc.second.size() > max_op_size )
+            max_op_size = tc.second.size();
+        not_sticky_map[tc.first] = Token::Type::block_begin;
+        not_sticky_map[tc.second] = Token::Type::block_end;
+        insert_in_range( tc.first, CharRangeType::op );
+        insert_in_range( tc.second, CharRangeType::op );
     }
-    for ( auto tc : cfg.term ) {
-        if ( tc.first.size() > revert_size )
-            revert_size = tc.first.size();
-        if ( tc.second.size() > revert_size )
-            revert_size = tc.second.size();
+    for ( auto &tc : cfg.term ) {
+        if ( tc.first.size() > max_op_size )
+            max_op_size = tc.first.size();
+        if ( tc.second.size() > max_op_size )
+            max_op_size = tc.second.size();
+        not_sticky_map[tc.first] = Token::Type::term_begin;
+        not_sticky_map[tc.second] = Token::Type::term_end;
+        insert_in_range( tc.first, CharRangeType::op );
+        insert_in_range( tc.second, CharRangeType::op );
     }
-    for ( auto tc : cfg.comment ) {
-        if ( tc.first.size() > revert_size )
-            revert_size = tc.first.size();
-        if ( tc.second.size() > revert_size )
-            revert_size = tc.second.size();
+    for ( auto &tc : cfg.comment ) {
+        if ( tc.second.first.size() > max_op_size )
+            max_op_size = tc.second.first.size();
+        if ( tc.second.second.size() > max_op_size )
+            max_op_size = tc.second.second.size();
+        not_sticky_map[tc.second.first] = Token::Type::comment_begin;
+        not_sticky_map[tc.second.second] = Token::Type::comment_end;
+        insert_in_range( tc.second.first, CharRangeType::op );
+        insert_in_range( tc.second.second, CharRangeType::op );
     }
-    for ( auto tc : cfg.char_escapes ) {
-        if ( tc.first.size() > revert_size )
-            revert_size = tc.first.size();
-        if ( tc.second.size() > revert_size )
-            revert_size = tc.second.size();
+    for ( auto &tc : cfg.string ) {
+        if ( tc.second.first.size() > max_op_size )
+            max_op_size = tc.second.first.size();
+        if ( tc.second.second.size() > max_op_size )
+            max_op_size = tc.second.second.size();
+        not_sticky_map[tc.second.first] = Token::Type::string_begin;
+        not_sticky_map[tc.second.second] = Token::Type::string_end;
+        insert_in_range( tc.second.first, CharRangeType::op );
+        insert_in_range( tc.second.second, CharRangeType::op );
     }
-    for ( auto tc : cfg.char_encodings ) {
-        if ( tc.size() > revert_size )
-            revert_size = tc.size();
+    for ( auto &tc : cfg.operators ) {
+        if ( tc.size() > max_op_size )
+            max_op_size = tc.size();
+        not_sticky_map[tc] = Token::Type::op;
+        insert_in_range( tc, CharRangeType::op );
     }
-    for ( auto tc : cfg.string ) {
-        if ( tc.first.size() > revert_size )
-            revert_size = tc.first.size();
-        if ( tc.second.size() > revert_size )
-            revert_size = tc.second.size();
+
+    // Other ranges
+    for ( auto &cr : cfg.char_ranges ) {
+        for ( auto &subrange : cr.second ) {
+            for ( u32 i = subrange.first; i <= subrange.second; i++ ) {
+                ranges_sets[cr.first].insert( i );
+            }
+        }
     }
-    for ( auto tc : cfg.integer_prefix ) {
-        if ( tc.size() > revert_size )
-            revert_size = tc.size();
-    }
-    for ( auto tc : cfg.integer_delimiter ) {
-        if ( tc.size() > revert_size )
-            revert_size = tc.size();
-    }
-    for ( auto tc : cfg.float_prefix ) {
-        if ( tc.size() > revert_size )
-            revert_size = tc.size();
-    }
-    for ( auto tc : cfg.float_delimiter ) {
-        if ( tc.size() > revert_size )
-            revert_size = tc.size();
-    }
-    for ( auto tc : cfg.operators ) {
-        if ( tc.size() > revert_size )
-            revert_size = tc.size();
-    }
-    for ( auto tc : cfg.keywords ) {
-        if ( tc.size() > revert_size )
-            revert_size = tc.size();
-    }
+
+    // Predefined ranges
+    ranges_sets[CharRangeType::ws].insert( { ' ', '\n', '\r', '\t' } );
 }
