@@ -45,7 +45,7 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     auto g_ctx = make_shared<GlobalCtx>();
     sptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
 
-    FileInput fin( CMAKE_PROJECT_ROOT "/Test/lexer.push", 5000, 4096, w_ctx );
+    FileInput fin( make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" ), w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();
     cfg.operators.push_back( "+=-" );
     cfg.operators.push_back( "--" );
@@ -54,7 +54,6 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     cfg.operators.push_back( "-" );
     cfg.operators.push_back( "." );
     cfg.keywords.push_back( "let" );
-    cfg.nested_comments = true;
     fin.configure( cfg );
 
     std::list<Token> token_list;
@@ -71,61 +70,63 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
 
     auto test_file = make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
     std::list<Token> token_check_list{
-        Token( Token::Type::comment_begin, "//", test_file, 1, 1, 2, "" ),
-        Token( Token::Type::identifier, "testing", test_file, 1, 4, 7, " " ),
-        Token( Token::Type::identifier, "the", test_file, 1, 12, 3, " " ),
-        Token( Token::Type::identifier, "lexer", test_file, 1, 16, 5, " " ),
-        Token( Token::Type::term_begin, "(", test_file, 1, 22, 1, " " ),
-        Token( Token::Type::identifier, "SourceInput", test_file, 1, 23, 11, "" ),
-        Token( Token::Type::term_end, ")", test_file, 1, 34, 1, "" ),
-        Token( Token::Type::comment_end, "\n", test_file, 1, 35, 1, "" ),
-        Token( Token::Type::identifier, "main", test_file, 3, 1, 4, "\n  \n" ),
-        Token( Token::Type::block_begin, "{", test_file, 3, 6, 1, " " ),
-        Token( Token::Type::identifier, "letlet", test_file, 4, 5, 6, "\n\t" ),
-        Token( Token::Type::identifier, "a", test_file, 4, 12, 1, " " ),
-        Token( Token::Type::op, "=", test_file, 4, 13, 1, "" ),
-        Token( Token::Type::number, "4", test_file, 4, 15, 1, " " ),
-        Token( Token::Type::stat_divider, ";", test_file, 4, 16, 1, "" ),
-        Token( Token::Type::keyword, "let", test_file, 5, 5, 3, " \n    " ),
-        Token( Token::Type::identifier, "b", test_file, 5, 9, 1, " " ),
-        Token( Token::Type::op, "=", test_file, 5, 11, 1, " " ),
-        Token( Token::Type::number_float, "3.2", test_file, 5, 12, 3, "" ),
-        Token( Token::Type::stat_divider, ";", test_file, 5, 15, 1, "" ),
-        Token( Token::Type::comment_begin, "//", test_file, 5, 17, 2, " " ),
-        Token( Token::Type::identifier, "commenting", test_file, 5, 20, 10, " " ),
-        Token( Token::Type::identifier, "🦄🦓and🦌", test_file, 5, 31, 6, " " ),
-        Token( Token::Type::comment_end, "\n", test_file, 5, 37, 1, "" ),
-        Token( Token::Type::identifier, "c", test_file, 6, 5, 1, "\n    " ),
-        Token( Token::Type::op, "=", test_file, 6, 7, 1, " " ),
-        Token( Token::Type::identifier, "a", test_file, 6, 9, 1, " " ),
-        Token( Token::Type::op, "+", test_file, 6, 10, 1, "" ),
-        Token( Token::Type::identifier, "b", test_file, 6, 11, 1, "" ),
-        Token( Token::Type::op, "-", test_file, 6, 13, 1, " " ),
-        Token( Token::Type::number, "2", test_file, 6, 15, 1, " " ),
-        Token( Token::Type::stat_divider, ";", test_file, 6, 16, 1, "" ),
-        Token( Token::Type::comment_begin, "/*", test_file, 6, 18, 2, " " ),
-        Token( Token::Type::identifier, "other", test_file, 6, 20, 5, "" ),
-        Token( Token::Type::comment_begin, "/*", test_file, 6, 26, 2, " " ),
-        Token( Token::Type::identifier, "comment", test_file, 6, 28, 7, "" ),
-        Token( Token::Type::comment_begin, "/*", test_file, 6, 36, 2, " " ),
-        Token( Token::Type::identifier, "with", test_file, 6, 38, 4, "" ),
-        Token( Token::Type::comment_end, "*/", test_file, 6, 42, 2, "" ),
-        Token( Token::Type::comment_end, "*/", test_file, 6, 44, 2, "" ),
-        Token( Token::Type::identifier, "nested", test_file, 6, 47, 6, " " ),
-        Token( Token::Type::comment_end, "*/", test_file, 6, 53, 2, "" ),
-        Token( Token::Type::identifier, "c", test_file, 7, 5, 1, "\n\t" ),
-        Token( Token::Type::op, "-", test_file, 7, 7, 1, " " ),
-        Token( Token::Type::op, "+=-", test_file, 7, 8, 3, "" ),
-        Token( Token::Type::op, "+=-", test_file, 7, 11, 3, "" ),
-        Token( Token::Type::op, "--", test_file, 7, 14, 2, "" ),
-        Token( Token::Type::op, "-", test_file, 7, 16, 1, "" ),
-        Token( Token::Type::identifier, "objletlet", test_file, 7, 17, 9, "" ),
-        Token( Token::Type::op, ".", test_file, 7, 26, 1, "" ),
-        Token( Token::Type::identifier, "letletdo", test_file, 7, 27, 8, "" ),
-        Token( Token::Type::term_begin, "(", test_file, 7, 35, 1, "" ),
-        Token( Token::Type::term_end, ")", test_file, 7, 36, 1, "" ),
-        Token( Token::Type::stat_divider, ";", test_file, 7, 37, 1, "" ),
-        Token( Token::Type::block_end, "}", test_file, 8, 1, 1, "\n" ),
+        Token( Token::Type::comment_begin, "//", test_file, 1, 1, 2, "", TokenLevel::normal ),
+        Token( Token::Type::identifier, "testing", test_file, 1, 4, 7, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "the", test_file, 1, 12, 3, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "lexer", test_file, 1, 16, 5, " ", TokenLevel::comment ),
+        Token( Token::Type::term_begin, "(", test_file, 1, 22, 1, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "SourceInput", test_file, 1, 23, 11, "", TokenLevel::comment ),
+        Token( Token::Type::term_end, ")", test_file, 1, 34, 1, "", TokenLevel::comment ),
+        Token( Token::Type::comment_end, "\n", test_file, 1, 35, 1, "", TokenLevel::comment ),
+        Token( Token::Type::identifier, "main", test_file, 3, 1, 4, "\n  \n", TokenLevel::normal ),
+        Token( Token::Type::block_begin, "{", test_file, 3, 6, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::identifier, "letlet", test_file, 4, 5, 6, "\n\t", TokenLevel::normal ),
+        Token( Token::Type::identifier, "a", test_file, 4, 12, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::op, "=", test_file, 4, 13, 1, "", TokenLevel::normal ),
+        Token( Token::Type::number, "4", test_file, 4, 15, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::stat_divider, ";", test_file, 4, 16, 1, "", TokenLevel::normal ),
+        Token( Token::Type::keyword, "let", test_file, 5, 5, 3, " \n    ", TokenLevel::normal ),
+        Token( Token::Type::identifier, "b", test_file, 5, 9, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::op, "=", test_file, 5, 11, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::number, "3", test_file, 5, 12, 1, "", TokenLevel::normal ),
+        Token( Token::Type::op, ".", test_file, 5, 13, 1, "", TokenLevel::normal ),
+        Token( Token::Type::number, "2", test_file, 5, 14, 1, "", TokenLevel::normal ),
+        Token( Token::Type::stat_divider, ";", test_file, 5, 15, 1, "", TokenLevel::normal ),
+        Token( Token::Type::comment_begin, "//", test_file, 5, 17, 2, " ", TokenLevel::normal ),
+        Token( Token::Type::identifier, "commenting", test_file, 5, 20, 10, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "🦄🦓and🦌", test_file, 5, 31, 6, " ", TokenLevel::comment ),
+        Token( Token::Type::comment_end, "\n", test_file, 5, 37, 1, "", TokenLevel::comment ),
+        Token( Token::Type::identifier, "c", test_file, 6, 5, 1, "\n    ", TokenLevel::normal ),
+        Token( Token::Type::op, "=", test_file, 6, 7, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::identifier, "a", test_file, 6, 9, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::op, "+", test_file, 6, 10, 1, "", TokenLevel::normal ),
+        Token( Token::Type::identifier, "b", test_file, 6, 11, 1, "", TokenLevel::normal ),
+        Token( Token::Type::op, "-", test_file, 6, 13, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::number, "2", test_file, 6, 15, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::stat_divider, ";", test_file, 6, 16, 1, "", TokenLevel::normal ),
+        Token( Token::Type::comment_begin, "/*", test_file, 6, 18, 2, " ", TokenLevel::normal ),
+        Token( Token::Type::identifier, "other", test_file, 6, 20, 5, "", TokenLevel::comment ),
+        Token( Token::Type::comment_begin, "/*", test_file, 6, 26, 2, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "comment", test_file, 6, 28, 7, "", TokenLevel::comment ),
+        Token( Token::Type::comment_begin, "/*", test_file, 6, 36, 2, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "with", test_file, 6, 38, 4, "", TokenLevel::comment ),
+        Token( Token::Type::comment_end, "*/", test_file, 6, 42, 2, "", TokenLevel::comment ),
+        Token( Token::Type::comment_end, "*/", test_file, 6, 44, 2, "", TokenLevel::comment ),
+        Token( Token::Type::identifier, "nested", test_file, 6, 47, 6, " ", TokenLevel::comment ),
+        Token( Token::Type::comment_end, "*/", test_file, 6, 53, 2, "", TokenLevel::comment ),
+        Token( Token::Type::identifier, "c", test_file, 7, 5, 1, "\n\t", TokenLevel::normal ),
+        Token( Token::Type::op, "-", test_file, 7, 7, 1, " ", TokenLevel::normal ),
+        Token( Token::Type::op, "+=-", test_file, 7, 8, 3, "", TokenLevel::normal ),
+        Token( Token::Type::op, "+=-", test_file, 7, 11, 3, "", TokenLevel::normal ),
+        Token( Token::Type::op, "--", test_file, 7, 14, 2, "", TokenLevel::normal ),
+        Token( Token::Type::op, "-", test_file, 7, 16, 1, "", TokenLevel::normal ),
+        Token( Token::Type::identifier, "objletlet", test_file, 7, 17, 9, "", TokenLevel::normal ),
+        Token( Token::Type::op, ".", test_file, 7, 26, 1, "", TokenLevel::normal ),
+        Token( Token::Type::identifier, "letletdo", test_file, 7, 27, 8, "", TokenLevel::normal ),
+        Token( Token::Type::term_begin, "(", test_file, 7, 35, 1, "", TokenLevel::normal ),
+        Token( Token::Type::term_end, ")", test_file, 7, 36, 1, "", TokenLevel::normal ),
+        Token( Token::Type::stat_divider, ";", test_file, 7, 37, 1, "", TokenLevel::normal ),
+        Token( Token::Type::block_end, "}", test_file, 8, 1, 1, "\n", TokenLevel::normal ),
     };
 
     REQUIRE( token_list.size() == token_check_list.size() );
@@ -143,7 +144,7 @@ TEST_CASE( "Stress test lexing", "[lexer]" ) {
     auto g_ctx = make_shared<GlobalCtx>();
     sptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
 
-    FileInput fin( CMAKE_PROJECT_ROOT "/Test/gibberish.txt", 50, 30, w_ctx );
+    FileInput fin( make_shared<String>( CMAKE_PROJECT_ROOT "/Test/gibberish.txt" ), w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();
     cfg.operators.push_back( "." );
     fin.configure( cfg );

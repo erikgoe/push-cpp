@@ -39,6 +39,7 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.string["s"] = std::make_pair( "\"", "\"" );
     cfg.allowed_level_overlap["n"].push_back( "s" );
     cfg.allowed_level_overlap["n"].push_back( "c" );
+    cfg.allowed_level_overlap["b"].push_back( "b" );
     cfg.char_ranges[CharRangeType::identifier].push_back( std::make_pair( '0', '9' ) );
     cfg.char_ranges[CharRangeType::integer].push_back( std::make_pair( '0', '9' ) );
     cfg.operators.push_back( "," );

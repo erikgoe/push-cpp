@@ -127,12 +127,13 @@ struct TokenConfig {
     std::vector<std::pair<String, String>> term; // begin -> end pair
     std::map<String, std::pair<String, String>> comment; // begin -> end pair
 
-    std::pair<u32, u32> allowed_chars; // start char -> end char pair
 
-    std::vector<std::pair<String, String>> char_escapes; // from -> to pairing
     std::map<String, std::pair<String, String>> string; // character or string begin and end pair
     std::map<String, std::pair<String, String>> normal; // begin and end pair of a normal code block inside a special
     std::map<String, std::vector<String>> allowed_level_overlap; // outer -> inner. E. g. nested comments
+    
+    std::pair<u32, u32> allowed_chars; // start char -> end char pair
+    std::vector<std::pair<String, String>> char_escapes; // from -> to pairing
 
     std::map<CharRangeType, std::vector<std::pair<u32, u32>>> char_ranges; // ranges of characters (e. g. integers)
 
