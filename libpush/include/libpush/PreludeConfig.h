@@ -36,14 +36,6 @@ struct StringRule {
     bool block = false; // use a whole block as single literal
     bool utf8 = true; // otherwise 32bit
 };
-// The rules for one type of character
-struct CharacterRule {
-    String begin;
-    String end;
-    String prefix;
-    bool escaped = true; // may contain escape sequences
-    bool bit32 = true; // otherwise ascii
-};
 
 // Represents any list with type -> name pairs or just keywords.
 using Syntax = std::list<std::pair<String, String>>;
@@ -67,7 +59,6 @@ struct FunctionDefinition {
     String function_trait;
     String function_fn; // function in the trait
     Syntax syntax;
-    std::vector<String> aliases; // syntax alias identifiers
 };
 
 // Operator to describe a range
@@ -91,8 +82,6 @@ struct PreludeConfig {
     bool is_prelude_library = false; // if was included by a prelude file
     TokenConfig token_conf;
 
-    bool exclude_operators = false; // from identifiers
-    bool exclude_keywords = false; // from identifiers
     bool spaces_bind_identifiers = false; // if space combines two identifiers
     IdentifierCase function_case = IdentifierCase::snake;
     IdentifierCase method_case = IdentifierCase::snake;
@@ -101,27 +90,7 @@ struct PreludeConfig {
     IdentifierCase struct_case = IdentifierCase::pascal;
     IdentifierCase trait_case = IdentifierCase::pascal;
     std::list<String> unused_prefix; // prefix for unused variables
-
-    std::list<String> ascii_octal_prefix; // prefix for octal ascii encoded chars
-    std::list<String> ascii_hex_prefix; // prefix for hex ascii encoded chars
-    std::list<String> unicode_hex_prefix; // prefix for hex unicode encoded chars
-    bool truncate_unicode_hex_prefix = false; // whether leading zeros may be omitted
     std::list<StringRule> string_rules;
-    std::list<std::pair<String, String>> value_extract; // escape limiter for value extraction
-    bool allow_multi_value_extract = false; // whether multiple values in one extraction are allowed
-    std::list<CharacterRule> char_rules;
-
-    std::list<String> bin_int_prefix; // prefix for binary integers
-    std::list<String> oct_int_prefix; // prefix for octal integers
-    std::list<String> hex_int_prefix; // prefix for hex integers
-    std::list<String> kilo_int_delimiter; // delimiter which is allowed every three chars in an decimal integer
-    bool allow_int_type_postfix = false; // allow an postfix for integers which defines the type
-    std::list<String> kilo_float_delimiter; // delimiter which is allowed every three chars in an decimal floats
-    std::list<String> fraction_delimiter; // usually the period before the fractional part of the float value
-    std::list<String> expo_delimiter; // usually the "E"
-    std::list<String> expo_positive;
-    std::list<String> expo_negative;
-    bool allow_float_type_postfix = false; // allow an postfix for floats which defines the type
 
     // TODO special statements
     // TODO OOP constructs
@@ -136,7 +105,6 @@ struct PreludeConfig {
     std::list<Operator> member_access_op; // how sub-elements may be accessed
     // TODO array access
 
-    std::map<String, std::list<Operator>> subtypes; // these subtypes may occur in type -> name pairs
     std::list<TraitOperator> operators; // all general operators
     std::list<Operator> reference_op; // used for borrowing
     std::list<Operator> type_of_op; // returns the type of a expression
@@ -144,9 +112,7 @@ struct PreludeConfig {
     std::list<Operator> type_op; // special type defining operator
     std::list<RangeOperator> range_op; // any possible range
 
-    std::list<std::pair<Syntax, String>> type_literals; // literals which describe types
-    std::list<std::pair<Syntax, bool>> bool_literals; // literals which describe a boolean
-    std::list<std::pair<Syntax, i64>> int_literals; // literals which describe an integer
-    std::list<std::pair<Syntax, f64>> float_literals; // literals which describe an double
-    std::list<std::pair<Syntax, std::pair<i64, i64>>> range_literals; // literals which describe an range
+    std::map<String, String> special_types; // maps special type keywords/operators to their meaning
+    std::map<String, u8> memblob_types; // maps type names to their memory size
+    std::map<String, std::pair<String, u64>> literals; // each literal keyword is mapped to its type and memory_value
 };

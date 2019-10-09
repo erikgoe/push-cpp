@@ -79,13 +79,13 @@ define_mci_rule( IDENTIFIER_RULES, no_spaces, unused begin "_" ); // define rule
 define_mci_rule( IDENTIFIER_CASE, functions snake, method snake, variables snake, modules snake, struct pascal, trait pascal ); // define how which identifiers have to be written
 
 // Basic literal rules
-define_mci_rule( LITERAL_CHARACTER_ESCAPES, newline "\\n", horizontal_tab "\\t", vertical_tab "\\v", carriage_return "\\r", backslash "\\\\", quote "\\\'", double_quotes "\\\"", null "\\0", ascii_oct "\\o", ascii_hex "\\x", unicode_32_hex "\\u" ); // Possible character escapes in strings or single characters and encoding escapes
+define_mci_rule( LITERAL_CHARACTER_ESCAPES, newline "\\n", horizontal_tab "\\t", vertical_tab "\\v", carriage_return "\\r", backslash "\\\\", quote "\\\'", double_quotes "\\\"", null "\\0" ); // Possible character escapes in strings or single characters
 
 // Character ranges
 define_mci_rule( NEW_RANGE, identifier, "_" ); // additional identifier characters
-define_mci_rule( NEW_RANGE, opt_identifier, "0" "1" "2" "3" "4" "5" "6" "7" "8" "9" ); // additional allowed characters
-define_mci_rule( NEW_RANGE, integer, "_" "0" "1" "2" "3" "4" "5" "6" "7" "8" "9" );
-define_mci_rule( NEW_RANGE, whitespace, " " "\n" "\r" "\t" );
+define_mci_rule( NEW_RANGE, opt_identifier, "0" "9" ); // additional allowed characters
+define_mci_rule( NEW_RANGE, integer, "_", "0" "9" );
+define_mci_rule( NEW_RANGE, whitespace, " ", "\n", "\r", "\t" );
 
 // Comment rules
 define_mci_rule( NEW_COMMENT, b, "/*" "*/", overlay b );
@@ -249,5 +249,5 @@ define_mci_rule( TYPE_MEMORY_BLOB, "f128", 16 );
 define_mci_rule( TYPE_MEMORY_BLOB, "f256", 32 );
 
 // Special literals
-define_mci_rule( NEW_LITERAL, "bool", "true", 1 );
-define_mci_rule( NEW_LITERAL, "bool", "false", 0 );
+define_mci_rule( NEW_LITERAL, "true", "bool", 1 );
+define_mci_rule( NEW_LITERAL, "false", "bool", 0 );

@@ -22,8 +22,6 @@ PreludeConfig get_prelude_prelude() {
     pc.is_prelude_library = false;
     pc.token_conf = TokenConfig::get_prelude_cfg();
 
-    pc.exclude_operators = true;
-    pc.exclude_keywords = true;
     pc.spaces_bind_identifiers = false;
     pc.function_case = IdentifierCase::snake;
     pc.method_case = IdentifierCase::snake;
@@ -32,28 +30,9 @@ PreludeConfig get_prelude_prelude() {
     pc.struct_case = IdentifierCase::pascal;
     pc.trait_case = IdentifierCase::pascal;
     pc.unused_prefix.clear();
-
-    pc.ascii_octal_prefix.push_back( "\\o" );
-    pc.ascii_hex_prefix.push_back( "\\x" );
-    pc.unicode_hex_prefix.push_back( "\\u" );
-    pc.truncate_unicode_hex_prefix = true;
     pc.string_rules.push_back( StringRule{ "\"", "\"", "", "", "", true, false, true } );
-    pc.value_extract.clear();
-    pc.allow_multi_value_extract = false;
-    pc.char_rules.push_back( CharacterRule{ "\'", "\'", "", true, true } );
 
-    pc.bin_int_prefix.push_back( "0b" );
-    pc.oct_int_prefix.push_back( "0o" );
-    pc.hex_int_prefix.push_back( "0x" );
-    pc.kilo_int_delimiter.clear();
-    pc.allow_int_type_postfix = false;
-    pc.kilo_float_delimiter.clear();
-    pc.fraction_delimiter.push_back( "." );
-    pc.expo_delimiter.push_back( "E" );
-    pc.expo_positive.push_back( "+" );
-    pc.expo_negative.push_back( "-" );
-    pc.allow_float_type_postfix = false;
-
+    pc.fn_declarations.clear();
     pc.fn_definitions.clear();
 
     pc.scope_access_op.clear();
@@ -61,7 +40,6 @@ PreludeConfig get_prelude_prelude() {
     // ), std::make_pair( "expr", "name" ) } } );
     pc.member_access_op.clear();
 
-    pc.subtypes.clear();
     pc.operators.clear();
     pc.reference_op.clear();
     pc.type_of_op.clear();
@@ -69,11 +47,9 @@ PreludeConfig get_prelude_prelude() {
     pc.type_op.clear();
     pc.range_op.clear();
 
-    pc.type_literals.clear();
-    pc.bool_literals.clear();
-    pc.int_literals.clear();
-    pc.float_literals.clear();
-    pc.range_literals.clear();
+    pc.special_types.clear();
+    pc.memblob_types.clear();
+    pc.literals.clear();
 
     return pc;
 }
@@ -378,86 +354,17 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 create_prelude_error_msg( w_ctx, token );
                 return false;
             }
-        } else if ( mci == "COMMENT_RULES" ) {
-            token = input->get_token();
-            if ( token.content == "block" || token.content == "block_doc" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                conf->token_conf.comment.push_back( std::make_pair( str, str2 ) );
-            } else if ( token.content == "line" || token.content == "line_doc" ) {
-                PARSE_LITERAL( str );
-                conf->token_conf.comment.push_back( std::make_pair( str, "\n" ) );
-                conf->token_conf.comment.push_back( std::make_pair( str, "\r" ) );
-            } else if ( token.content == "nested_blocks_allowed" ) {
-                conf->token_conf.nested_comments = true;
-            } else if ( token.content == "nested_blocks_disallowed" ) {
-                conf->token_conf.nested_comments = false;
-            } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-        } else if ( mci == "IDENTIFIER_RULES" ) {
+        } else if ( mci == "ALLOWED_CHARS" ) {
             token = input->get_token();
             if ( token.content == "any_unicode" ) {
                 conf->token_conf.allowed_chars = std::make_pair( 0, 0xffffffff );
-            } else if ( token.content == "exclude" ) {
-                do {
-                    PARSE_LITERAL( str );
-                    if ( str == "\x2operators" )
-                        conf->exclude_operators = true;
-                    else if ( str == "\x2keywords" )
-                        conf->exclude_keywords = true;
-                    else { // exclude specific words
-                        create_not_supported_error_msg( w_ctx, token,
-                                                        "Exclude arbritray words from possible identifiers set." );
-                        return false;
-                    }
-                } while ( input->preview_token().content == "or" && /*consume*/ input->get_token().column );
-            } else if ( token.content == "no_spaces" ) {
+            }
+        } else if ( mci == "IDENTIFIER_RULES" ) {
+            token = input->get_token();
+            if ( token.content == "no_spaces" ) {
                 conf->spaces_bind_identifiers = false;
             } else if ( token.content == "spaces" ) {
                 conf->spaces_bind_identifiers = true;
-            } else if ( token.content == "case" ) {
-                token = input->preview_token();
-                if ( token.type != Token::Type::identifier ) { // sub parameters may not be empty
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                while ( token.content != "," ) {
-                    token = input->get_token();
-                    if ( token.type != Token::Type::identifier ) {
-                        create_prelude_error_msg( w_ctx, token );
-                        return false;
-                    }
-                    auto token2 = input->get_token();
-                    if ( token2.type != Token::Type::identifier ) {
-                        create_prelude_error_msg( w_ctx, token2 );
-                        return false;
-                    }
-                    IdentifierCase i_case =
-                        token2.content == "snake"
-                            ? IdentifierCase::snake
-                            : token2.content == "pascal"
-                                  ? IdentifierCase::pascal
-                                  : token2.content == "camel" ? IdentifierCase::camel : IdentifierCase::count;
-                    if ( i_case == IdentifierCase::count ) {
-                        create_prelude_error_msg( w_ctx, token2 );
-                        return false;
-                    }
-                    if ( token.content == "functions" )
-                        conf->function_case = i_case;
-                    else if ( token.content == "method" )
-                        conf->method_case = i_case;
-                    else if ( token.content == "variable" )
-                        conf->variable_case = i_case;
-                    else if ( token.content == "module" )
-                        conf->module_case = i_case;
-                    else if ( token.content == "struct" )
-                        conf->struct_case = i_case;
-                    else if ( token.content == "trait" )
-                        conf->trait_case = i_case;
-                    token = input->preview_token();
-                }
             } else if ( token.content == "unused" ) {
                 if ( input->get_token().content != "begin" ) {
                     create_not_supported_error_msg( w_ctx, token, "Unused variable not with prefix." );
@@ -465,239 +372,137 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 }
                 PARSE_LITERAL( str );
                 conf->unused_prefix.push_back( str );
-            } else { // Unknown token
+            }
+        } else if ( mci == "IDENTIFIER_CASE" ) {
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
                 create_prelude_error_msg( w_ctx, token );
                 return false;
             }
+            String obj = token.content;
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+
+            auto i_case = token.content == "snake"
+                              ? IdentifierCase::snake
+                              : token.content == "pascal"
+                                    ? IdentifierCase::pascal
+                                    : token.content == "camel" ? IdentifierCase::camel : IdentifierCase::count;
+
+            if ( obj == "functions" )
+                conf->function_case = i_case;
+            else if ( obj == "method" )
+                conf->method_case = i_case;
+            else if ( obj == "variable" )
+                conf->variable_case = i_case;
+            else if ( obj == "module" )
+                conf->module_case = i_case;
+            else if ( obj == "struct" )
+                conf->struct_case = i_case;
+            else if ( obj == "trait" )
+                conf->trait_case = i_case;
         } else if ( mci == "LITERAL_CHARACTER_ESCAPES" ) {
             PARSE_LITERAL( str );
             PARSE_LITERAL( str2 );
-            if ( str.empty() ) {
-                return false;
-            } else if ( str == "\x2ascii_oct" ) {
-                conf->ascii_octal_prefix.push_back( str2 );
-                conf->token_conf.char_encodings.push_back( str2 );
-            } else if ( str == "\x2ascii_hex" ) {
-                conf->ascii_hex_prefix.push_back( str2 );
-                conf->token_conf.char_encodings.push_back( str2 );
-            } else if ( str == "\x2unicode_32_hex" ) {
-                conf->unicode_hex_prefix.push_back( str2 );
-                conf->token_conf.char_encodings.push_back( str2 );
-            } else {
-                conf->token_conf.char_escapes.push_back( std::make_pair( str, str2 ) );
-            }
-            if ( input->preview_token().content != "," ) {
-                if ( str != "\x2unicode_32_hex" ) {
-                    create_not_supported_error_msg(
-                        w_ctx, input->get_token(),
-                        "Additional attributes for char encodings other than unicode_32_hex." );
+            conf->token_conf.char_escapes.push_back( std::make_pair( str, str2 ) );
+        } else if ( mci == "NEW_RANGE" ) {
+            PARSE_LITERAL( str );
+            CONSUME_COMMA( token );
+            auto rt = str == "identifier"
+                          ? CharRangeType::identifier
+                          : "operator" ? CharRangeType::op
+                                       : "integer" ? CharRangeType::integer
+                                                   : "whitespace" ? CharRangeType::ws
+                                                                  : "opt_identifier" ? CharRangeType::opt_identifier
+                                                                                     : CharRangeType::count;
+            while ( input->preview_token().type != Token::Type::term_end ) {
+                PARSE_LITERAL( str );
+                token = input->preview_token();
+                if ( token.type != Token::Type::term_end && token.content != "," ) {
+                    PARSE_LITERAL( str2 );
+                    conf->token_conf.char_ranges[rt].push_back( std::make_pair( str[0], str2[0] ) );
                 } else {
+                    // only one token
+                    conf->token_conf.char_ranges[rt].push_back( std::make_pair( str[0], str[0] ) );
+                }
+            }
+        } else if ( mci == "NEW_COMMENT" ) {
+            token = input->get_token();
+            String name = token.content;
+
+            CONSUME_COMMA( token );
+            PARSE_LITERAL( str );
+            PARSE_LITERAL( str2 );
+            CONSUME_COMMA( token );
+            conf->token_conf.comment[name] = std::make_pair( str, str2 );
+
+            if ( input->preview_token().content == "overlay" ) {
+                input->get_token(); // consume
+                do {
                     token = input->get_token();
-                    if ( token.content == "truncate_leading" ) {
-                        conf->truncate_unicode_hex_prefix = true;
-                    } else {
+                    conf->token_conf.allowed_level_overlay[name].push_back( token.content );
+                    token = input->preview_token();
+                } while ( token.type != Token::Type::term_end && token.content != "," );
+            }
+        } else if ( mci == "NEW_STRING" ) {
+            token = input->get_token();
+            String name = token.content;
+
+            CONSUME_COMMA( token );
+            PARSE_LITERAL( str );
+            PARSE_LITERAL( str2 );
+            CONSUME_COMMA( token );
+            conf->token_conf.string[name] = std::make_pair( str, str2 );
+
+            StringRule rule{ str, str2 };
+            while ( input->preview_token().content == "," ) {
+                input->get_token(); // consume
+                token = input->preview_token();
+                if ( token.content == "prefix" ) {
+                    input->get_token(); // consume
+                    PARSE_LITERAL( str );
+                    rule.prefix = str;
+                } else if ( token.content == "rep_delimiter" ) {
+                    input->get_token(); // consume
+                    PARSE_LITERAL( str );
+                    PARSE_LITERAL( str2 );
+                    rule.rep_begin = str;
+                    rule.rep_end = str2;
+                } else if ( token.content == "overlay" ) {
+                    input->get_token(); // consume
+                    do {
+                        token = input->get_token();
+                        conf->token_conf.allowed_level_overlay[name].push_back( token.content );
+                        token = input->preview_token();
+                    } while ( token.type != Token::Type::term_end && token.content != "," );
+                }
+            }
+            conf->string_rules.push_back( rule );
+        } else if ( mci == "NEW_NORMAL" ) {
+            token = input->get_token();
+            String name = token.content;
+
+            while ( input->preview_token().content == "," ) {
+                input->get_token(); // consume
+                if ( input->preview_token().content == "overlay" ) {
+                    input->get_token(); // consume
+                    do {
+                        token = input->get_token();
+                        conf->token_conf.allowed_level_overlay[name].push_back( token.content );
+                        token = input->preview_token();
+                    } while ( token.type != Token::Type::term_end && token.content != "," );
+                } else {
+                    PARSE_LITERAL( str );
+                    PARSE_LITERAL( str2 );
+                    if ( input->get_token().content != "," ) {
                         create_prelude_error_msg( w_ctx, token );
                         return false;
                     }
+                    conf->token_conf.normal[name] = std::make_pair( str, str2 );
                 }
-            }
-        } else if ( mci == "LITERAL_STRING_RULES" ) {
-            token = input->get_token();
-            if ( token.content == "basic_escaped" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                conf->token_conf.string.push_back( std::make_pair( str, str2 ) );
-                conf->string_rules.push_back( StringRule{ str, str2, "", "", "", true, false, true } );
-            } else if ( token.content == "block_escaped" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                conf->token_conf.string.push_back( std::make_pair( str, str2 ) );
-                conf->string_rules.push_back( StringRule{ str, str2, "", "", "", true, true, true } );
-            } else if ( token.content == "wide_escaped" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                token = input->get_token();
-                if ( token.content != "prefix" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                PARSE_LITERAL( str3 );
-                conf->token_conf.string.push_back( std::make_pair( str, str2 ) );
-                conf->string_rules.push_back( StringRule{ str, str2, str3, "", "", true, false, false } );
-            } else if ( token.content == "raw" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                token = input->get_token();
-                if ( token.content != "prefix" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                PARSE_LITERAL( str3 );
-                token = input->get_token();
-                if ( token.content != "rep_delimiter" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                PARSE_LITERAL( str4 );
-                PARSE_LITERAL( str5 );
-                conf->token_conf.string.push_back( std::make_pair( str, str2 ) );
-                conf->string_rules.push_back( StringRule{ str, str2, str3, str4, str5, false, true, true } );
-            } else if ( token.content == "wide_raw" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                token = input->get_token();
-                if ( token.content != "prefix" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                PARSE_LITERAL( str3 );
-                token = input->get_token();
-                if ( token.content != "rep_delimiter" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                PARSE_LITERAL( str4 );
-                PARSE_LITERAL( str5 );
-                conf->token_conf.string.push_back( std::make_pair( str, str2 ) );
-                conf->string_rules.push_back( StringRule{ str, str2, str3, str4, str5, false, true, false } );
-            } else if ( token.content == "value_extraction" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                conf->value_extract.push_back( std::make_pair( str, str2 ) );
-                token = input->preview_token();
-                if ( token.content == "multi_allowed" ) {
-                    input->get_token(); // consume
-                    conf->allow_multi_value_extract = true;
-                } else if ( token.content == "multi_disallowed" ) {
-                    input->get_token(); // consume
-                    conf->allow_multi_value_extract = false;
-                }
-            } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-        } else if ( mci == "LITERAL_SINGLE_CHARACTER_RULES" ) {
-            token = input->get_token();
-            if ( token.content == "basic_escaped" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                conf->token_conf.string.push_back( std::make_pair( str, str2 ) );
-                conf->char_rules.push_back( CharacterRule{ str, str2, "", true, true } );
-            } else if ( token.content == "byte_escaped" ) {
-                PARSE_LITERAL( str );
-                PARSE_LITERAL( str2 );
-                token = input->get_token();
-                if ( token.content != "prefix" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                PARSE_LITERAL( str3 );
-                conf->token_conf.string.push_back( std::make_pair( str, str2 ) );
-                conf->char_rules.push_back( CharacterRule{ str, str2, str3, true, false } );
-            } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-        } else if ( mci == "LITERAL_INTEGER_RULES" ) {
-            token = input->get_token();
-            if ( token.content == "default_dec" ) {
-                // currently this is always true (TODO)
-            } else if ( token.content == "prefix_bin" ) {
-                PARSE_LITERAL( str );
-                token = input->get_token();
-                if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                conf->token_conf.integer_prefix.push_back( str );
-                conf->bin_int_prefix.push_back( str );
-            } else if ( token.content == "prefix_oct" ) {
-                PARSE_LITERAL( str );
-                token = input->get_token();
-                if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                conf->token_conf.integer_prefix.push_back( str );
-                conf->oct_int_prefix.push_back( str );
-            } else if ( token.content == "prefix_hex" ) {
-                PARSE_LITERAL( str );
-                token = input->get_token();
-                if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                conf->token_conf.integer_prefix.push_back( str );
-                conf->hex_int_prefix.push_back( str );
-            } else if ( token.content == "delimiter_kilo" ) {
-                PARSE_LITERAL( str );
-                token = input->get_token();
-                if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                conf->token_conf.integer_delimiter.push_back( str );
-                conf->kilo_int_delimiter.push_back( str );
-            } else if ( token.content == "allow_type_postfix" ) {
-                conf->allow_int_type_postfix = true;
-            } else if ( token.content == "disallow_type_postfix" ) {
-                conf->allow_int_type_postfix = false;
-            } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-        } else if ( mci == "LITERAL_FLOATING_POINT_RULES" ) {
-            token = input->get_token();
-            if ( token.content == "default_dec" ) {
-                // currently this is always true (TODO)
-            } else if ( token.content == "delimiter_kilo" ) {
-                PARSE_LITERAL( str );
-                token = input->get_token();
-                if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                conf->token_conf.float_delimiter.push_back( str );
-                conf->kilo_float_delimiter.push_back( str );
-            } else if ( token.content == "fraction_delimiter" ) {
-                PARSE_LITERAL( str );
-                token = input->get_token();
-                if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-                conf->token_conf.float_delimiter.push_back( str );
-                conf->fraction_delimiter.push_back( str );
-            } else if ( token.content == "exponential_delimiter" ) {
-                do {
-                    PARSE_LITERAL( str );
-                    conf->token_conf.float_delimiter.push_back( str );
-                    conf->expo_delimiter.push_back( str );
-                } while ( input->preview_token().content == "or" && /*consume*/ input->get_token().column );
-                token = input->get_token();
-                if ( token.content != "optional" ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-            } else if ( token.content == "exponential_positive" ) {
-                do {
-                    PARSE_LITERAL( str );
-                    conf->token_conf.float_delimiter.push_back( str );
-                    conf->expo_positive.push_back( str );
-                } while ( input->preview_token().content == "or" && /*consume*/ input->get_token().column );
-            } else if ( token.content == "exponential_negative" ) {
-                do {
-                    PARSE_LITERAL( str );
-                    conf->token_conf.float_delimiter.push_back( str );
-                    conf->expo_negative.push_back( str );
-                } while ( input->preview_token().content == "or" && /*consume*/ input->get_token().column );
-            } else if ( token.content == "allow_type_postfix" ) {
-                conf->allow_float_type_postfix = true;
-            } else if ( token.content == "disallow_type_postfix" ) {
-                conf->allow_float_type_postfix = false;
-            } else { // Unknown token
-                create_prelude_error_msg( w_ctx, token );
-                return false;
             }
         } else if ( mci == "ALIAS_EXPRESSION" ) { // TODO
         } else if ( mci == "LET_STATEMENT" ) { // TODO
@@ -735,23 +540,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
 
-            // Alias TODO extract this into the syntax parsing method
-            std::vector<String> aliases;
-            token = input->preview_token();
-            if ( token.content == "," ) {
-                input->get_token(); // consume
-
-                token = input->get_token();
-                if ( token.type != Token::Type::identifier ) {
-                    create_prelude_error_msg( w_ctx, token );
-                    return false;
-                }
-
-                aliases.push_back( token.content );
-                // conf->subtypes[token.content].push_back( output ); TODO del subtypes
-            }
-
-            conf->fn_declarations.push_back( FunctionDefinition{ trait, function, syntax, aliases } );
+            conf->fn_declarations.push_back( FunctionDefinition{ trait, function, syntax } );
         } else if ( mci == "FUNCTION_DEFINITION" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {
@@ -777,7 +566,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
 
-            conf->fn_definitions.push_back( FunctionDefinition{ trait, function, syntax, {} } );
+            conf->fn_definitions.push_back( FunctionDefinition{ trait, function, syntax } );
         } else if ( mci == "DEFINE_TEMPLATE" ) { // TODO
         } else if ( mci == "SCOPE_ACCESS" ) {
             Operator op;
@@ -852,61 +641,29 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 type = RangeOperator::Type::count; // never reached
 
             conf->range_op.push_back( RangeOperator{ type, op } );
-        } else if ( mci == "LITERAL_TYPE" ) {
+        } else if ( mci == "SPECIAL_TYPE" ) {
             token = input->get_token();
-            if ( token.type != Token::Type::identifier ) {
+            PARSE_LITERAL( str );
+            conf->special_types[str] = token.content;
+        } else if ( mci == "TYPE_MEMORY_BLOB" ) {
+            PARSE_LITERAL( str );
+            CONSUME_COMMA( token );
+            if ( ( token = input->get_token() ).type != Token::Type::number ) {
                 create_prelude_error_msg( w_ctx, token );
                 return false;
             }
-            auto value = token.content;
-            CONSUME_COMMA( token );
-
-            Syntax syntax;
-            auto list_size = parse_list_size( input );
-            CONSUME_COMMA( token );
-
-            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
-                return false;
-            }
-
-            conf->type_literals.push_back( std::make_pair( syntax, value ) );
-        } else if ( mci == "LITERAL_BOOLEAN" ) {
+            conf->memblob_types[str] = stoi( token.content );
+        } else if ( mci == "NEW_LITERAL" ) {
             token = input->get_token();
-            auto value = token.content;
-            if ( token.type != Token::Type::identifier || ( value != "TRUE" && value != "FALSE" ) ) {
+            PARSE_LITERAL( str );
+            CONSUME_COMMA( token );
+            PARSE_LITERAL( str2 );
+            CONSUME_COMMA( token );
+            if ( ( token = input->get_token() ).type != Token::Type::number ) {
                 create_prelude_error_msg( w_ctx, token );
                 return false;
             }
-            CONSUME_COMMA( token );
-
-            Syntax syntax;
-            auto list_size = parse_list_size( input );
-            CONSUME_COMMA( token );
-
-            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
-                return false;
-            }
-
-            conf->bool_literals.push_back( std::make_pair( syntax, value == "TRUE" ) );
-        } else if ( mci == "LITERAL_RANGE" ) {
-            token = input->get_token();
-            auto value = token.content;
-            if ( token.type != Token::Type::identifier || value != "ZERO_TO_INFINITY" ) {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            CONSUME_COMMA( token );
-
-            Syntax syntax;
-            auto list_size = parse_list_size( input );
-            CONSUME_COMMA( token );
-
-            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
-                return false;
-            }
-            if ( value == "ZERO_TO_INFINITY" )
-                conf->range_literals.push_back(
-                    std::make_pair( syntax, std::make_pair<i64, i64>( -9223372036854775807, 9223372036854775807 ) ) );
+            conf->literals[str] = std::make_pair( str2, stoull( token.content ) );
         } else { // Unknown MCI
             w_ctx.print_msg<MessageType::err_unknown_mci>(
                 MessageInfo( input->get_filename(), token.line, token.line, token.column, token.length, 0,

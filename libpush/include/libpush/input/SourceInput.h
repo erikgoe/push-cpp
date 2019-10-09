@@ -20,6 +20,8 @@ enum class TokenLevel {
     normal, // in no special area
     comment, // in any comment
     string, // in any string or character
+    
+    count
 };
 
 // Groups types of chars together. Sorted after priority descending
@@ -29,6 +31,8 @@ enum class CharRangeType {
     integer,
     ws,
     opt_identifier, // allowed in identifiers
+    
+    count
 };
 
 // Result of the lexing process
@@ -134,6 +138,7 @@ struct TokenConfig {
     
     std::pair<u32, u32> allowed_chars; // start char -> end char pair
     std::vector<std::pair<String, String>> char_escapes; // from -> to pairing
+    std::map<String, String> char_encodings; // map encod
 
     std::map<CharRangeType, std::vector<std::pair<u32, u32>>> char_ranges; // ranges of characters (e. g. integers)
 

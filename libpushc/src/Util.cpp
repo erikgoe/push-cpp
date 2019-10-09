@@ -70,7 +70,7 @@ Number parse_number( sptr<SourceInput> &input, Worker &w_ctx, sptr<PreludeConfig
 
     auto token = input->get_token();
     if ( token.type == Token::Type::number ) {
-        num = stoll( value );
+        num = stoull( value );
     } else {
         w_ctx.print_msg<MessageType::err_parse_number>(
             MessageInfo( token.file, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ),
@@ -78,7 +78,6 @@ Number parse_number( sptr<SourceInput> &input, Worker &w_ctx, sptr<PreludeConfig
         return num;
     }
 
-    // TODO delimiter, prefix, postfix, exponential float
     return num;
 }
 
