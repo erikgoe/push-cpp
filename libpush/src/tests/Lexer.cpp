@@ -140,7 +140,7 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     }
 }
 
-#ifndef _DEBUG
+#ifdef NDEBUG
 TEST_CASE( "Stress test lexing", "[lexer]" ) {
     auto g_ctx = make_shared<GlobalCtx>();
     sptr<Worker> w_ctx = g_ctx->setup( 1, 0 );
