@@ -17,7 +17,10 @@
 
 // Provides token input from any stream
 class StreamInput : public SourceInput {
-    sptr<std::basic_istream<u8>> stream;
+protected:
+    sptr<std::basic_ifstream<char>> stream;
+
+private:
     bool checked_bom = false; // already checked for BOM
 
     std::stack<std::pair<String, TokenLevel>> level_stack; // Level name -> level class
@@ -28,14 +31,14 @@ class StreamInput : public SourceInput {
     std::queue<Token> back_buffer; // contains token which have only been previewed
 
     // Load the next token from the stream. Returns false if eof reached or failed
-    bool load_next_token( String &buffer, size_t count = 1 );
+    bool load_next_token( String &buffer, size_t count = 1 ); // TODO rename to char
 
     // implementation of the *_token() methods. \param whitespace is used internally
     Token get_token_impl( String whitespace = "" );
 
 public:
     // Create a fileinput from a stream. \param file must be the name of the file from which the stream was open
-    StreamInput( sptr<std::basic_istream<u8>> stream, sptr<String> file, sptr<Worker> w_ctx );
+    StreamInput( sptr<std::basic_ifstream<char>> stream, sptr<String> file, sptr<Worker> w_ctx );
     virtual ~StreamInput() {}
 
     Token get_token();

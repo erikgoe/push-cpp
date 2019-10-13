@@ -20,7 +20,7 @@ enum class TokenLevel {
     normal, // in no special area
     comment, // in any comment
     string, // in any string or character
-    
+
     count
 };
 
@@ -31,7 +31,7 @@ enum class CharRangeType {
     integer,
     ws,
     opt_identifier, // allowed in identifiers
-    
+
     count
 };
 
@@ -154,7 +154,8 @@ struct TokenConfig {
 class SourceInput {
 protected:
     TokenConfig cfg;
-    std::unordered_map<String, Token::Type> not_sticky_map; // maps not sticky tokens
+    std::map<TokenLevel, std::unordered_map<String, Token::Type>>
+        not_sticky_map; // maps not sticky tokens (for each token level)
     std::map<CharRangeType, std::unordered_set<u32>> ranges_sets; // maps to elements in char ranges
     sptr<Worker> w_ctx;
     sptr<String> filename;
@@ -164,13 +165,13 @@ protected:
     void insert_in_range( const String &str, CharRangeType range );
 
     // Checks which token matches the whole string. Returns Token::Type::count if none was found
-    Token::Type find_non_sticky_token( const StringSlice &str );
+    Token::Type find_non_sticky_token( const StringSlice &str, TokenLevel tl );
 
     // Checks which token matches the longest part at the enf of the string and its size
     std::pair<Token::Type, size_t> find_last_sticky_token( const StringSlice &str );
 
 public:
-    SourceInput( sptr<Worker> w_ctx, sptr<String> file ) : not_sticky_map( 128 ) {
+    SourceInput( sptr<Worker> w_ctx, sptr<String> file ) {
         this->w_ctx = w_ctx;
         this->filename = file;
     }

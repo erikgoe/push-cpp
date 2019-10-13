@@ -19,10 +19,11 @@ namespace Catch {
 template <>
 struct StringMaker<Token> {
     static std::string convert( Token const &token ) {
-        return "type: " + to_string( static_cast<int>( token.type ) ) + ", \"" + token.content +
+        return "type: " + to_string( static_cast<int>( token.type ) ) + ", \"" + escape_ws( token.content ) +
                "\", file: " + ( token.file ? "\"" + *token.file + "\"" : "nullptr" ) +
                ", line: " + to_string( token.line ) + ", column: " + to_string( token.column ) +
-               ", length: " + to_string( token.length ) + ", leading_ws: \"" + escape_ws( token.leading_ws ) + "\"";
+               ", length: " + to_string( token.length ) + ", leading_ws: \"" + escape_ws( token.leading_ws ) +
+               "\", token_level: " + to_string( static_cast<int>( token.tl ) );
     }
     static std::string escape_ws( const String &str ) {
         std::string result;

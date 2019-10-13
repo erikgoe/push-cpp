@@ -19,7 +19,9 @@
 class FileInput : public StreamInput {
 public:
     FileInput( sptr<String> file, sptr<Worker> w_ctx )
-            : StreamInput( make_shared<std::basic_ifstream<u8>>( *file, std::ios_base::binary ), file, w_ctx ) {}
+            : StreamInput( make_shared<std::basic_ifstream<char>>(), file, w_ctx ) {
+        stream->open( *file, std::ios_base::binary );
+    }
 
     sptr<SourceInput> open_new_file( sptr<String> file, sptr<Worker> w_ctx ) {
         return make_shared<FileInput>( file, w_ctx );

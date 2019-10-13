@@ -19,15 +19,18 @@
 #include "libpush/Worker.inl"
 #include "libpush/Message.inl"
 
-StreamInput::StreamInput( sptr<std::basic_istream<u8>> stream, sptr<String> file, sptr<Worker> w_ctx )
-        : SourceInput( w_ctx, file ) {}
+StreamInput::StreamInput( sptr<std::basic_ifstream<char>> stream, sptr<String> file, sptr<Worker> w_ctx )
+        : SourceInput( w_ctx, file ) {
+    this->stream = stream;
+    level_stack.push( std::make_pair( "n", TokenLevel::normal ) );
+}
 
 bool StreamInput::load_next_token( String &buffer, size_t count ) {
     // First load buffered data
     size_t from_buffer = std::min( count, putback_buffer.size() );
     if ( from_buffer > 0 ) {
         buffer += putback_buffer.substr( 0, from_buffer );
-        putback_buffer = putback_buffer.substr( from_buffer - 1 );
+        putback_buffer = putback_buffer.substr( from_buffer );
         count -= from_buffer;
     }
 
@@ -37,16 +40,12 @@ bool StreamInput::load_next_token( String &buffer, size_t count ) {
             return false;
         }
 
-        u8 c;
-        for ( size_t i = 0; i < count; i++ ) {
-            stream->get( c );
-
-            if ( stream->bad() || stream->eof() ) {
-                return false;
-            } else {
-                buffer += c;
-            }
-        }
+        // Fill the buffer with the remaining bytes and resize to fit
+        buffer.resize( buffer.size() + count );
+        stream->read( &buffer[buffer.size() - count], count );
+        buffer.resize( buffer.size() - count + stream->gcount() );
+        if ( stream->bad() || stream->eof() )
+            return false;
     }
     return true;
 }
@@ -68,16 +67,13 @@ Token StreamInput::get_token_impl( String whitespace ) {
 
     // Check for UTF-8 BOM first
     if ( !checked_bom ) {
-        if ( load_next_token( curr, 3 ) && curr[0] == (u8) 0xEF && curr[1] == (u8) 0xBB &&
-             curr[2] == (u8) 0xBF ) { // found a BOM
-            curr = curr.substr( 3 );
-        } else { // revert chars
+        if ( !load_next_token( curr, 3 ) || curr[0] != (char) 0xEF || curr[1] != (char) 0xBB ||
+             curr[2] != (char) 0xBF ) { // revert chars
             putback_buffer += curr;
-            curr.clear();
         }
+        curr.clear();
         checked_bom = true;
     }
-
 
     // ----------
     // Part A: Test for not-sticky tokens
@@ -101,14 +97,15 @@ Token StreamInput::get_token_impl( String whitespace ) {
     // Find token
     size_t slice_length = curr.size();
     // Decrease if needed until a matching token (or none at all) was found
-    while ( ( t.type = find_non_sticky_token( curr.slice( 0, slice_length ) ) ) == Token::Type::count ) {
+    while ( ( t.type = find_non_sticky_token( curr.slice( 0, slice_length ), level_stack.top().second ) ) ==
+            Token::Type::count ) {
         slice_length--;
         if ( slice_length == 0 )
             break;
     }
     if ( slice_length > 0 ) {
         // found token
-        putback_buffer = curr.substr( slice_length - 1 );
+        putback_buffer = curr.substr( slice_length );
         curr.resize( slice_length );
     } else {
         // ----------
@@ -116,7 +113,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
         // ----------
 
         // Unload loaded data
-        putback_buffer += curr;
+        putback_buffer = curr;
         curr.clear();
 
         std::pair<Token::Type, size_t> ending;
@@ -137,7 +134,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
         // Found the end of the token
         // curr.size() >= 2 because single chars will always match a token (if not eof)
         if ( !eof_reached ) {
-            putback_buffer += curr.back();
+            putback_buffer.insert( putback_buffer.begin(), curr.back() );
             curr.resize( curr.size() - 1 );
         }
 
@@ -161,29 +158,27 @@ Token StreamInput::get_token_impl( String whitespace ) {
 
     // Update token level
     bool changed_level = false;
-    if ( !level_stack.empty() ) {
-        auto &pairs = cfg.normal; // will be either comment OR string, not none
-        if ( level_stack.top().second == TokenLevel::comment ) {
-            pairs = cfg.comment;
-        } else if ( level_stack.top().second == TokenLevel::string ) {
-            pairs = cfg.string;
-        }
-        for ( auto &c : pairs ) {
-            if ( c.second.first == level_stack.top().first && c.second.second == curr ) {
-                // Found a pair which would match and end the token level
-                level_stack.pop();
-                changed_level = true;
-                break;
-            }
+    auto &pairs = cfg.normal; // will be either comment OR string, not none
+    if ( level_stack.top().second == TokenLevel::comment ) {
+        pairs = cfg.comment;
+    } else if ( level_stack.top().second == TokenLevel::string ) {
+        pairs = cfg.string;
+    }
+    for ( auto &c : pairs ) {
+        if ( c.second.first == level_stack.top().first && c.second.second == curr ) {
+            // Found a pair which would match and end the token level
+            level_stack.pop();
+            changed_level = true;
+            break;
         }
     }
-    std::vector<String> *alo = level_stack.empty() ? nullptr : &cfg.allowed_level_overlay[level_stack.top().first];
+    std::vector<String> &alo = cfg.allowed_level_overlay[level_stack.top().first];
     if ( !changed_level ) {
         // Might be a new normal level
         for ( auto &c : cfg.normal ) {
-            if ( c.second.first == curr && ( !alo || std::find( alo->begin(), alo->end(), c.first ) != alo->end() ) ) {
+            if ( c.second.first == curr && std::find( alo.begin(), alo.end(), c.first ) != alo.end() ) {
                 // Found new level
-                level_stack.push( std::make_pair( c.first, TokenLevel::normal ) );
+                level_stack.push( std::make_pair( c.second.first, TokenLevel::normal ) );
                 changed_level = true;
                 break;
             }
@@ -192,9 +187,9 @@ Token StreamInput::get_token_impl( String whitespace ) {
     if ( !changed_level ) {
         // Might be a new comment level
         for ( auto &c : cfg.comment ) {
-            if ( c.second.first == curr && ( !alo || std::find( alo->begin(), alo->end(), c.first ) != alo->end() ) ) {
+            if ( c.second.first == curr && std::find( alo.begin(), alo.end(), c.first ) != alo.end() ) {
                 // Found new level
-                level_stack.push( std::make_pair( c.first, TokenLevel::comment ) );
+                level_stack.push( std::make_pair( c.second.first, TokenLevel::comment ) );
                 changed_level = true;
                 break;
             }
@@ -203,9 +198,9 @@ Token StreamInput::get_token_impl( String whitespace ) {
     if ( !changed_level ) {
         // Might be a new string level
         for ( auto &c : cfg.string ) {
-            if ( c.second.first == curr && ( !alo || std::find( alo->begin(), alo->end(), c.first ) != alo->end() ) ) {
+            if ( c.second.first == curr && std::find( alo.begin(), alo.end(), c.first ) != alo.end() ) {
                 // Found new level
-                level_stack.push( std::make_pair( c.first, TokenLevel::string ) );
+                level_stack.push( std::make_pair( c.second.first, TokenLevel::string ) );
                 changed_level = true;
                 break;
             }
@@ -247,7 +242,7 @@ std::list<String> StreamInput::get_lines( size_t line_begin, size_t line_end, Wo
     size_t line_count = 1;
     std::list<String> lines;
     String curr_line;
-    u8 c = 0, last_c;
+    char c = 0, last_c;
 
     while ( true ) {
         last_c = c;
