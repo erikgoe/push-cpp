@@ -22,7 +22,7 @@
 StreamInput::StreamInput( sptr<std::basic_ifstream<char>> stream, sptr<String> file, sptr<Worker> w_ctx )
         : SourceInput( w_ctx, file ) {
     this->stream = stream;
-    level_stack.push( std::make_pair( "n", TokenLevel::normal ) );
+    level_stack.push( std::make_pair( "", TokenLevel::normal ) );
 }
 
 bool StreamInput::load_next_token( String &buffer, size_t count ) {
@@ -64,6 +64,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
     Token t;
     t.file = filename;
     String curr;
+    bool is_special_ws = false; // like a comment end after "//"
 
     // Check for UTF-8 BOM first
     if ( !checked_bom ) {
@@ -105,15 +106,21 @@ Token StreamInput::get_token_impl( String whitespace ) {
     }
     if ( slice_length > 0 ) {
         // found token
-        putback_buffer = curr.substr( slice_length );
+        putback_buffer.insert( 0, curr.substr( slice_length ) );
         curr.resize( slice_length );
+
+        // Check if is special whitespace token
+        if( t.type != Token::Type::ws && find_last_sticky_token( curr.slice( 0 ) ).first == Token::Type::ws ) {
+            is_special_ws = true;
+            putback_buffer.insert( 0, curr );
+        }
     } else {
         // ----------
         // Part B: Test for sticky tokens
         // ----------
 
         // Unload loaded data
-        putback_buffer = curr;
+        putback_buffer.insert( 0, curr );
         curr.clear();
 
         std::pair<Token::Type, size_t> ending;
@@ -150,21 +157,27 @@ Token StreamInput::get_token_impl( String whitespace ) {
     t.tl = level_stack.top().second;
 
     // Count lines and columns
-    curr_line += count_newlines( curr );
-    size_t last_newline_idx = curr.find_last_of( '\n' );
-    if ( last_newline_idx == String::npos )
-        last_newline_idx = curr.find_last_of( '\r' );
-    curr_column += curr.slice( last_newline_idx == String::npos ? 0 : last_newline_idx ).length_grapheme();
+    if( !is_special_ws ) {
+        curr_line += count_newlines( curr );
+        size_t last_newline_idx = curr.find_last_of( '\n' );
+        if ( last_newline_idx == String::npos )
+            last_newline_idx = curr.find_last_of( '\r' );
+        if( last_newline_idx == String::npos ) {
+            curr_column += curr.length_grapheme();
+        } else { // found a newline
+            curr_column = curr.slice( last_newline_idx ).length_grapheme() + 1;
+        }
+    }
 
     // Update token level
     bool changed_level = false;
-    auto &pairs = cfg.normal; // will be either comment OR string, not none
+    auto *pairs = &cfg.normal;
     if ( level_stack.top().second == TokenLevel::comment ) {
-        pairs = cfg.comment;
+        pairs = &cfg.comment;
     } else if ( level_stack.top().second == TokenLevel::string ) {
-        pairs = cfg.string;
+        pairs = &cfg.string;
     }
-    for ( auto &c : pairs ) {
+    for ( auto &c : *pairs ) {
         if ( c.second.first == level_stack.top().first && c.second.second == curr ) {
             // Found a pair which would match and end the token level
             level_stack.pop();

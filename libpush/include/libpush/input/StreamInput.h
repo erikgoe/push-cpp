@@ -23,7 +23,7 @@ protected:
 private:
     bool checked_bom = false; // already checked for BOM
 
-    std::stack<std::pair<String, TokenLevel>> level_stack; // Level name -> level class
+    std::stack<std::pair<String, TokenLevel>> level_stack; // Level begin token -> level class
     size_t curr_line = 1;
     size_t curr_column = 1;
 

@@ -443,7 +443,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 input->get_token(); // consume
                 do {
                     token = input->get_token();
-                    conf->token_conf.allowed_level_overlay[name].push_back( token.content );
+                    conf->token_conf.allowed_level_overlay[str].push_back( token.content );
                     token = input->preview_token();
                 } while ( token.type != Token::Type::term_end && token.content != "," );
             }
@@ -475,7 +475,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     input->get_token(); // consume
                     do {
                         token = input->get_token();
-                        conf->token_conf.allowed_level_overlay[name].push_back( token.content );
+                        conf->token_conf.allowed_level_overlay[str].push_back( token.content );
                         token = input->preview_token();
                     } while ( token.type != Token::Type::term_end && token.content != "," );
                 }
@@ -491,7 +491,9 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     input->get_token(); // consume
                     do {
                         token = input->get_token();
-                        conf->token_conf.allowed_level_overlay[name].push_back( token.content );
+                        auto begin = ( conf->token_conf.normal.find( name ) == conf->token_conf.normal.end() ? "" : 
+                            conf->token_conf.normal[name].first); // find begin token of normal (if any)
+                        conf->token_conf.allowed_level_overlay[begin].push_back( token.content );
                         token = input->preview_token();
                     } while ( token.type != Token::Type::term_end && token.content != "," );
                 } else {

@@ -27,9 +27,9 @@ enum class TokenLevel {
 // Groups types of chars together. Sorted after priority descending
 enum class CharRangeType {
     identifier, // forced identifier
-    op,
     integer,
     ws,
+    op,
     opt_identifier, // allowed in identifiers
 
     count
@@ -128,17 +128,19 @@ struct Token {
 // Very basic set of rules to define how strings are divided into token lists
 struct TokenConfig {
     std::vector<String> stat_divider;
-    std::vector<std::pair<String, String>> block; // begin -> end pair
-    std::vector<std::pair<String, String>> term; // begin -> end pair
+    std::vector<std::pair<String, String>> block; // begin => end pair
+    std::vector<std::pair<String, String>> term; // begin => end pair
 
-    std::map<String, std::pair<String, String>> comment; // begin -> end pair
+    // Level dependent mappings (name of type => begin-end pair)
+    std::map<String, std::pair<String, String>> comment; // begin => end pair
     std::map<String, std::pair<String, String>> string; // character or string begin and end pair
     std::map<String, std::pair<String, String>> normal; // begin and end pair of a normal code block inside a special
-    std::map<String, std::vector<String>> allowed_level_overlay; // outer -> inner. E. g. nested comments
     
-    std::pair<u32, u32> allowed_chars; // start char -> end char pair
-    std::vector<std::pair<String, String>> char_escapes; // from -> to pairing
-    std::map<String, String> char_encodings; // map encod
+    std::map<String, std::vector<String>> allowed_level_overlay; // outer begin => inner type. E. g. nested comments
+    
+    std::pair<u32, u32> allowed_chars; // start char => end char pair
+    std::vector<std::pair<String, String>> char_escapes; // from => to pairing
+    std::map<String, String> char_encodings; // map encoded chars to their representing value
 
     std::map<CharRangeType, std::vector<std::pair<u32, u32>>> char_ranges; // ranges of characters (e. g. integers)
 

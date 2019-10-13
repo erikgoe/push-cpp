@@ -130,10 +130,10 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
         Token( Token::Type::block_end, "}", test_file, 8, 1, 1, "\n", TokenLevel::normal ),
     };
 
-    REQUIRE( token_list.size() == token_check_list.size() );
+    CHECK( token_list.size() == token_check_list.size() );
     auto token_itr = token_list.begin();
     auto token_check_itr = token_check_list.begin();
-    while ( token_itr != token_list.end() ) {
+    while ( token_itr != token_list.end() && token_check_itr != token_check_list.end() ) {
         CHECK( *token_itr == *token_check_itr );
         token_itr++;
         token_check_itr++;
@@ -148,6 +148,7 @@ TEST_CASE( "Stress test lexing", "[lexer]" ) {
     FileInput fin( make_shared<String>( CMAKE_PROJECT_ROOT "/Test/gibberish.txt" ), w_ctx );
     auto cfg = TokenConfig::get_prelude_cfg();
     cfg.operators.push_back( "." );
+    cfg.operators.erase( std::find( cfg.operators.begin(), cfg.operators.end(), "->" ) );
     fin.configure( cfg );
 
     size_t token_count = 0, identifier_count = 0;

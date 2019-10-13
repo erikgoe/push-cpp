@@ -37,11 +37,11 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.char_escapes.push_back( std::make_pair( "\\\"", "\"" ) );
     cfg.char_escapes.push_back( std::make_pair( "\\0", "\0" ) );
     cfg.string["s"] = std::make_pair( "\"", "\"" );
-    cfg.allowed_level_overlay["n"].push_back( "s" );
-    cfg.allowed_level_overlay["n"].push_back( "b" );
-    cfg.allowed_level_overlay["n"].push_back( "ln" );
-    cfg.allowed_level_overlay["n"].push_back( "lr" );
-    cfg.allowed_level_overlay["b"].push_back( "b" );
+    cfg.allowed_level_overlay[""].push_back( "s" );
+    cfg.allowed_level_overlay[""].push_back( "b" );
+    cfg.allowed_level_overlay[""].push_back( "ln" );
+    cfg.allowed_level_overlay[""].push_back( "lr" );
+    cfg.allowed_level_overlay["/*"].push_back( "b" );
     cfg.char_ranges[CharRangeType::opt_identifier].push_back( std::make_pair( '0', '9' ) );
     cfg.char_ranges[CharRangeType::integer].push_back( std::make_pair( '0', '9' ) );
     cfg.operators.push_back( "," );
