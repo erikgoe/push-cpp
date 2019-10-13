@@ -54,7 +54,10 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     cfg.operators.push_back( "+" );
     cfg.operators.push_back( "-" );
     cfg.operators.push_back( "." );
+    cfg.operators.push_back( "/" ); // just to test doc comments
     cfg.keywords.push_back( "let" );
+    cfg.comment["lnd"] = std::make_pair( "///", "\n" );
+    cfg.allowed_level_overlay[""].push_back( "lnd" );
     fin.configure( cfg );
 
     std::list<Token> token_list;
@@ -79,6 +82,11 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
         Token( Token::Type::identifier, "SourceInput", test_file, 1, 23, 11, "", TokenLevel::comment ),
         Token( Token::Type::term_end, ")", test_file, 1, 34, 1, "", TokenLevel::comment ),
         Token( Token::Type::comment_end, "\n", test_file, 1, 35, 1, "", TokenLevel::comment ),
+        Token( Token::Type::comment_begin, "///", test_file, 2, 1, 3, "\n", TokenLevel::normal ),
+        Token( Token::Type::identifier, "a", test_file, 2, 5, 1, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "doc", test_file, 2, 7, 3, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "comment", test_file, 2, 11, 7, " ", TokenLevel::comment ),
+        Token( Token::Type::comment_end, "\n", test_file, 2, 19, 1, " ", TokenLevel::comment ),
         Token( Token::Type::identifier, "main", test_file, 3, 1, 4, "\n  \n", TokenLevel::normal ),
         Token( Token::Type::block_begin, "{", test_file, 3, 6, 1, " ", TokenLevel::normal ),
         Token( Token::Type::identifier, "letlet", test_file, 4, 5, 6, "\n\t", TokenLevel::normal ),
