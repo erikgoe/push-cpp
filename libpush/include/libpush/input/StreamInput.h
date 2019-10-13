@@ -27,6 +27,7 @@ private:
     size_t curr_line = 1;
     size_t curr_column = 1;
 
+    bool next_ws_is_not_special = false; // to stop infinit loops
     String putback_buffer; // contains last chars which where not used
     std::queue<Token> back_buffer; // contains token which have only been previewed
 

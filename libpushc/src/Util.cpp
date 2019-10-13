@@ -19,8 +19,8 @@ void consume_comment( sptr<SourceInput> &input, TokenConfig &conf ) {
     do { // consume comment
         auto token = input->get_token();
         if ( token.type == Token::Type::comment_begin ) {
-            auto &alo = conf.allowed_level_overlay[comment_begin.top()];
-            if ( comment_begin.empty() || std::find( alo.begin(), alo.end(), token.content ) != alo.end() ) {
+            auto *alo = comment_begin.empty() ? nullptr : &conf.allowed_level_overlay[comment_begin.top()];
+            if ( !alo || std::find( alo->begin(), alo->end(), token.content ) != alo->end() ) {
                 comment_begin.push( token.content );
             }
         } else if ( token.type == Token::Type::comment_end ) {
