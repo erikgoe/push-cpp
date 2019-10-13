@@ -170,7 +170,7 @@ protected:
     Token::Type find_non_sticky_token( const StringSlice &str, TokenLevel tl );
 
     // Checks which token matches the longest part at the enf of the string and its size
-    std::pair<Token::Type, size_t> find_last_sticky_token( const StringSlice &str );
+    std::pair<Token::Type, size_t> find_last_sticky_token( const StringSlice &str, TokenLevel tl );
 
 public:
     SourceInput( sptr<Worker> w_ctx, sptr<String> file ) {

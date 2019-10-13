@@ -55,7 +55,7 @@ TEST_CASE( "Message body", "[message]" ) {
 
     { // Simple message
         auto output = get_message<MessageType::test_message>(
-            w_ctx, MessageInfo( file, 4, 4, 12, 4, 0, FmtStr::Color::BoldRed ), {} );
+            w_ctx, MessageInfo( file, 5, 5, 12, 4, 0, FmtStr::Color::BoldRed ), {} );
         FmtStr check_result;
         check_result += FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
                                        FmtStr::Color::BoldRed );
@@ -63,10 +63,10 @@ TEST_CASE( "Message body", "[message]" ) {
         check_result += FmtStr::Piece( "  --> ", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( CMAKE_PROJECT_ROOT "/Test/lexer.push", FmtStr::Color::Black );
         check_result += FmtStr::Piece( ";", FmtStr::Color::Black );
-        check_result += FmtStr::Piece( "4:12..15", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( "5:12..15", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
         check_result += FmtStr::Piece( "  |\n", FmtStr::Color::Blue );
-        check_result += FmtStr::Piece( "4 |", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "5 |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "    letlet ", FmtStr::Color::Black );
         check_result += FmtStr::Piece( "a= 4", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "; ", FmtStr::Color::Black );
@@ -79,15 +79,15 @@ TEST_CASE( "Message body", "[message]" ) {
         // auto output_cp = output;
         // print_msg_to_stdout( output_cp );
 
-        REQUIRE( output.size() == check_result.size() );
-        while ( !output.empty() ) {
+        CHECK( output.size() == check_result.size() );
+        while ( !output.empty() && !check_result.empty() ) {
             CHECK( output.consume() == check_result.consume() );
         }
     }
 
     { // Message with global notes
         auto output =
-            get_message<MessageType::test_message>( w_ctx, MessageInfo( file, 4, 4, 12, 4, 0, FmtStr::Color::BoldRed ),
+            get_message<MessageType::test_message>( w_ctx, MessageInfo( file, 5, 5, 12, 4, 0, FmtStr::Color::BoldRed ),
                                                     { MessageInfo( 1, FmtStr::Color::BoldBlue ) } );
         FmtStr check_result;
         check_result += FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
@@ -96,10 +96,10 @@ TEST_CASE( "Message body", "[message]" ) {
         check_result += FmtStr::Piece( "  --> ", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( CMAKE_PROJECT_ROOT "/Test/lexer.push", FmtStr::Color::Black );
         check_result += FmtStr::Piece( ";", FmtStr::Color::Black );
-        check_result += FmtStr::Piece( "4:12..15", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( "5:12..15", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
         check_result += FmtStr::Piece( "  |\n", FmtStr::Color::Blue );
-        check_result += FmtStr::Piece( "4 |", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "5 |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "    letlet ", FmtStr::Color::Black );
         check_result += FmtStr::Piece( "a= 4", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "; ", FmtStr::Color::Black );
@@ -114,16 +114,16 @@ TEST_CASE( "Message body", "[message]" ) {
         // auto output_cp = output;
         // print_msg_to_stdout( output_cp );
 
-        REQUIRE( output.size() == check_result.size() );
-        while ( !output.empty() ) {
+        CHECK( output.size() == check_result.size() );
+        while ( !output.empty() && !check_result.empty() ) {
             CHECK( output.consume() == check_result.consume() );
         }
     }
 
     { // Complex overlapping message
         auto output =
-            get_message<MessageType::test_message>( w_ctx, MessageInfo( file, 4, 5, 12, 17, 0, FmtStr::Color::BoldRed ),
-                                                    { MessageInfo( file, 3, 4, 3, 18, 0, FmtStr::Color::BoldBlue ) } );
+            get_message<MessageType::test_message>( w_ctx, MessageInfo( file, 5, 6, 12, 17, 0, FmtStr::Color::BoldRed ),
+                                                    { MessageInfo( file, 4, 5, 3, 18, 0, FmtStr::Color::BoldBlue ) } );
         FmtStr check_result;
         check_result += FmtStr::Piece( "error X" + to_string( static_cast<u32>( MessageType::test_message ) ),
                                        FmtStr::Color::BoldRed );
@@ -131,20 +131,20 @@ TEST_CASE( "Message body", "[message]" ) {
         check_result += FmtStr::Piece( "  --> ", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( CMAKE_PROJECT_ROOT "/Test/lexer.push", FmtStr::Color::Black );
         check_result += FmtStr::Piece( ";", FmtStr::Color::Black );
-        check_result += FmtStr::Piece( "3..4:3+18", FmtStr::Color::BoldBlue );
+        check_result += FmtStr::Piece( "4..5:3+18", FmtStr::Color::BoldBlue );
         check_result += FmtStr::Piece( ";", FmtStr::Color::Black );
-        check_result += FmtStr::Piece( "4..5:12+17", FmtStr::Color::BoldRed );
+        check_result += FmtStr::Piece( "5..6:12+17", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
         check_result += FmtStr::Piece( "  |\n", FmtStr::Color::Blue );
-        check_result += FmtStr::Piece( "3 |", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "4 |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "ma", FmtStr::Color::Black );
         check_result += FmtStr::Piece( "in {", FmtStr::Color::BoldBlue );
         check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
-        check_result += FmtStr::Piece( "4 |", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "5 |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "    letlet ", FmtStr::Color::BoldBlue );
         check_result += FmtStr::Piece( "a= 4; ", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
-        check_result += FmtStr::Piece( "5 |", FmtStr::Color::Blue );
+        check_result += FmtStr::Piece( "6 |", FmtStr::Color::Blue );
         check_result += FmtStr::Piece( "    let b =", FmtStr::Color::BoldRed );
         check_result += FmtStr::Piece( "3.2; // commenting 🦄🦓and🦌", FmtStr::Color::Black );
         check_result += FmtStr::Piece( "\n", FmtStr::Color::Black );
@@ -168,8 +168,8 @@ TEST_CASE( "Message body", "[message]" ) {
         // auto output_cp = output;
         // print_msg_to_stdout( output_cp );
 
-        REQUIRE( output.size() == check_result.size() );
-        while ( !output.empty() ) {
+        CHECK( output.size() == check_result.size() );
+        while ( !output.empty() && !check_result.empty() ) {
             CHECK( output.consume() == check_result.consume() );
         }
     }

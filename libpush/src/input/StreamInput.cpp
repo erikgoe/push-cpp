@@ -110,7 +110,8 @@ Token StreamInput::get_token_impl( String whitespace ) {
         curr.resize( slice_length );
 
         // Check if is special whitespace token
-        if( t.type != Token::Type::ws && find_last_sticky_token( curr.slice( 0 ) ).first == Token::Type::ws ) {
+        if( t.type != Token::Type::ws && 
+            find_last_sticky_token( curr.slice( 0 ), level_stack.top().second ).first == Token::Type::ws ) {
             is_special_ws = true;
             putback_buffer.insert( 0, curr );
         }
@@ -135,7 +136,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
             }
 
             // Find last (longest) token of the string
-            ending = find_last_sticky_token( curr.slice( 0 ) );
+            ending = find_last_sticky_token( curr.slice( 0 ), level_stack.top().second );
         } while ( ending.second == curr.size() );
 
         // Found the end of the token
@@ -145,7 +146,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
             curr.resize( curr.size() - 1 );
         }
 
-        t.type = find_last_sticky_token( curr.slice( 0 ) ).first;
+        t.type = find_last_sticky_token( curr.slice( 0 ), level_stack.top().second ).first;
     }
 
     // Finish token

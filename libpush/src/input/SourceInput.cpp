@@ -56,7 +56,7 @@ Token::Type SourceInput::find_non_sticky_token( const StringSlice &str, TokenLev
     return tt == not_sticky_map[tl].end() ? Token::Type::count : tt->second;
 }
 
-std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const StringSlice &str ) {
+std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const StringSlice &str, TokenLevel tl ) {
     if ( str.empty() )
         return std::make_pair( Token::Type::count, 0 );
 
@@ -95,6 +95,17 @@ std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const String
                     break;
                 }
             }
+            if ( expected == CharRangeType::ws ) {
+                // An identifier may also be a char which is in no other range (because it's the default type)
+                for( auto &t : not_sticky_map[tl] ) {
+                    if( t.second != Token::Type::ws && 
+                        str.size() >= i + t.first.size() && str.slice( i, t.first.size() ) == t.first ) {
+                        // found a token which is not a whitespace
+                        matches = false;
+                        break;
+                    }
+                }
+            }
         }
 
         if ( matches )
@@ -123,14 +134,28 @@ std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const String
 }
 
 void SourceInput::insert_in_range( const String &str, CharRangeType range ) {
-    for ( auto &s : str )
+    for ( auto &s : str ) {
         ranges_sets[range].insert( s );
+    }
 }
 
 void SourceInput::configure( const TokenConfig &cfg ) {
     max_op_size = 1; // min 1, to review carriage return character
     this->cfg = cfg;
 
+    // Initial ranges
+    for ( auto &cr : cfg.char_ranges ) {
+        for ( auto &subrange : cr.second ) {
+            for ( u32 i = subrange.first; i <= subrange.second; i++ ) {
+                ranges_sets[cr.first].insert( i );
+            }
+        }
+    }
+
+    // Predefined ranges
+    ranges_sets[CharRangeType::ws].insert( { ' ', '\n', '\r', '\t' } );
+
+    // Operators (not-sticky tokens)
     for ( auto &tc : cfg.stat_divider ) {
         if ( tc.size() > max_op_size )
             max_op_size = tc.size();
@@ -211,16 +236,4 @@ void SourceInput::configure( const TokenConfig &cfg ) {
         not_sticky_map[TokenLevel::string][tc] = Token::Type::op;
         insert_in_range( tc, CharRangeType::op );
     }
-
-    // Other ranges
-    for ( auto &cr : cfg.char_ranges ) {
-        for ( auto &subrange : cr.second ) {
-            for ( u32 i = subrange.first; i <= subrange.second; i++ ) {
-                ranges_sets[cr.first].insert( i );
-            }
-        }
-    }
-
-    // Predefined ranges
-    ranges_sets[CharRangeType::ws].insert( { ' ', '\n', '\r', '\t' } );
 }
