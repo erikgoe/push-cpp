@@ -28,14 +28,14 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.comment["ln"] = std::make_pair( "//", "\n" );
     cfg.comment["lr"] = std::make_pair( "//", "\r" );
     cfg.allowed_chars = std::make_pair<u32, u32>( 0, 0xffffffff );
-    cfg.char_escapes.push_back( std::make_pair( "\\n", "\n" ) );
-    cfg.char_escapes.push_back( std::make_pair( "\\t", "\t" ) );
-    cfg.char_escapes.push_back( std::make_pair( "\\v", "\v" ) );
-    cfg.char_escapes.push_back( std::make_pair( "\\r", "\r" ) );
-    cfg.char_escapes.push_back( std::make_pair( "\\\\", "\\" ) );
-    cfg.char_escapes.push_back( std::make_pair( "\\\'", "\'" ) );
-    cfg.char_escapes.push_back( std::make_pair( "\\\"", "\"" ) );
-    cfg.char_escapes.push_back( std::make_pair( "\\0", "\0" ) );
+    cfg.char_escapes["\\n"] = "\n";
+    cfg.char_escapes["\\t"] = "\t";
+    cfg.char_escapes["\\v"] = "\v";
+    cfg.char_escapes["\\r"] = "\r";
+    cfg.char_escapes["\\\\"] = "\\";
+    cfg.char_escapes["\\\'"] = "\'";
+    cfg.char_escapes["\\\""] = "\"";
+    cfg.char_escapes["\\0"] = "\0";
     cfg.string["s"] = std::make_pair( "\"", "\"" );
     cfg.allowed_level_overlay[""].push_back( "s" );
     cfg.allowed_level_overlay[""].push_back( "b" );
@@ -53,7 +53,12 @@ TokenConfig TokenConfig::get_prelude_cfg() {
 
 Token::Type SourceInput::find_non_sticky_token( const StringSlice &str, TokenLevel tl ) {
     auto tt = not_sticky_map[tl].find( str );
-    return tt == not_sticky_map[tl].end() ? Token::Type::count : tt->second;
+    if( tt != not_sticky_map[tl].end() ) {
+        return tt->second;
+    } else {
+        auto tt = cfg.char_escapes.find( str );
+        return tt == cfg.char_escapes.end() ? Token::Type::count : Token::Type::encoded_char;
+    }
 }
 
 std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const StringSlice &str, TokenLevel tl ) {

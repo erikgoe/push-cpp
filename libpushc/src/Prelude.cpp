@@ -133,7 +133,7 @@ void create_not_supported_error_msg( Worker &w_ctx, const Token &token, const St
 String parse_string_literal( sptr<SourceInput> &input, Worker &w_ctx ) {
     auto token = input->preview_token();
     if ( token.type == Token::Type::string_begin ) { // regular string
-        return parse_string( input, w_ctx );
+        return parse_string( input, w_ctx, w_ctx.unit_ctx()->prelude_conf.token_conf );
     } else if ( token.type == Token::Type::identifier ) { // named string
         input->get_token(); // consume
         if ( token.content == "semicolon" )
@@ -202,7 +202,7 @@ bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size, 
         auto token = input->preview_token();
         String type; // or operator/keyword
         if ( token.type == Token::Type::string_begin ) {
-            type = parse_string( input, w_ctx );
+            type = parse_string( input, w_ctx, conf->token_conf );
 
             if ( is_operator_token( type ) )
                 conf->token_conf.operators.push_back( type );
@@ -407,18 +407,25 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
         } else if ( mci == "LITERAL_CHARACTER_ESCAPES" ) {
             PARSE_LITERAL( str );
             PARSE_LITERAL( str2 );
-            conf->token_conf.char_escapes.push_back( std::make_pair( str, str2 ) );
+            conf->token_conf.char_escapes[str] = str2;
         } else if ( mci == "NEW_RANGE" ) {
-            PARSE_LITERAL( str );
-            CONSUME_COMMA( token );
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            String str = token.content;
             auto rt = str == "identifier"
                           ? CharRangeType::identifier
-                          : "operator" ? CharRangeType::op
-                                       : "integer" ? CharRangeType::integer
-                                                   : "whitespace" ? CharRangeType::ws
-                                                                  : "opt_identifier" ? CharRangeType::opt_identifier
-                                                                                     : CharRangeType::count;
+                          : str == "operator"
+                                ? CharRangeType::op
+                                : str == "integer"
+                                      ? CharRangeType::integer
+                                      : str == "whitespace" ? CharRangeType::ws
+                                                            : str == "opt_identifier" ? CharRangeType::opt_identifier
+                                                                                      : CharRangeType::count;
             while ( input->preview_token().type != Token::Type::term_end ) {
+                CONSUME_COMMA( token );
                 PARSE_LITERAL( str );
                 token = input->preview_token();
                 if ( token.type != Token::Type::term_end && token.content != "," ) {
@@ -491,18 +498,17 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     input->get_token(); // consume
                     do {
                         token = input->get_token();
-                        auto begin = ( conf->token_conf.normal.find( name ) == conf->token_conf.normal.end() ? "" : 
-                            conf->token_conf.normal[name].first); // find begin token of normal (if any)
+                        auto begin =
+                            ( conf->token_conf.normal.find( name ) == conf->token_conf.normal.end()
+                                  ? ""
+                                  : conf->token_conf.normal[name].first ); // find begin token of normal (if any)
                         conf->token_conf.allowed_level_overlay[begin].push_back( token.content );
                         token = input->preview_token();
                     } while ( token.type != Token::Type::term_end && token.content != "," );
                 } else {
                     PARSE_LITERAL( str );
                     PARSE_LITERAL( str2 );
-                    if ( input->get_token().content != "," ) {
-                        create_prelude_error_msg( w_ctx, token );
-                        return false;
-                    }
+                    CONSUME_COMMA( token );
                     conf->token_conf.normal[name] = std::make_pair( str, str2 );
                 }
             }

@@ -18,7 +18,7 @@
 void consume_comment( sptr<SourceInput> &input, TokenConfig &conf );
 
 // Parse the content of a string
-String parse_string( sptr<SourceInput> &input, Worker &w_ctx );
+String parse_string( sptr<SourceInput> &input, Worker &w_ctx, TokenConfig &cfg );
 
 // Representation of any integer
 using Number = u64;

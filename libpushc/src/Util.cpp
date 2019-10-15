@@ -35,7 +35,7 @@ void consume_comment( sptr<SourceInput> &input, TokenConfig &conf ) {
     } while ( !comment_begin.empty() );
 }
 
-String parse_string( sptr<SourceInput> &input, Worker &w_ctx ) {
+String parse_string( sptr<SourceInput> &input, Worker &w_ctx, TokenConfig &cfg ) {
     auto token = input->get_token();
     if ( token.type != Token::Type::string_begin ) {
         LOG_ERR( "String does not start with Token::Type::string_begin." );
@@ -47,14 +47,18 @@ String parse_string( sptr<SourceInput> &input, Worker &w_ctx ) {
     token = input->preview_next_token();
     while ( token.type != Token::Type::string_end && token.type != Token::Type::eof ) {
         token = input->get_token();
+        String content = token.content;
+        if( token.type == Token::Type::encoded_char ) {
+            content = cfg.char_escapes[token.content];
+        }
         if ( !ret.empty() )
-            ret += token.leading_ws + token.content;
+            ret += token.leading_ws + content;
         else
-            ret += token.content;
+            ret += content;
         token = input->preview_token();
     }
     if ( token.type == Token::Type::string_end )
-        input->get_token(); // consume
+        ret += input->get_token().leading_ws; // consume & add ws
     if ( token.type == Token::Type::eof ) { // string_end not found
         w_ctx.print_msg<MessageType::err_unexpected_eof_at_string_parsing>(
             MessageInfo( token.file, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ),
