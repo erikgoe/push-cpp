@@ -56,7 +56,7 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     cfg.operators.push_back( "." );
     cfg.operators.push_back( "/" ); // just to test doc comments
     cfg.keywords.push_back( "let" );
-    cfg.comment["lnd"] = std::make_pair( "///", "\n" );
+    cfg.level_map[TokenLevel::comment_line]["lnd"] = { "///", "\n" };
     cfg.allowed_level_overlay[""].push_back( "lnd" );
     fin.configure( cfg );
 
@@ -75,18 +75,18 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
     auto test_file = make_shared<String>( CMAKE_PROJECT_ROOT "/Test/lexer.push" );
     std::list<Token> token_check_list{
         Token( Token::Type::comment_begin, "//", test_file, 1, 1, 2, "", TokenLevel::normal ),
-        Token( Token::Type::identifier, "testing", test_file, 1, 4, 7, " ", TokenLevel::comment ),
-        Token( Token::Type::identifier, "the", test_file, 1, 12, 3, " ", TokenLevel::comment ),
-        Token( Token::Type::identifier, "lexer", test_file, 1, 16, 5, " ", TokenLevel::comment ),
-        Token( Token::Type::term_begin, "(", test_file, 1, 22, 1, " ", TokenLevel::comment ),
-        Token( Token::Type::identifier, "SourceInput", test_file, 1, 23, 11, "", TokenLevel::comment ),
-        Token( Token::Type::term_end, ")", test_file, 1, 34, 1, "", TokenLevel::comment ),
-        Token( Token::Type::comment_end, "\n", test_file, 1, 35, 1, "", TokenLevel::comment ),
+        Token( Token::Type::identifier, "testing", test_file, 1, 4, 7, " ", TokenLevel::comment_line ),
+        Token( Token::Type::identifier, "the", test_file, 1, 12, 3, " ", TokenLevel::comment_line ),
+        Token( Token::Type::identifier, "lexer", test_file, 1, 16, 5, " ", TokenLevel::comment_line ),
+        Token( Token::Type::term_begin, "(", test_file, 1, 22, 1, " ", TokenLevel::comment_line ),
+        Token( Token::Type::identifier, "SourceInput", test_file, 1, 23, 11, "", TokenLevel::comment_line ),
+        Token( Token::Type::term_end, ")", test_file, 1, 34, 1, "", TokenLevel::comment_line ),
+        Token( Token::Type::comment_end, "\n", test_file, 1, 35, 1, "", TokenLevel::comment_line ),
         Token( Token::Type::comment_begin, "///", test_file, 2, 1, 3, "\n", TokenLevel::normal ),
-        Token( Token::Type::identifier, "a", test_file, 2, 5, 1, " ", TokenLevel::comment ),
-        Token( Token::Type::identifier, "doc", test_file, 2, 7, 3, " ", TokenLevel::comment ),
-        Token( Token::Type::identifier, "comment", test_file, 2, 11, 7, " ", TokenLevel::comment ),
-        Token( Token::Type::comment_end, "\n", test_file, 2, 19, 1, " ", TokenLevel::comment ),
+        Token( Token::Type::identifier, "a", test_file, 2, 5, 1, " ", TokenLevel::comment_line ),
+        Token( Token::Type::identifier, "doc", test_file, 2, 7, 3, " ", TokenLevel::comment_line ),
+        Token( Token::Type::identifier, "comment", test_file, 2, 11, 7, " ", TokenLevel::comment_line ),
+        Token( Token::Type::comment_end, "\n", test_file, 2, 19, 1, " ", TokenLevel::comment_line ),
         Token( Token::Type::identifier, "main", test_file, 4, 1, 4, "\n  \n", TokenLevel::normal ),
         Token( Token::Type::block_begin, "{", test_file, 4, 6, 1, " ", TokenLevel::normal ),
         Token( Token::Type::identifier, "letlet", test_file, 5, 5, 6, "\n\t", TokenLevel::normal ),
@@ -102,9 +102,9 @@ TEST_CASE( "Basic lexing", "[lexer]" ) {
         Token( Token::Type::number, "2", test_file, 6, 14, 1, "", TokenLevel::normal ),
         Token( Token::Type::stat_divider, ";", test_file, 6, 15, 1, "", TokenLevel::normal ),
         Token( Token::Type::comment_begin, "//", test_file, 6, 17, 2, " ", TokenLevel::normal ),
-        Token( Token::Type::identifier, "commenting", test_file, 6, 20, 10, " ", TokenLevel::comment ),
-        Token( Token::Type::identifier, "🦄🦓and🦌", test_file, 6, 31, 6, " ", TokenLevel::comment ),
-        Token( Token::Type::comment_end, "\n", test_file, 6, 37, 1, "", TokenLevel::comment ),
+        Token( Token::Type::identifier, "commenting", test_file, 6, 20, 10, " ", TokenLevel::comment_line ),
+        Token( Token::Type::identifier, "🦄🦓and🦌", test_file, 6, 31, 6, " ", TokenLevel::comment_line ),
+        Token( Token::Type::comment_end, "\n", test_file, 6, 37, 1, "", TokenLevel::comment_line ),
         Token( Token::Type::identifier, "c", test_file, 7, 5, 1, "\n    ", TokenLevel::normal ),
         Token( Token::Type::op, "=", test_file, 7, 7, 1, " ", TokenLevel::normal ),
         Token( Token::Type::identifier, "a", test_file, 7, 9, 1, " ", TokenLevel::normal ),

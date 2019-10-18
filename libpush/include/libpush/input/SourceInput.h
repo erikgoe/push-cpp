@@ -19,6 +19,7 @@
 enum class TokenLevel {
     normal, // in no special area
     comment, // in any comment
+    comment_line, // in a comment which ends at the next newline
     string, // in any string or character
 
     count
@@ -131,11 +132,12 @@ struct TokenConfig {
     std::vector<std::pair<String, String>> block; // begin => end pair
     std::vector<std::pair<String, String>> term; // begin => end pair
 
+    // Helper struct for level dependent begin-& end-pair
+    struct LevelToken {
+        String begin_token, end_token;
+    };
     // Level dependent mappings (name of type => begin-end pair)
-    std::map<String, std::pair<String, String>> comment; // begin => end pair
-    std::map<String, std::pair<String, String>> string; // character or string begin and end pair
-    std::map<String, std::pair<String, String>> normal; // begin and end pair of a normal code block inside a special
-    
+    std::map<TokenLevel, std::map<String, LevelToken>> level_map; // begin => end pair
     std::map<String, std::vector<String>> allowed_level_overlay; // outer begin => inner type. E. g. nested comments
     
     std::pair<u32, u32> allowed_chars; // start char => end char pair

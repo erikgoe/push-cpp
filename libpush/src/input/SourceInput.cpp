@@ -24,9 +24,10 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.stat_divider.push_back( ";" );
     cfg.block.push_back( std::make_pair( "{", "}" ) );
     cfg.term.push_back( std::make_pair( "(", ")" ) );
-    cfg.comment["b"] = std::make_pair( "/*", "*/" );
-    cfg.comment["ln"] = std::make_pair( "//", "\n" );
-    cfg.comment["lr"] = std::make_pair( "//", "\r" );
+    cfg.level_map[TokenLevel::comment]["b"] = { "/*", "*/" };
+    cfg.level_map[TokenLevel::comment_line]["ln"] = { "//", "\n" };
+    cfg.level_map[TokenLevel::comment_line]["lr"] = { "//", "\r" };
+    cfg.level_map[TokenLevel::string]["s"] = { "\"", "\"" };
     cfg.allowed_chars = std::make_pair<u32, u32>( 0, 0xffffffff );
     cfg.char_escapes["\\n"] = "\n";
     cfg.char_escapes["\\t"] = "\t";
@@ -36,7 +37,6 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.char_escapes["\\\'"] = "\'";
     cfg.char_escapes["\\\""] = "\"";
     cfg.char_escapes["\\0"] = "\0";
-    cfg.string["s"] = std::make_pair( "\"", "\"" );
     cfg.allowed_level_overlay[""].push_back( "s" );
     cfg.allowed_level_overlay[""].push_back( "b" );
     cfg.allowed_level_overlay[""].push_back( "ln" );
@@ -53,7 +53,7 @@ TokenConfig TokenConfig::get_prelude_cfg() {
 
 Token::Type SourceInput::find_non_sticky_token( const StringSlice &str, TokenLevel tl ) {
     auto tt = not_sticky_map[tl].find( str );
-    if( tt != not_sticky_map[tl].end() ) {
+    if ( tt != not_sticky_map[tl].end() ) {
         return tt->second;
     } else {
         auto tt = cfg.char_escapes.find( str );
@@ -102,9 +102,9 @@ std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const String
             }
             if ( expected == CharRangeType::ws ) {
                 // An identifier may also be a char which is in no other range (because it's the default type)
-                for( auto &t : not_sticky_map[tl] ) {
-                    if( t.second != Token::Type::ws && 
-                        str.size() >= i + t.first.size() && str.slice( i, t.first.size() ) == t.first ) {
+                for ( auto &t : not_sticky_map[tl] ) {
+                    if ( t.second != Token::Type::ws && str.size() >= i + t.first.size() &&
+                         str.slice( i, t.first.size() ) == t.first ) {
                         // found a token which is not a whitespace
                         matches = false;
                         break;
@@ -148,6 +148,14 @@ void SourceInput::configure( const TokenConfig &cfg ) {
     max_op_size = 1; // min 1, to review carriage return character
     this->cfg = cfg;
 
+    // Helper lambda
+    auto add_sticky_token_to_all = [this]( const String &token, Token::Type tt ) {
+        not_sticky_map[TokenLevel::normal][token] = tt;
+        not_sticky_map[TokenLevel::comment][token] = tt;
+        not_sticky_map[TokenLevel::comment_line][token] = tt;
+        not_sticky_map[TokenLevel::string][token] = tt;
+    };
+
     // Initial ranges
     for ( auto &cr : cfg.char_ranges ) {
         for ( auto &subrange : cr.second ) {
@@ -164,9 +172,7 @@ void SourceInput::configure( const TokenConfig &cfg ) {
     for ( auto &tc : cfg.stat_divider ) {
         if ( tc.size() > max_op_size )
             max_op_size = tc.size();
-        not_sticky_map[TokenLevel::normal][tc] = Token::Type::stat_divider;
-        not_sticky_map[TokenLevel::comment][tc] = Token::Type::stat_divider;
-        not_sticky_map[TokenLevel::string][tc] = Token::Type::stat_divider;
+        add_sticky_token_to_all( tc, Token::Type::stat_divider );
         insert_in_range( tc, CharRangeType::op );
     }
     for ( auto &tc : cfg.block ) {
@@ -174,12 +180,8 @@ void SourceInput::configure( const TokenConfig &cfg ) {
             max_op_size = tc.first.size();
         if ( tc.second.size() > max_op_size )
             max_op_size = tc.second.size();
-        not_sticky_map[TokenLevel::normal][tc.first] = Token::Type::block_begin;
-        not_sticky_map[TokenLevel::normal][tc.second] = Token::Type::block_end;
-        not_sticky_map[TokenLevel::comment][tc.first] = Token::Type::block_begin;
-        not_sticky_map[TokenLevel::comment][tc.second] = Token::Type::block_end;
-        not_sticky_map[TokenLevel::string][tc.first] = Token::Type::block_begin;
-        not_sticky_map[TokenLevel::string][tc.second] = Token::Type::block_end;
+        add_sticky_token_to_all( tc.first, Token::Type::block_begin );
+        add_sticky_token_to_all( tc.second, Token::Type::block_end );
         insert_in_range( tc.first, CharRangeType::op );
         insert_in_range( tc.second, CharRangeType::op );
     }
@@ -188,63 +190,46 @@ void SourceInput::configure( const TokenConfig &cfg ) {
             max_op_size = tc.first.size();
         if ( tc.second.size() > max_op_size )
             max_op_size = tc.second.size();
-        not_sticky_map[TokenLevel::normal][tc.first] = Token::Type::term_begin;
-        not_sticky_map[TokenLevel::normal][tc.second] = Token::Type::term_end;
-        not_sticky_map[TokenLevel::comment][tc.first] = Token::Type::term_begin;
-        not_sticky_map[TokenLevel::comment][tc.second] = Token::Type::term_end;
-        not_sticky_map[TokenLevel::string][tc.first] = Token::Type::term_begin;
-        not_sticky_map[TokenLevel::string][tc.second] = Token::Type::term_end;
+        add_sticky_token_to_all( tc.first, Token::Type::term_begin );
+        add_sticky_token_to_all( tc.second, Token::Type::term_end );
         insert_in_range( tc.first, CharRangeType::op );
         insert_in_range( tc.second, CharRangeType::op );
     }
-    for ( auto &tc : cfg.comment ) {
-        if ( tc.second.first.size() > max_op_size )
-            max_op_size = tc.second.first.size();
-        if ( tc.second.second.size() > max_op_size )
-            max_op_size = tc.second.second.size();
-        not_sticky_map[TokenLevel::normal][tc.second.first] = Token::Type::comment_begin;
-        not_sticky_map[TokenLevel::normal][tc.second.second] = Token::Type::op;
-        not_sticky_map[TokenLevel::comment][tc.second.first] = Token::Type::comment_begin;
-        not_sticky_map[TokenLevel::comment][tc.second.second] = Token::Type::comment_end;
-        not_sticky_map[TokenLevel::string][tc.second.first] = Token::Type::comment_begin;
-        not_sticky_map[TokenLevel::string][tc.second.second] = Token::Type::op;
-        insert_in_range( tc.second.first, CharRangeType::op );
-        insert_in_range( tc.second.second, CharRangeType::op );
-    }
-    for ( auto &tc : cfg.string ) {
-        if ( tc.second.first.size() > max_op_size )
-            max_op_size = tc.second.first.size();
-        if ( tc.second.second.size() > max_op_size )
-            max_op_size = tc.second.second.size();
-        not_sticky_map[TokenLevel::normal][tc.second.first] = Token::Type::string_begin;
-        not_sticky_map[TokenLevel::normal][tc.second.second] = Token::Type::op;
-        not_sticky_map[TokenLevel::comment][tc.second.first] = Token::Type::string_begin;
-        not_sticky_map[TokenLevel::comment][tc.second.second] = Token::Type::op;
-        not_sticky_map[TokenLevel::string][tc.second.first] = Token::Type::string_begin;
-        not_sticky_map[TokenLevel::string][tc.second.second] = Token::Type::string_end;
-        insert_in_range( tc.second.first, CharRangeType::op );
-        insert_in_range( tc.second.second, CharRangeType::op );
-    }
-    for ( auto &tc : cfg.normal ) {
-        if ( tc.second.first.size() > max_op_size )
-            max_op_size = tc.second.first.size();
-        if ( tc.second.second.size() > max_op_size )
-            max_op_size = tc.second.second.size();
-        not_sticky_map[TokenLevel::normal][tc.second.first] = Token::Type::op;
-        not_sticky_map[TokenLevel::normal][tc.second.second] = Token::Type::op;
-        not_sticky_map[TokenLevel::comment][tc.second.first] = Token::Type::op;
-        not_sticky_map[TokenLevel::comment][tc.second.second] = Token::Type::op;
-        not_sticky_map[TokenLevel::string][tc.second.first] = Token::Type::op;
-        not_sticky_map[TokenLevel::string][tc.second.second] = Token::Type::op;
-        insert_in_range( tc.second.first, CharRangeType::op );
-        insert_in_range( tc.second.second, CharRangeType::op );
+    for ( auto &lm : cfg.level_map ) {
+        for ( auto &tc : lm.second ) {
+            if ( tc.second.begin_token.size() > max_op_size )
+                max_op_size = tc.second.begin_token.size();
+            if ( tc.second.end_token.size() > max_op_size )
+                max_op_size = tc.second.end_token.size();
+
+            Token::Type begin_tt =
+                lm.first == TokenLevel::normal
+                    ? Token::Type::op
+                    : lm.first == TokenLevel::comment
+                          ? Token::Type::comment_begin
+                          : lm.first == TokenLevel::comment_line
+                                ? Token::Type::comment_begin
+                                : lm.first == TokenLevel::string ? Token::Type::string_begin : Token::Type::count;
+            Token::Type end_tt =
+                lm.first == TokenLevel::normal
+                    ? Token::Type::op
+                    : lm.first == TokenLevel::comment
+                          ? Token::Type::comment_end
+                          : lm.first == TokenLevel::comment_line
+                                ? Token::Type::comment_end
+                                : lm.first == TokenLevel::string ? Token::Type::string_end : Token::Type::count;
+
+            add_sticky_token_to_all( tc.second.begin_token, begin_tt );
+            not_sticky_map[lm.first][tc.second.end_token] = end_tt;
+
+            insert_in_range( tc.second.begin_token, CharRangeType::op );
+            insert_in_range( tc.second.end_token, CharRangeType::op );
+        }
     }
     for ( auto &tc : cfg.operators ) {
         if ( tc.size() > max_op_size )
             max_op_size = tc.size();
-        not_sticky_map[TokenLevel::normal][tc] = Token::Type::op;
-        not_sticky_map[TokenLevel::comment][tc] = Token::Type::op;
-        not_sticky_map[TokenLevel::string][tc] = Token::Type::op;
+        add_sticky_token_to_all( tc, Token::Type::op );
         insert_in_range( tc, CharRangeType::op );
     }
 }

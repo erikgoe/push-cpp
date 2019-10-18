@@ -444,7 +444,25 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             PARSE_LITERAL( str );
             PARSE_LITERAL( str2 );
             CONSUME_COMMA( token );
-            conf->token_conf.comment[name] = std::make_pair( str, str2 );
+            conf->token_conf.level_map[TokenLevel::comment][name] = { str, str2 };
+
+            if ( input->preview_token().content == "overlay" ) {
+                input->get_token(); // consume
+                do {
+                    token = input->get_token();
+                    conf->token_conf.allowed_level_overlay[str].push_back( token.content );
+                    token = input->preview_token();
+                } while ( token.type != Token::Type::term_end && token.content != "," );
+            }
+        } else if ( mci == "NEW_LINE_COMMENT" ) {
+            token = input->get_token();
+            String name = token.content;
+
+            CONSUME_COMMA( token );
+            PARSE_LITERAL( str );
+            PARSE_LITERAL( str2 );
+            CONSUME_COMMA( token );
+            conf->token_conf.level_map[TokenLevel::comment_line][name] = { str, str2 };
 
             if ( input->preview_token().content == "overlay" ) {
                 input->get_token(); // consume
@@ -462,7 +480,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             PARSE_LITERAL( str );
             PARSE_LITERAL( str2 );
             CONSUME_COMMA( token );
-            conf->token_conf.string[name] = std::make_pair( str, str2 );
+            conf->token_conf.level_map[TokenLevel::string][name] = { str, str2 };
 
             StringRule rule{ str, str2 };
             while ( input->preview_token().content == "," ) {
@@ -498,10 +516,11 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     input->get_token(); // consume
                     do {
                         token = input->get_token();
-                        auto begin =
-                            ( conf->token_conf.normal.find( name ) == conf->token_conf.normal.end()
-                                  ? ""
-                                  : conf->token_conf.normal[name].first ); // find begin token of normal (if any)
+                        auto begin = ( conf->token_conf.level_map[TokenLevel::normal].find( name ) ==
+                                               conf->token_conf.level_map[TokenLevel::normal].end()
+                                           ? ""
+                                           : conf->token_conf.level_map[TokenLevel::normal][name]
+                                                 .begin_token ); // find begin token of normal (if any)
                         conf->token_conf.allowed_level_overlay[begin].push_back( token.content );
                         token = input->preview_token();
                     } while ( token.type != Token::Type::term_end && token.content != "," );
@@ -509,7 +528,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     PARSE_LITERAL( str );
                     PARSE_LITERAL( str2 );
                     CONSUME_COMMA( token );
-                    conf->token_conf.normal[name] = std::make_pair( str, str2 );
+                    conf->token_conf.level_map[TokenLevel::normal][name] = { str, str2 };
                 }
             }
         } else if ( mci == "ALIAS_EXPRESSION" ) { // TODO

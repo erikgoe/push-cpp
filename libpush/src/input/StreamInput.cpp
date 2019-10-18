@@ -164,12 +164,12 @@ Token StreamInput::get_token_impl( String whitespace ) {
     t.tl = level_stack.top().second;
 
     // Count lines and columns
-    if( !is_special_ws ) {
+    if ( !is_special_ws ) {
         curr_line += count_newlines( curr );
         size_t last_newline_idx = curr.find_last_of( '\n' );
         if ( last_newline_idx == String::npos )
             last_newline_idx = curr.find_last_of( '\r' );
-        if( last_newline_idx == String::npos ) {
+        if ( last_newline_idx == String::npos ) {
             curr_column += curr.length_grapheme();
         } else { // found a newline
             curr_column = curr.slice( last_newline_idx ).length_grapheme() + 1;
@@ -178,14 +178,9 @@ Token StreamInput::get_token_impl( String whitespace ) {
 
     // Update token level
     bool changed_level = false;
-    auto *pairs = &cfg.normal;
-    if ( level_stack.top().second == TokenLevel::comment ) {
-        pairs = &cfg.comment;
-    } else if ( level_stack.top().second == TokenLevel::string ) {
-        pairs = &cfg.string;
-    }
+    auto *pairs = &cfg.level_map[level_stack.top().second];
     for ( auto &c : *pairs ) {
-        if ( c.second.first == level_stack.top().first && c.second.second == curr ) {
+        if ( c.second.begin_token == level_stack.top().first && c.second.end_token == curr ) {
             // Found a pair which would match and end the token level
             level_stack.pop();
             changed_level = true;
@@ -193,36 +188,16 @@ Token StreamInput::get_token_impl( String whitespace ) {
         }
     }
     std::vector<String> &alo = cfg.allowed_level_overlay[level_stack.top().first];
-    if ( !changed_level ) {
-        // Might be a new normal level
-        for ( auto &c : cfg.normal ) {
-            if ( c.second.first == curr && std::find( alo.begin(), alo.end(), c.first ) != alo.end() ) {
-                // Found new level
-                level_stack.push( std::make_pair( c.second.first, TokenLevel::normal ) );
-                changed_level = true;
-                break;
-            }
-        }
-    }
-    if ( !changed_level ) {
-        // Might be a new comment level
-        for ( auto &c : cfg.comment ) {
-            if ( c.second.first == curr && std::find( alo.begin(), alo.end(), c.first ) != alo.end() ) {
-                // Found new level
-                level_stack.push( std::make_pair( c.second.first, TokenLevel::comment ) );
-                changed_level = true;
-                break;
-            }
-        }
-    }
-    if ( !changed_level ) {
-        // Might be a new string level
-        for ( auto &c : cfg.string ) {
-            if ( c.second.first == curr && std::find( alo.begin(), alo.end(), c.first ) != alo.end() ) {
-                // Found new level
-                level_stack.push( std::make_pair( c.second.first, TokenLevel::string ) );
-                changed_level = true;
-                break;
+    for ( auto &lm : cfg.level_map ) {
+        if ( !changed_level ) {
+            // Might be a new normal level
+            for ( auto &c : lm.second ) {
+                if ( c.second.begin_token == curr && std::find( alo.begin(), alo.end(), c.first ) != alo.end() ) {
+                    // Found new level
+                    level_stack.push( std::make_pair( c.second.begin_token, lm.first ) );
+                    changed_level = true;
+                    break;
+                }
             }
         }
     }

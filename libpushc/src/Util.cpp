@@ -24,10 +24,22 @@ void consume_comment( sptr<SourceInput> &input, TokenConfig &conf ) {
                 comment_begin.push( token.content );
             }
         } else if ( token.type == Token::Type::comment_end ) {
-            for ( auto pair : conf.comment ) {
-                if ( pair.second.first == comment_begin.top() && pair.second.second == token.content ) {
+            bool found = false;
+            // First check normal comments
+            for ( auto pair : conf.level_map[TokenLevel::comment] ) {
+                if ( pair.second.begin_token == comment_begin.top() && pair.second.end_token == token.content ) {
                     comment_begin.pop();
+                    found = true;
                     break;
+                }
+            }
+            if ( !found ) {
+                // Check line comments
+                for ( auto pair : conf.level_map[TokenLevel::comment_line] ) {
+                    if ( pair.second.begin_token == comment_begin.top() && pair.second.end_token == token.content ) {
+                        comment_begin.pop();
+                        break;
+                    }
                 }
             }
         } else if ( token.type == Token::Type::eof )
@@ -48,7 +60,7 @@ String parse_string( sptr<SourceInput> &input, Worker &w_ctx, TokenConfig &cfg )
     while ( token.type != Token::Type::string_end && token.type != Token::Type::eof ) {
         token = input->get_token();
         String content = token.content;
-        if( token.type == Token::Type::encoded_char ) {
+        if ( token.type == Token::Type::encoded_char ) {
             content = cfg.char_escapes[token.content];
         }
         if ( !ret.empty() )

@@ -89,11 +89,11 @@ define_mci_rule( NEW_RANGE, whitespace, " ", "\n", "\r", "\t" );
 
 // Comment rules
 define_mci_rule( NEW_COMMENT, b, "/*" "*/", overlay b );
-define_mci_rule( NEW_COMMENT, ln, "//" "\n" );
-define_mci_rule( NEW_COMMENT, lr, "//" "\r" );
+define_mci_rule( NEW_LINE_COMMENT, ln, "//" "\n" );
+define_mci_rule( NEW_LINE_COMMENT, lr, "//" "\r" );
 define_mci_rule( NEW_COMMENT, bd, "/**" "*/", overlay b );
-define_mci_rule( NEW_COMMENT, lnd, "///" "\n" );
-define_mci_rule( NEW_COMMENT, lrd, "///" "\r" );
+define_mci_rule( NEW_LINE_COMMENT, lnd, "///" "\n" );
+define_mci_rule( NEW_LINE_COMMENT, lrd, "///" "\r" );
 
 // String rules
 define_mci_rule( NEW_STRING, c, quote quote ); // simple character
