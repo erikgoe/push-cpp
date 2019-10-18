@@ -110,13 +110,16 @@ Token StreamInput::get_token_impl( String whitespace ) {
         curr.resize( slice_length );
 
         // Check if is special whitespace token
-        if( !next_ws_is_not_special && t.type != Token::Type::ws && 
-            find_last_sticky_token( curr.slice( 0 ), level_stack.top().second ).first == Token::Type::ws ) {
-            is_special_ws = true;
-            putback_buffer.insert( 0, curr );
-            next_ws_is_not_special = true;
-        } else {
-            next_ws_is_not_special = false;
+        auto tmp_ending_type = find_last_sticky_token( curr.slice( 0 ), level_stack.top().second ).first;
+        if ( tmp_ending_type == Token::Type::ws && t.type != Token::Type::ws ) {
+            if ( !next_ws_is_not_special ) {
+                is_special_ws = true;
+                putback_buffer.insert( 0, curr );
+                next_ws_is_not_special = true;
+            } else { // ignore that it is special, because it has already be registered as it
+                t.type = Token::Type::ws;
+                next_ws_is_not_special = false;
+            }
         }
     } else {
         // ----------

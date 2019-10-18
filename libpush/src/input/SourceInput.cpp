@@ -203,9 +203,11 @@ void SourceInput::configure( const TokenConfig &cfg ) {
         if ( tc.second.second.size() > max_op_size )
             max_op_size = tc.second.second.size();
         not_sticky_map[TokenLevel::normal][tc.second.first] = Token::Type::comment_begin;
+        not_sticky_map[TokenLevel::normal][tc.second.second] = Token::Type::op;
         not_sticky_map[TokenLevel::comment][tc.second.first] = Token::Type::comment_begin;
-        not_sticky_map[TokenLevel::string][tc.second.first] = Token::Type::comment_begin;
         not_sticky_map[TokenLevel::comment][tc.second.second] = Token::Type::comment_end;
+        not_sticky_map[TokenLevel::string][tc.second.first] = Token::Type::comment_begin;
+        not_sticky_map[TokenLevel::string][tc.second.second] = Token::Type::op;
         insert_in_range( tc.second.first, CharRangeType::op );
         insert_in_range( tc.second.second, CharRangeType::op );
     }
@@ -215,7 +217,9 @@ void SourceInput::configure( const TokenConfig &cfg ) {
         if ( tc.second.second.size() > max_op_size )
             max_op_size = tc.second.second.size();
         not_sticky_map[TokenLevel::normal][tc.second.first] = Token::Type::string_begin;
+        not_sticky_map[TokenLevel::normal][tc.second.second] = Token::Type::op;
         not_sticky_map[TokenLevel::comment][tc.second.first] = Token::Type::string_begin;
+        not_sticky_map[TokenLevel::comment][tc.second.second] = Token::Type::op;
         not_sticky_map[TokenLevel::string][tc.second.first] = Token::Type::string_begin;
         not_sticky_map[TokenLevel::string][tc.second.second] = Token::Type::string_end;
         insert_in_range( tc.second.first, CharRangeType::op );
@@ -227,9 +231,11 @@ void SourceInput::configure( const TokenConfig &cfg ) {
         if ( tc.second.second.size() > max_op_size )
             max_op_size = tc.second.second.size();
         not_sticky_map[TokenLevel::normal][tc.second.first] = Token::Type::op;
-        not_sticky_map[TokenLevel::comment][tc.second.first] = Token::Type::op;
-        not_sticky_map[TokenLevel::string][tc.second.first] = Token::Type::op;
         not_sticky_map[TokenLevel::normal][tc.second.second] = Token::Type::op;
+        not_sticky_map[TokenLevel::comment][tc.second.first] = Token::Type::op;
+        not_sticky_map[TokenLevel::comment][tc.second.second] = Token::Type::op;
+        not_sticky_map[TokenLevel::string][tc.second.first] = Token::Type::op;
+        not_sticky_map[TokenLevel::string][tc.second.second] = Token::Type::op;
         insert_in_range( tc.second.first, CharRangeType::op );
         insert_in_range( tc.second.second, CharRangeType::op );
     }
