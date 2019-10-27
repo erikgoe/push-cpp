@@ -18,13 +18,13 @@
 void consume_comment( sptr<SourceInput> &input, TokenConfig &conf );
 
 // Parse the content of a string
-String parse_string( sptr<SourceInput> &input, Worker &w_ctx, TokenConfig &cfg );
+String parse_string( sptr<SourceInput> &input, Worker &w_ctx );
 
 // Representation of any integer
 using Number = u64;
 
 // Pares a value
-Number parse_number( sptr<SourceInput> &input, Worker &w_ctx, sptr<PreludeConfig> &conf );
+Number parse_number( sptr<SourceInput> &input, Worker &w_ctx );
 
 // Returns true if \param element is in \param collection
 template <typename T, typename Collection>

@@ -47,7 +47,7 @@ void consume_comment( sptr<SourceInput> &input, TokenConfig &conf ) {
     } while ( !comment_begin.empty() );
 }
 
-String parse_string( sptr<SourceInput> &input, Worker &w_ctx, TokenConfig &cfg ) {
+String parse_string( sptr<SourceInput> &input, Worker &w_ctx ) {
     auto token = input->get_token();
     if ( token.type != Token::Type::string_begin ) {
         LOG_ERR( "String does not start with Token::Type::string_begin." );
@@ -61,7 +61,7 @@ String parse_string( sptr<SourceInput> &input, Worker &w_ctx, TokenConfig &cfg )
         token = input->get_token();
         String content = token.content;
         if ( token.type == Token::Type::encoded_char ) {
-            content = cfg.char_escapes[token.content];
+            content = w_ctx.unit_ctx()->prelude_conf.token_conf.char_escapes[token.content];
         }
         if ( !ret.empty() )
             ret += token.leading_ws + content;
@@ -80,13 +80,12 @@ String parse_string( sptr<SourceInput> &input, Worker &w_ctx, TokenConfig &cfg )
     return ret;
 }
 
-Number parse_number( sptr<SourceInput> &input, Worker &w_ctx, sptr<PreludeConfig> &conf ) {
+Number parse_number( sptr<SourceInput> &input, Worker &w_ctx ) {
     Number num;
-    String value;
 
     auto token = input->get_token();
     if ( token.type == Token::Type::number ) {
-        num = stoull( value );
+        num = stoull( token.content );
     } else {
         w_ctx.print_msg<MessageType::err_parse_number>(
             MessageInfo( token.file, token.line, token.line, token.column, token.length, 0, FmtStr::Color::BoldRed ),

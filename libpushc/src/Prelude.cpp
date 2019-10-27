@@ -133,7 +133,7 @@ void create_not_supported_error_msg( Worker &w_ctx, const Token &token, const St
 String parse_string_literal( sptr<SourceInput> &input, Worker &w_ctx ) {
     auto token = input->preview_token();
     if ( token.type == Token::Type::string_begin ) { // regular string
-        return parse_string( input, w_ctx, w_ctx.unit_ctx()->prelude_conf.token_conf );
+        return parse_string( input, w_ctx );
     } else if ( token.type == Token::Type::identifier ) { // named string
         input->get_token(); // consume
         if ( token.content == "semicolon" )
@@ -190,6 +190,8 @@ size_t parse_list_size( sptr<SourceInput> &input ) {
         return 4;
     else if ( token.content == "quintuple_list" )
         return 5;
+    else if ( token.content == "sextuple_list" )
+        return 6;
     else
         return 0;
 }
@@ -202,7 +204,7 @@ bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size, 
         auto token = input->preview_token();
         String type; // or operator/keyword
         if ( token.type == Token::Type::string_begin ) {
-            type = parse_string( input, w_ctx, conf->token_conf );
+            type = parse_string( input, w_ctx );
 
             if ( is_operator_token( type ) )
                 conf->token_conf.operators.push_back( type );
@@ -256,7 +258,7 @@ bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size, 
 // successful.
 bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker &w_ctx ) {
     // Precedence
-    output.precedence = static_cast<f32>( parse_number( input, w_ctx, conf ) );
+    output.precedence = parse_number( input, w_ctx );
     Token token;
     CONSUME_COMMA( token );
 
@@ -443,16 +445,18 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             CONSUME_COMMA( token );
             PARSE_LITERAL( str );
             PARSE_LITERAL( str2 );
-            CONSUME_COMMA( token );
             conf->token_conf.level_map[TokenLevel::comment][name] = { str, str2 };
 
-            if ( input->preview_token().content == "overlay" ) {
+            if ( input->preview_token().content == "," ) {
                 input->get_token(); // consume
-                do {
-                    token = input->get_token();
-                    conf->token_conf.allowed_level_overlay[str].push_back( token.content );
-                    token = input->preview_token();
-                } while ( token.type != Token::Type::term_end && token.content != "," );
+                if ( input->preview_token().content == "overlay" ) {
+                    input->get_token(); // consume
+                    do {
+                        token = input->get_token();
+                        conf->token_conf.allowed_level_overlay[str].push_back( token.content );
+                        token = input->preview_token();
+                    } while ( token.type != Token::Type::term_end && token.content != "," );
+                }
             }
         } else if ( mci == "NEW_LINE_COMMENT" ) {
             token = input->get_token();
@@ -461,16 +465,18 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             CONSUME_COMMA( token );
             PARSE_LITERAL( str );
             PARSE_LITERAL( str2 );
-            CONSUME_COMMA( token );
             conf->token_conf.level_map[TokenLevel::comment_line][name] = { str, str2 };
 
-            if ( input->preview_token().content == "overlay" ) {
+            if ( input->preview_token().content == "," ) {
                 input->get_token(); // consume
-                do {
-                    token = input->get_token();
-                    conf->token_conf.allowed_level_overlay[str].push_back( token.content );
-                    token = input->preview_token();
-                } while ( token.type != Token::Type::term_end && token.content != "," );
+                if ( input->preview_token().content == "overlay" ) {
+                    input->get_token(); // consume
+                    do {
+                        token = input->get_token();
+                        conf->token_conf.allowed_level_overlay[str].push_back( token.content );
+                        token = input->preview_token();
+                    } while ( token.type != Token::Type::term_end && token.content != "," );
+                }
             }
         } else if ( mci == "NEW_STRING" ) {
             token = input->get_token();
@@ -479,7 +485,6 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             CONSUME_COMMA( token );
             PARSE_LITERAL( str );
             PARSE_LITERAL( str2 );
-            CONSUME_COMMA( token );
             conf->token_conf.level_map[TokenLevel::string][name] = { str, str2 };
 
             StringRule rule{ str, str2 };
@@ -527,7 +532,6 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 } else {
                     PARSE_LITERAL( str );
                     PARSE_LITERAL( str2 );
-                    CONSUME_COMMA( token );
                     conf->token_conf.level_map[TokenLevel::normal][name] = { str, str2 };
                 }
             }
@@ -670,8 +674,14 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             conf->range_op.push_back( RangeOperator{ type, op } );
         } else if ( mci == "SPECIAL_TYPE" ) {
             token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            String intrinsic = token.content;
+            CONSUME_COMMA( token );
             PARSE_LITERAL( str );
-            conf->special_types[str] = token.content;
+            conf->special_types[str] = intrinsic;
         } else if ( mci == "TYPE_MEMORY_BLOB" ) {
             PARSE_LITERAL( str );
             CONSUME_COMMA( token );
@@ -681,16 +691,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             }
             conf->memblob_types[str] = stoi( token.content );
         } else if ( mci == "NEW_LITERAL" ) {
-            token = input->get_token();
             PARSE_LITERAL( str );
             CONSUME_COMMA( token );
             PARSE_LITERAL( str2 );
             CONSUME_COMMA( token );
-            if ( ( token = input->get_token() ).type != Token::Type::number ) {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            conf->literals[str] = std::make_pair( str2, stoull( token.content ) );
+            auto val = parse_number( input, w_ctx );
+            conf->literals[str] = std::make_pair( str2, val );
         } else { // Unknown MCI
             w_ctx.print_msg<MessageType::err_unknown_mci>(
                 MessageInfo( input->get_filename(), token.line, token.line, token.column, token.length, 0,

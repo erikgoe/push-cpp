@@ -47,7 +47,6 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.operators.push_back( "," );
     cfg.operators.push_back( "->" );
     cfg.operators.push_back( "#" );
-    cfg.operators.push_back( "::" );
     return cfg;
 }
 
@@ -75,6 +74,13 @@ std::pair<Token::Type, size_t> SourceInput::find_last_sticky_token( const String
                 expected = r.first;
                 break;
             }
+        }
+
+        if ( expected == CharRangeType::op ) {
+            // Operators are not allowed as sticky tokens
+            if ( offset == str.size() - 1 )
+                break; // allow a single char as sticky token
+            continue;
         }
 
         // Check if all following chars match the expected type
