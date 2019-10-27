@@ -44,6 +44,10 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.allowed_level_overlay["/*"].push_back( "b" );
     cfg.char_ranges[CharRangeType::opt_identifier].push_back( std::make_pair( '0', '9' ) );
     cfg.char_ranges[CharRangeType::integer].push_back( std::make_pair( '0', '9' ) );
+    cfg.char_ranges[CharRangeType::ws].push_back( std::make_pair( ' ', ' ' ) );
+    cfg.char_ranges[CharRangeType::ws].push_back( std::make_pair( '\n', '\n' ) );
+    cfg.char_ranges[CharRangeType::ws].push_back( std::make_pair( '\r', '\r' ) );
+    cfg.char_ranges[CharRangeType::ws].push_back( std::make_pair( '\t', '\t' ) );
     cfg.operators.push_back( "," );
     cfg.operators.push_back( "->" );
     cfg.operators.push_back( "#" );
@@ -170,9 +174,6 @@ void SourceInput::configure( const TokenConfig &cfg ) {
             }
         }
     }
-
-    // Predefined ranges
-    ranges_sets[CharRangeType::ws].insert( { ' ', '\n', '\r', '\t' } );
 
     // Operators (not-sticky tokens)
     for ( auto &tc : cfg.stat_divider ) {
