@@ -121,7 +121,7 @@ public:
 
     // Work on open jobs until finished. Other workers may already handle jobs for the query
     // If no free jobs remain (expect the first, which may be reserved), is_finished() will return false.
-    // If \param prevent_idle is true other jobs from the GlobalCtx are executed when there are no free jobs left. If
+    // If @param prevent_idle is true other jobs from the GlobalCtx are executed when there are no free jobs left. If
     // there are no free jobs left, the function will return. Returns a reference to itself.
     sptr<JobCollection<T>> execute( Worker &w_ctx, bool prevent_idle = true );
 

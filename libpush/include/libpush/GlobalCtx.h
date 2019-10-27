@@ -82,7 +82,7 @@ public:
 
     ~GlobalCtx() { wait_finished(); }
 
-    // Initialize the global context and the whole compiler infrastructure and return the main worker. \param
+    // Initialize the global context and the whole compiler infrastructure and return the main worker. @param
     // thread_count is the total amount of workers (including this thread).
     sptr<Worker> setup( size_t thread_count, size_t cache_map_reserve = 256 );
 
@@ -100,14 +100,14 @@ public:
         }
     }
 
-    // Creates a new query with the function of \param fn.
-    // \param args defines the argument provided for the query implementation. The first job from the query is
+    // Creates a new query with the function of @param fn.
+    // @param args defines the argument provided for the query implementation. The first job from the query is
     // reserved for the calling worker and is thus not in the open_jobs list.
     template <typename FuncT, typename... Args>
     auto query( FuncT fn, Worker &w_ctx, const Args &... args ) -> decltype( auto );
 
-    // Creates a new query with the function of \param fn.
-    // \param args defines the argument provided for the query implementation. The first job from the query is
+    // Creates a new query with the function of @param fn.
+    // @param args defines the argument provided for the query implementation. The first job from the query is
     // reserved for the calling worker and is thus not in the open_jobs list.
     template <typename FuncT, typename... Args>
     auto query( FuncT fn, sptr<Worker> w_ctx, const Args &... args ) -> decltype( auto );
@@ -174,7 +174,7 @@ public:
         }
         return prefs[pref_type]->get<ValT>().value;
     }
-    // Returns a pref value or if it doesn't exist, saves \param default_value for the pref and returns it.
+    // Returns a pref value or if it doesn't exist, saves @param default_value for the pref and returns it.
     template <typename ValT>
     auto get_pref_or_set( const PrefType &pref_type, const decltype( ValT::value ) &default_value ) -> const
         decltype( ValT::value ) {

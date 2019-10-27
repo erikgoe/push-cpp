@@ -14,5 +14,5 @@
 #pragma once
 #include "libpushc/stdafx.h"
 
-// Link the compilation units of the root-unit into the \param out_file
+// Link the compilation units of the root-unit into the @param out_file
 void link_binary( const String &out_file, JobsBuilder &jb, UnitCtx &parent_ctx );

@@ -45,7 +45,7 @@ u8 get_color_hierarchy_value( const FmtStr::Color &color ) {
     return color_h.at( color );
 }
 
-// Extract highlighted lines and combine them. \param hl_lines is sorted after the highlight precedence
+// Extract highlighted lines and combine them. @param hl_lines is sorted after the highlight precedence
 void highlight_lines( std::list<std::tuple<size_t, size_t, size_t, FmtStr::Color>> &hl_lines, const MessageInfo &note,
                       std::vector<String> &lines, u32 lower_bound ) {
     // Collect all highlightings

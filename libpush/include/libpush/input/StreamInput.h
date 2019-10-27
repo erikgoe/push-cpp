@@ -34,11 +34,11 @@ private:
     // Load the next characters from the stream. Returns false if eof reached or failed
     bool load_next_chars( String &buffer, size_t count = 1 ); // TODO rename to char
 
-    // implementation of the *_token() methods. \param whitespace is used internally
+    // implementation of the *_token() methods. @param whitespace is used internally
     Token get_token_impl( String whitespace = "" );
 
 public:
-    // Create a fileinput from a stream. \param file must be the name of the file from which the stream was open
+    // Create a fileinput from a stream. @param file must be the name of the file from which the stream was open
     StreamInput( sptr<std::basic_ifstream<char>> stream, sptr<String> file, sptr<Worker> w_ctx );
     virtual ~StreamInput() {}
 
