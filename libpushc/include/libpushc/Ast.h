@@ -28,7 +28,7 @@ struct SyntaxRule {
     std::function<sptr<Expr>( std::vector<sptr<Expr>> & )> create;
 };
 
-// Maps syntax item lables to their position in a syntax
+// Maps syntax item labels to their position in a syntax
 using LabelMap = std::map<String, size_t>;
 
 // Contains information about a type

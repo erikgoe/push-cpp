@@ -41,7 +41,7 @@ Token expect_token_or_comment( TT type, SourceInput &input, Worker &w_ctx ) {
     return t;
 }
 
-// Parse a following string. Including the string begin and end tokens
+// Parse a following string. Including the string begin and end tokens TODO use impl in Util.h
 String extract_string( SourceInput &input, Worker &w_ctx ) {
     expect_token_or_comment<MessageType::err_expected_string>( TT::string_begin, input, w_ctx );
 
@@ -63,7 +63,6 @@ String extract_string( SourceInput &input, Worker &w_ctx ) {
 // Should be called at the beginning of a file
 void select_prelude( SourceInput &input, Worker &w_ctx ) {
     // Load prelude-prelude first
-    log( "" );
     w_ctx.unit_ctx()->prelude_conf =
         w_ctx.do_query( load_prelude, make_shared<String>( "prelude" ) )->jobs.front()->to<PreludeConfig>();
     input.configure( w_ctx.unit_ctx()->prelude_conf.token_conf );
@@ -115,7 +114,7 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 }
 
 // Translate a syntax into a syntax rule
-void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list, const std::map<String, sptr<Expr>> &alias_list ) {
+void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
     sr.expr_list.clear();
     lm.clear();
 
@@ -126,18 +125,14 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list, const std::m
             sr.expr_list.push_back( make_shared<Expr>() );
         } else if ( expr.first == "identifier" ) {
             sr.expr_list.push_back( make_shared<SymbolExpr>() );
-        } else if ( expr.first == "identifier_list" ) {
+        } else if ( expr.first == "attributes_list" ) {
             // TODO
         } else if ( expr.first == "expr_block" ) {
             sr.expr_list.push_back( make_shared<BlockExpr>() );
         } else {
-            if ( alias_list.find( expr.first ) != alias_list.end() ) {
-                sr.expr_list.push_back( alias_list.at( expr.first ) );
-            } else {
-                // Keyword or operator
-                sr.expr_list.push_back(
-                    make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "", TokenLevel::normal ) ) );
-            }
+            // Keyword or operator
+            sr.expr_list.push_back(
+                make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "", TokenLevel::normal ) ) );
         }
         ctr++;
     }
@@ -149,11 +144,10 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
 
     SyntaxRule new_rule;
     LabelMap lm;
-    std::map<String, sptr<Expr>> alias_list;
 
     // TODO handle function definitions and declarations separately
     for ( auto &f : pc.fn_declarations ) {
-        parse_rule( new_rule, lm, f.syntax, alias_list );
+        parse_rule( new_rule, lm, f.syntax );
         new_rule.matching_expr = make_shared<FuncDefExpr>();
         new_rule.create = [=]( auto &list ) {
             return make_shared<FuncDefExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ) );
@@ -162,15 +156,12 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     }
 
     for ( auto &o : pc.operators ) {
-        parse_rule( new_rule, lm, o.op.syntax, alias_list );
+        parse_rule( new_rule, lm, o.op.syntax );
         new_rule.precedence = o.op.precedence;
         new_rule.matching_expr = make_shared<OperatorExpr>();
         new_rule.create = [=]( auto &list ) {
             return make_shared<OperatorExpr>( std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content,
                                               list[lm.at( "lvalue" )], list[lm.at( "rvalue" )] );
-        };
-        for ( auto &alias : o.op.aliases ) {
-            alias_list[alias] = new_rule.matching_expr;
         };
         a_ctx.rules.push_back( new_rule );
     }

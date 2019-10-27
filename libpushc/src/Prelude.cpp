@@ -280,20 +280,6 @@ bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInp
 
     // TODO add keywords and operators to prelude config
 
-    // Alias
-    token = input->preview_token();
-    if ( token.content == "," ) {
-        input->get_token(); // consume
-
-        token = input->get_token();
-        if ( token.type != Token::Type::identifier ) {
-            create_prelude_error_msg( w_ctx, token );
-            return false;
-        }
-
-        output.aliases.push_back( token.content );
-        // conf->subtypes[token.content].push_back( output ); TODO del subtypes
-    }
     return true;
 }
 

@@ -45,7 +45,6 @@ struct Operator {
     f32 precedence = 0; // how operators are combined
     bool ltr = true; // left to right or right to left
     Syntax syntax; // left type -> name pair
-    std::vector<String> aliases; // syntax alias identifiers
 };
 
 // Operator which is implementaed in a library through a trait
