@@ -5,10 +5,6 @@ This repository contains the compiler implementation in c++ but for now also (in
 
 WIP: The project is currently in a very early development stage. Everything may break frequently.
 
-**Is this project dead??**
-
-My time for Push is currently limited but I'm actually planning a lot for it, so the project is far from being dead ;)
-
 ## Push?
 This is the current development name and thus the language may be renamed some day.
 
