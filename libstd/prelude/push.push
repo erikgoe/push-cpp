@@ -88,25 +88,25 @@ define_mci_rule( NEW_RANGE, integer, "_", "0" "9" );
 define_mci_rule( NEW_RANGE, whitespace, " ", "\n", "\r", "\t" );
 
 // Comment rules
-define_mci_rule( NEW_COMMENT, b, "/*" "*/", overlay b );
-define_mci_rule( NEW_LINE_COMMENT, ln, "//" "\n" );
-define_mci_rule( NEW_LINE_COMMENT, lr, "//" "\r" );
-define_mci_rule( NEW_COMMENT, bd, "/**" "*/", overlay b );
-define_mci_rule( NEW_LINE_COMMENT, lnd, "///" "\n" );
-define_mci_rule( NEW_LINE_COMMENT, lrd, "///" "\r" );
+define_mci_rule( NEW_LEVEL, COMMENT, b, "/*" "*/", overlay b );
+define_mci_rule( NEW_LEVEL, COMMENT_LINE, ln, "//" "\n" );
+define_mci_rule( NEW_LEVEL, COMMENT_LINE, lr, "//" "\r" );
+define_mci_rule( NEW_LEVEL, COMMENT, bd, "/**" "*/", overlay b );
+define_mci_rule( NEW_LEVEL, COMMENT_LINE, lnd, "///" "\n" );
+define_mci_rule( NEW_LEVEL, COMMENT_LINE, lrd, "///" "\r" );
 
 // String rules
-define_mci_rule( NEW_STRING, c, quote quote ); // simple character
-define_mci_rule( NEW_STRING, cb, quote quote, prefix "b" ); // byte character
-define_mci_rule( NEW_STRING, s, double_quotes double_quotes, overlay v ); // simple string
-define_mci_rule( NEW_STRING, sb, "\"\"\"" "\"\"\"", overlay v ); // string block
-define_mci_rule( NEW_STRING, sw, double_quotes double_quotes, prefix "w", overlay v ); // wide string
-define_mci_rule( NEW_STRING, sr, double_quotes double_quotes, prefix "r", rep_delimiter "(" ")" ); // raw string
-define_mci_rule( NEW_STRING, srw, double_quotes double_quotes, prefix "wr", rep_delimiter "(" ")" ); // wide raw string
+define_mci_rule( NEW_LEVEL, STRING, c, quote quote ); // simple character
+define_mci_rule( NEW_LEVEL, STRING, cb, quote quote, prefix "b" ); // byte character
+define_mci_rule( NEW_LEVEL, STRING, s, double_quotes double_quotes, overlay v ); // simple string
+define_mci_rule( NEW_LEVEL, STRING, sb, "\"\"\"" "\"\"\"", overlay v ); // string block
+define_mci_rule( NEW_LEVEL, STRING, sw, double_quotes double_quotes, prefix "w", overlay v ); // wide string
+define_mci_rule( NEW_LEVEL, STRING, sr, double_quotes double_quotes, prefix "r", rep_delimiter "(" ")" ); // raw string
+define_mci_rule( NEW_LEVEL, STRING, srw, double_quotes double_quotes, prefix "wr", rep_delimiter "(" ")" ); // wide raw string
 
 // Additional normal code rules
-define_mci_rule( NEW_NORMAL, n, overlay b ln lr bd lnd lrd c sb s sb sw sr srw ); // normal code (root)
-define_mci_rule( NEW_NORMAL, v, "\\(" ")" ); // value extraction in strings
+define_mci_rule( NEW_LEVEL, NORMAL, n, overlay b ln lr bd lnd lrd c sb s sb sw sr srw ); // normal code (root)
+define_mci_rule( NEW_LEVEL, NORMAL, v, "\\(" ")" ); // value extraction in strings
 
 // Special basic literals
 define_mci_rule( NEW_OPERATOR, std::literal::bin_integer, 1, ltr, triple_list, "0", "b", integer -> value ); // binary radix

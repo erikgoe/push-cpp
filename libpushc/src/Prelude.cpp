@@ -438,102 +438,67 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     conf->token_conf.char_ranges[rt].push_back( std::make_pair( str[0], str[0] ) );
                 }
             }
-        } else if ( mci == "NEW_COMMENT" ) {
+        } else if ( mci == "NEW_LEVEL" ) {
+            token = input->get_token();
+            TokenLevel level = token.content == "NORMAL"
+                                   ? TokenLevel::normal
+                                   : token.content == "COMMENT"
+                                         ? TokenLevel::comment
+                                         : token.content == "COMMENT_LINE"
+                                               ? TokenLevel::comment_line
+                                               : token.content == "STRING" ? TokenLevel::string : TokenLevel::count;
+            CONSUME_COMMA( token );
             token = input->get_token();
             String name = token.content;
 
-            CONSUME_COMMA( token );
-            PARSE_LITERAL( str );
-            PARSE_LITERAL( str2 );
-            conf->token_conf.level_map[TokenLevel::comment][name] = { str, str2 };
-
-            if ( input->preview_token().content == "," ) {
-                input->get_token(); // consume
-                if ( input->preview_token().content == "overlay" ) {
-                    input->get_token(); // consume
-                    do {
-                        token = input->get_token();
-                        conf->token_conf.allowed_level_overlay[str].push_back( token.content );
-                        token = input->preview_token();
-                    } while ( token.type != Token::Type::term_end && token.content != "," );
-                }
-            }
-        } else if ( mci == "NEW_LINE_COMMENT" ) {
-            token = input->get_token();
-            String name = token.content;
-
-            CONSUME_COMMA( token );
-            PARSE_LITERAL( str );
-            PARSE_LITERAL( str2 );
-            conf->token_conf.level_map[TokenLevel::comment_line][name] = { str, str2 };
-
-            if ( input->preview_token().content == "," ) {
-                input->get_token(); // consume
-                if ( input->preview_token().content == "overlay" ) {
-                    input->get_token(); // consume
-                    do {
-                        token = input->get_token();
-                        conf->token_conf.allowed_level_overlay[str].push_back( token.content );
-                        token = input->preview_token();
-                    } while ( token.type != Token::Type::term_end && token.content != "," );
-                }
-            }
-        } else if ( mci == "NEW_STRING" ) {
-            token = input->get_token();
-            String name = token.content;
-
-            CONSUME_COMMA( token );
-            PARSE_LITERAL( str );
-            PARSE_LITERAL( str2 );
-            conf->token_conf.level_map[TokenLevel::string][name] = { str, str2 };
-
-            StringRule rule{ str, str2 };
+            StringRule string_rule; // optional
             while ( input->preview_token().content == "," ) {
                 input->get_token(); // consume
                 token = input->preview_token();
-                if ( token.content == "prefix" ) {
-                    input->get_token(); // consume
-                    PARSE_LITERAL( str );
-                    rule.prefix = str;
-                } else if ( token.content == "rep_delimiter" ) {
-                    input->get_token(); // consume
-                    PARSE_LITERAL( str );
-                    PARSE_LITERAL( str2 );
-                    rule.rep_begin = str;
-                    rule.rep_end = str2;
-                } else if ( token.content == "overlay" ) {
+                if ( token.content == "overlay" ) {
                     input->get_token(); // consume
                     do {
                         token = input->get_token();
-                        conf->token_conf.allowed_level_overlay[str].push_back( token.content );
-                        token = input->preview_token();
-                    } while ( token.type != Token::Type::term_end && token.content != "," );
-                }
-            }
-            conf->string_rules.push_back( rule );
-        } else if ( mci == "NEW_NORMAL" ) {
-            token = input->get_token();
-            String name = token.content;
-
-            while ( input->preview_token().content == "," ) {
-                input->get_token(); // consume
-                if ( input->preview_token().content == "overlay" ) {
-                    input->get_token(); // consume
-                    do {
-                        token = input->get_token();
-                        auto begin = ( conf->token_conf.level_map[TokenLevel::normal].find( name ) ==
-                                               conf->token_conf.level_map[TokenLevel::normal].end()
+                        auto begin = ( conf->token_conf.level_map[level].find( name ) ==
+                                               conf->token_conf.level_map[level].end()
                                            ? ""
-                                           : conf->token_conf.level_map[TokenLevel::normal][name]
+                                           : conf->token_conf.level_map[level][name]
                                                  .begin_token ); // find begin token of normal (if any)
                         conf->token_conf.allowed_level_overlay[begin].push_back( token.content );
                         token = input->preview_token();
                     } while ( token.type != Token::Type::term_end && token.content != "," );
-                } else {
+                } else if ( token.content == "prefix" ) {
+                    // Not allowed if not a string rule
+                    if ( level != TokenLevel::string ) {
+                        create_prelude_error_msg( w_ctx, token );
+                        return false;
+                    }
+
+                    input->get_token(); // consume
+                    PARSE_LITERAL( str );
+                    string_rule.prefix = str;
+                } else if ( token.content == "rep_delimiter" ) {
+                    // Not allowed if not a string rule
+                    if ( level != TokenLevel::string ) {
+                        create_prelude_error_msg( w_ctx, token );
+                        return false;
+                    }
+
+                    input->get_token(); // consume
                     PARSE_LITERAL( str );
                     PARSE_LITERAL( str2 );
-                    conf->token_conf.level_map[TokenLevel::normal][name] = { str, str2 };
+                    string_rule.rep_begin = str;
+                    string_rule.rep_end = str2;
+                } else { // normal begin and end delimiter
+                    PARSE_LITERAL( str );
+                    PARSE_LITERAL( str2 );
+                    string_rule.begin = str;
+                    string_rule.end = str;
+                    conf->token_conf.level_map[level][name] = { str, str2 };
                 }
+            }
+            if ( level == TokenLevel::string ) {
+                conf->string_rules.push_back( string_rule );
             }
         } else if ( mci == "ALIAS_EXPRESSION" ) { // TODO
         } else if ( mci == "LET_STATEMENT" ) { // TODO
