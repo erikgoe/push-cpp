@@ -390,7 +390,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
         } else if ( mci == "LITERAL_CHARACTER_ESCAPES" ) {
             PARSE_LITERAL( str );
             PARSE_LITERAL( str2 );
-            conf->token_conf.char_escapes[str] = str2;
+            conf->token_conf.char_escapes[str2] = str;
         } else if ( mci == "NEW_RANGE" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {

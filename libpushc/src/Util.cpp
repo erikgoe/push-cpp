@@ -60,7 +60,7 @@ String parse_string( sptr<SourceInput> &input, Worker &w_ctx ) {
     while ( token.type != Token::Type::string_end && token.type != Token::Type::eof ) {
         token = input->get_token();
         String content = token.content;
-        if ( token.type == Token::Type::encoded_char ) {
+        if ( token.type == Token::Type::escaped_char ) {
             content = w_ctx.unit_ctx()->prelude_conf.token_conf.char_escapes[token.content];
         }
         if ( !ret.empty() )

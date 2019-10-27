@@ -50,6 +50,7 @@ struct Token {
 
         number, // integer type
         encoded_char, // encoded char like "\x26"
+        escaped_char, // escaped char like "\n"
         string_begin, // begin of a string "\""
         string_end, // end of a string "\""
         op, // operator (multiple operators are bound together)

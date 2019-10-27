@@ -59,7 +59,7 @@ Token::Type SourceInput::find_non_sticky_token( const StringSlice &str, TokenLev
         return tt->second;
     } else {
         auto tt = cfg.char_escapes.find( str );
-        return tt == cfg.char_escapes.end() ? Token::Type::count : Token::Type::encoded_char;
+        return tt == cfg.char_escapes.end() ? Token::Type::count : Token::Type::escaped_char;
     }
 }
 
