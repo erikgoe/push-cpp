@@ -111,16 +111,16 @@ define_mci_rule( NEW_LEVEL, NORMAL, v, "\\(" ")" ); // value extraction in strin
 define_mci_rule( NEW_OPERATOR, std::literal::bin_integer, 1, ltr, triple_list, "0", "b", integer -> value ); // binary radix
 define_mci_rule( NEW_OPERATOR, std::literal::oct_integer, 1, ltr, triple_list, "0", "o", integer -> value ); // octal radix
 define_mci_rule( NEW_OPERATOR, std::literal::hex_integer, 1, ltr, triple_list, "0", "x", integer -> value ); // hexadecimal radix
-define_mci_rule( NEW_OPERATOR, std::literal::float, 1, ltr, triple_list, integer-> lvalue, ".", integer -> rvalue ); // simple float
-define_mci_rule( NEW_OPERATOR, std::literal::float_exp, 1, ltr, quintuple_list, integer-> lvalue, ".", integer -> rvalue, "e", integer -> expo ); // float with positive exponent
-define_mci_rule( NEW_OPERATOR, std::literal::float_exp, 1, ltr, quintuple_list, integer-> lvalue, ".", integer -> rvalue, "E", integer -> expo ); // float with positive exponent
-define_mci_rule( NEW_OPERATOR, std::literal::float_exp_neg, 1, ltr, sextuple_list, integer-> lvalue, ".", integer -> rvalue, "e", "-", integer -> expo ); // float with negative exponent
-define_mci_rule( NEW_OPERATOR, std::literal::float_exp_neg, 1, ltr, sextuple_list, integer-> lvalue, ".", integer -> rvalue, "E", "-", integer -> expo ); // float with negative exponent
+define_mci_rule( NEW_OPERATOR, std::literal::float, 1, ltr, triple_list, integer -> lvalue, ".", integer -> rvalue ); // simple float
+define_mci_rule( NEW_OPERATOR, std::literal::float_exp, 1, ltr, quintuple_list, integer -> lvalue, ".", integer -> rvalue, "e", integer -> expo ); // float with positive exponent
+define_mci_rule( NEW_OPERATOR, std::literal::float_exp, 1, ltr, quintuple_list, integer -> lvalue, ".", integer -> rvalue, "E", integer -> expo ); // float with positive exponent
+define_mci_rule( NEW_OPERATOR, std::literal::float_exp_neg, 1, ltr, sextuple_list, integer -> lvalue, ".", integer -> rvalue, "e", "-", integer -> expo ); // float with negative exponent
+define_mci_rule( NEW_OPERATOR, std::literal::float_exp_neg, 1, ltr, sextuple_list, integer -> lvalue, ".", integer -> rvalue, "E", "-", integer -> expo ); // float with negative exponent
 
 /*
 // Special statements
-define_mci_rule( ALIAS_EXPRESSION, double_list, "use", assignment -> new_identifier ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
-define_mci_rule( LET_STATEMENT, double_list, "let", assignment -> new_identifier ); // let keyword which starts a new variable binding
+define_mci_rule( ALIAS_EXPRESSION, double_list, "use", expr -> new_identifier ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
+define_mci_rule( LET_STATEMENT, double_list, "let", expr -> new_identifier ); // let keyword which starts a new variable binding
 define_mci_rule( SELF_EXPRESSION, single_list, "self" ); // the self keyword is the currently executed object in non-static methods
 
 // OOP constructs
@@ -134,14 +134,14 @@ define_mci_rule( IMPL_DEFINITION, quintuple_list, "impl", identifier -> trait, "
 define_mci_rule( IF_EXPRESSION, triple_list, "if", expr -> condition, expr -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
 define_mci_rule( IF_ELSE_EXPRESSION, quintuple_list, "if", expr -> condition, expr -> exec0, "else", expr -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and a alternative executable block
 define_mci_rule( WHILE_EXPRESSION, triple_list, "while", expr -> condition, expr -> exec ); // regular while loop
-define_mci_rule( FOR_EXPRESSION, triple_list, "for", iterator -> condition, expr -> exec ); // for loop over an iterator
+define_mci_rule( FOR_EXPRESSION, triple_list, "for", expr -> condition, expr -> exec ); // for loop over an iterator
 define_mci_rule( MATCH_EXPRESSION, triple_list, "match", expr -> selector, expr -> body ); // match keyword which matches an expression
 */
 
 // Functions
-define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, identifier_list -> parameters ); // a function head
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, triple_list, identifier -> name, identifier_list -> parameters, expr_block -> body ); // a function with a body block
-//define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, identifier_list -> parameters, "->", expr -> body ); // a single-line function
+define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, attributes_list -> parameters ); // a function head
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, triple_list, identifier -> name, attributes_list -> parameters, expr_block -> body ); // a function with a body block
+//define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, attributes_list -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations
 //define_mci_rule( DEFINE_TEMPLATE, 1, ltr, triple_list, "<" -> lop, identifier -> value, ">" -> rop ); // template arguments are surrounded by angular brackets
@@ -152,7 +152,7 @@ define_mci_rule( MEMBER_ACCESS, 1, ltr, triple_list, expr -> base, "." -> op, ex
 
 // Operators
 // NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple), syntax alias (optional: if used in other MCI rules)
-define_mci_rule( NEW_OPERATOR, std::op::function_call, 1, ltr, quadruple_list, identifier -> exec, "(" -> lop, identifier_list -> parameters, ")" -> rop ); // function calls surround their parameters in parenthesis
+define_mci_rule( NEW_OPERATOR, std::op::function_call, 1, ltr, quadruple_list, identifier -> exec, "(" -> lop, attributes_list -> parameters, ")" -> rop ); // function calls surround their parameters in parenthesis
 
 //define_mci_rule( NEW_OPERATOR, std::op::log_not, 2, rtl, double_list, "!" -> op, expr -> value ); // define the logical not operator
 //define_mci_rule( NEW_OPERATOR, std::op::invert, 2, rtl, double_list, "~" -> op, expr -> value ); // define the not/invert operator
