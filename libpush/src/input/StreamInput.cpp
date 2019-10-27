@@ -116,15 +116,19 @@ Token StreamInput::get_token_impl( String whitespace ) {
                 is_special_ws = true;
                 putback_buffer.insert( 0, curr );
                 next_ws_is_not_special = true;
-            } else { // ignore that it is special, because it has already be registered as it
+            } else { // ignore that it is special, because it has already been registered as it
                 t.type = Token::Type::ws;
                 next_ws_is_not_special = false;
             }
+        } else {
+            next_ws_is_not_special = false; // reset flag
         }
     } else {
         // ----------
         // Part B: Test for sticky tokens
         // ----------
+        
+        next_ws_is_not_special = false; // reset flag
 
         // Unload loaded data
         putback_buffer.insert( 0, curr );
