@@ -140,7 +140,6 @@ struct TokenConfig {
     std::map<TokenLevel, std::map<String, LevelToken>> level_map; // begin => end pair
     std::map<String, std::vector<String>> allowed_level_overlay; // outer begin => inner type. E. g. nested comments
     
-    std::pair<u32, u32> allowed_chars; // start char => end char pair
     std::map<String, String> char_escapes; // map escaped chars to their representing value
     //std::map<String, String> char_encodings; // encode chars like '\x42'
 

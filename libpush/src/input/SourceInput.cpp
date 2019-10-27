@@ -28,7 +28,6 @@ TokenConfig TokenConfig::get_prelude_cfg() {
     cfg.level_map[TokenLevel::comment_line]["ln"] = { "//", "\n" };
     cfg.level_map[TokenLevel::comment_line]["lr"] = { "//", "\r" };
     cfg.level_map[TokenLevel::string]["s"] = { "\"", "\"" };
-    cfg.allowed_chars = std::make_pair<u32, u32>( 0, 0xffffffff );
     cfg.char_escapes["\\n"] = "\n";
     cfg.char_escapes["\\t"] = "\t";
     cfg.char_escapes["\\v"] = "\v";

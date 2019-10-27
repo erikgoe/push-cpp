@@ -356,11 +356,6 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 create_prelude_error_msg( w_ctx, token );
                 return false;
             }
-        } else if ( mci == "ALLOWED_CHARS" ) {
-            token = input->get_token();
-            if ( token.content == "any_unicode" ) {
-                conf->token_conf.allowed_chars = std::make_pair( 0, 0xffffffff );
-            }
         } else if ( mci == "IDENTIFIER_RULES" ) {
             token = input->get_token();
             if ( token.content == "no_spaces" ) {

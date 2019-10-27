@@ -25,7 +25,7 @@ StreamInput::StreamInput( sptr<std::basic_ifstream<char>> stream, sptr<String> f
     level_stack.push( std::make_pair( "", TokenLevel::normal ) );
 }
 
-bool StreamInput::load_next_token( String &buffer, size_t count ) {
+bool StreamInput::load_next_chars( String &buffer, size_t count ) {
     // First load buffered data
     size_t from_buffer = std::min( count, putback_buffer.size() );
     if ( from_buffer > 0 ) {
@@ -68,7 +68,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
 
     // Check for UTF-8 BOM first
     if ( !checked_bom ) {
-        if ( !load_next_token( curr, 3 ) || curr[0] != (char) 0xEF || curr[1] != (char) 0xBB ||
+        if ( !load_next_chars( curr, 3 ) || curr[0] != (char) 0xEF || curr[1] != (char) 0xBB ||
              curr[2] != (char) 0xBF ) { // revert chars
             putback_buffer += curr;
         }
@@ -81,7 +81,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
     // ----------
 
     // Load next char
-    load_next_token( curr, max_op_size );
+    load_next_chars( curr, max_op_size );
 
     // Error handling
     if ( curr.empty() ) {
@@ -138,7 +138,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
         bool eof_reached = false;
         do {
             // Load new char
-            if ( !load_next_token( curr ) ) {
+            if ( !load_next_chars( curr ) ) {
                 // Stream ended with no new token
                 // so the current token has to be finished
                 eof_reached = true;
