@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.6)
 add_library(${LIB_NAME}
     Ast.cpp
     AstParser.cpp
+    AstSyntaxRules.cpp
     Backend.cpp
     Compiler.cpp
     Linker.cpp

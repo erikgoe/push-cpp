@@ -151,7 +151,7 @@ define_mci_rule( MEMBER_ACCESS, 1, ltr, triple_list, expr -> base, "." -> op, ex
 //define_mci_rule( ARRAY_SPECIFIER, 1, ltr, triple_list, "[" -> lop, expr -> value, "]" -> rop ); // array appending to a type or variable. The size may be a number or a static variable, etc.
 
 // Operators
-// NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple), syntax alias (optional: if used in other MCI rules)
+// NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple)
 define_mci_rule( NEW_OPERATOR, std::op::function_call, 1, ltr, quadruple_list, identifier -> exec, "(" -> lop, attributes_list -> parameters, ")" -> rop ); // function calls surround their parameters in parenthesis
 
 //define_mci_rule( NEW_OPERATOR, std::op::log_not, 2, rtl, double_list, "!" -> op, expr -> value ); // define the logical not operator

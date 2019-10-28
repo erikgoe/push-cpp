@@ -2,5 +2,5 @@
 
 /// Basic function without anything special
 function {
-    let v = val = 5 * 3 + 2 + 1;
+    let v = val = 6 + 5 * 3 + 2 + 1;
 }

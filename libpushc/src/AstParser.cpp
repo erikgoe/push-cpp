@@ -15,7 +15,6 @@
 #include "libpushc/AstParser.h"
 #include "libpushc/Prelude.h"
 #include "libpushc/Expression.h"
-#include "libpushc/Ast.h"
 
 using TT = Token::Type;
 
@@ -111,73 +110,6 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
     // Load the actual configuration
     w_ctx.unit_ctx()->prelude_conf = p_conf;
     input.configure( w_ctx.unit_ctx()->prelude_conf.token_conf );
-}
-
-// Translate a syntax into a syntax rule
-void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
-    sr.expr_list.clear();
-    lm.clear();
-
-    size_t ctr = 0;
-    for ( auto &expr : syntax_list ) {
-        lm[expr.second] = ctr;
-        if ( expr.first == "expr" ) {
-            sr.expr_list.push_back( make_shared<Expr>() );
-        } else if ( expr.first == "identifier" ) {
-            sr.expr_list.push_back( make_shared<SymbolExpr>() );
-        } else if ( expr.first == "attributes_list" ) {
-            // TODO
-        } else if ( expr.first == "expr_block" ) {
-            sr.expr_list.push_back( make_shared<BlockExpr>() );
-        } else {
-            // Keyword or operator
-            sr.expr_list.push_back(
-                make_shared<TokenExpr>( Token( TT::op, expr.first, nullptr, 0, 0, 0, "", TokenLevel::normal ) ) );
-        }
-        ctr++;
-    }
-}
-
-// Translates the prelude syntax rules into ast syntax rules
-void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
-    auto pc = w_ctx.unit_ctx()->prelude_conf;
-
-    SyntaxRule new_rule;
-    LabelMap lm;
-
-    // TODO handle function definitions and declarations separately
-    for ( auto &f : pc.fn_declarations ) {
-        parse_rule( new_rule, lm, f.syntax );
-        new_rule.matching_expr = make_shared<FuncDecExpr>();
-        new_rule.create = [=]( auto &list ) {
-            return make_shared<FuncDecExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0, list );
-        };
-        a_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &f : pc.fn_definitions ) {
-        parse_rule( new_rule, lm, f.syntax );
-        new_rule.matching_expr = make_shared<FuncExpr>();
-        new_rule.create = [=]( auto &list ) {
-            return make_shared<FuncExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
-                                          std::dynamic_pointer_cast<BlockExpr>( list[lm.at( "body" )] ), list );
-        };
-        a_ctx.rules.push_back( new_rule );
-    }
-
-    for ( auto &o : pc.operators ) {
-        parse_rule( new_rule, lm, o.op.syntax );
-        new_rule.precedence = o.op.precedence;
-        new_rule.ltr = o.op.ltr;
-        new_rule.matching_expr = make_shared<OperatorExpr>();
-        new_rule.create = [=]( auto &list ) {
-            return make_shared<OperatorExpr>( std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content,
-                                              list[lm.at( "lvalue" )], list[lm.at( "rvalue" )], o.op.precedence, list );
-        };
-        a_ctx.rules.push_back( new_rule );
-    }
-
-    // Sort rules after precedence
-    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto l, auto r ) { return l.precedence > r.precedence; } );
 }
 
 // Parses a scope into the ast. Used recursively

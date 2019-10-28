@@ -13,9 +13,13 @@
 
 #pragma once
 #include "libpushc/stdafx.h"
+#include "libpushc/Ast.h"
 
 // Create the Abstract Syntax tree of the current compilation unit
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx );
 
 // Parse the AST from an input file (of this compilation unit)
 void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx );
+
+// NOT A QUERY. Translates the prelude syntax rules into ast syntax rules
+void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx );
