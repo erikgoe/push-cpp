@@ -167,6 +167,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     for ( auto &o : pc.operators ) {
         parse_rule( new_rule, lm, o.op.syntax );
         new_rule.precedence = o.op.precedence;
+        new_rule.ltr = o.op.ltr;
         new_rule.matching_expr = make_shared<OperatorExpr>();
         new_rule.create = [=]( auto &list ) {
             return make_shared<OperatorExpr>( std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content,
@@ -231,7 +232,8 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
                     auto back = std::dynamic_pointer_cast<SeparableExpr>( back_expr );
                     // Interate though the rightmost elements and split them
                     while ( true ) {
-                        if ( back && back->prec() > rule.precedence ) {
+                        if ( back &&
+                             ( back->prec() > rule.precedence || ( !rule.ltr && back->prec() == rule.precedence ) ) ) {
                             // Is separable and has lower precedence
                             auto &splitted = back->split();
                             deep_expr_list.insert( deep_expr_list.end(), splitted.begin(), splitted.end() - 1 );
@@ -251,7 +253,7 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
                         expr_list.resize( expr_list.size() - rule_length );
                         expr_list.insert( expr_list.end(), deep_expr_list.begin(),
                                           ( rule_length < deep_expr_list.size() ? deep_expr_list.end() - rule_length
-                                                                               : deep_expr_list.begin() ) );
+                                                                                : deep_expr_list.begin() ) );
                         deep_expr_list.erase( deep_expr_list.begin(), deep_expr_list.end() - rule_length );
                         expr_list.push_back( rule.create( deep_expr_list ) );
 
