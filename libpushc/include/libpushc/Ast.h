@@ -17,7 +17,7 @@
 
 // Checks if a token list matches a specific expression and translates it
 struct SyntaxRule {
-    u32 precedence; // precedence of this syntax matching
+    u32 precedence = 0; // precedence of this syntax matching
     std::vector<sptr<Expr>> expr_list; // list which has to be matched against
     sptr<Expr> matching_expr; // the expression to translate into
 

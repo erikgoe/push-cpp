@@ -124,15 +124,15 @@ public:
 // An expression which can be broken into multiple sub-expressions by other rvalues/operators
 class SeparableExpr : public Expr {
 protected:
-    std::vector<Expr> original_list;
+    std::vector<sptr<Expr>> original_list;
 
 public:
     virtual ~SeparableExpr() {}
 
     // Separate the expression into its parts
-    const std::vector<Expr> &split() { return original_list; };
+    const std::vector<sptr<Expr>> &split() { return original_list; };
     // Returns the precedence of this Expression binding. Lower values bind stronger
-    virtual u32 prec() { return 0; };
+    virtual u32 prec() { return 0; }
 
     virtual bool matches( sptr<Expr> other ) override {
         return std::dynamic_pointer_cast<SeparableExpr>( other ) != nullptr;
@@ -140,49 +140,70 @@ public:
 };
 
 // Specifies a new funcion signature
-class FuncDefExpr : public SeparableExpr {
+class FuncDecExpr : public SeparableExpr {
     TypeId type; // Every funcion has its own type
     sptr<SymbolExpr> symbol;
 
 public:
-    FuncDefExpr() {}
-    FuncDefExpr( sptr<SymbolExpr> symbol ) { this->symbol = symbol; }
+    FuncDecExpr() {}
+    FuncDecExpr( sptr<SymbolExpr> symbol, TypeId type, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->type = type;
+        this->original_list = original_list;
+    }
 
     TypeId get_type() override { return type; }
 
-    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncDefExpr>( other ) != nullptr; }
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncDecExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "FUNC_DEF(" + to_string( type ) + " " + symbol->get_debug_repr() + ")"; }
+    String get_debug_repr() override { return "FUNC_DEC(" + to_string( type ) + " " + symbol->get_debug_repr() + ")"; }
 };
 
 // Specifies a new funcion
 class FuncExpr : public SeparableExpr {
-    sptr<FuncDefExpr> head;
+    TypeId type; // Every funcion has its own type
+    sptr<SymbolExpr> symbol;
     sptr<BlockExpr> body;
 
 public:
-    TypeId get_type() override { return head->get_type(); }
+    FuncExpr() {}
+    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<BlockExpr> block, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->type = type;
+        body = block;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return type; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncExpr>( other ) != nullptr; }
-    String get_debug_repr() override { return "FUNC(" + head->get_debug_repr() + " " + body->get_debug_repr() + ")"; }
+    String get_debug_repr() override {
+        return "FUNC(" + to_string( type ) + " " + symbol->get_debug_repr() + " " + body->get_debug_repr() + ")";
+    }
 };
 
 class OperatorExpr : public SeparableExpr {
 protected:
     sptr<Expr> lvalue, rvalue;
     String op;
+    u32 precedence = 0;
 
 public:
     OperatorExpr() {}
-    OperatorExpr( String op, sptr<Expr> lvalue, sptr<Expr> rvalue ) {
+    OperatorExpr( String op, sptr<Expr> lvalue, sptr<Expr> rvalue, u32 precedence,
+                  std::vector<sptr<Expr>> &original_list ) {
         this->op = op;
         this->lvalue = lvalue;
         this->rvalue = rvalue;
+        this->precedence = precedence;
+        this->original_list = original_list;
     }
 
     TypeId get_type() override { return lvalue->get_type(); }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<OperatorExpr>( other ) != nullptr; }
+
+    u32 prec() override { return precedence; }
 
     String get_debug_repr() override {
         return "OPERATOR(" + lvalue->get_debug_repr() + " " + op + " " + rvalue->get_debug_repr() + ")";

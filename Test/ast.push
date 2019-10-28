@@ -2,5 +2,5 @@
 
 /// Basic function without anything special
 function {
-    let val = 5;
+    let val = 5 * 3 + 2;
 }
