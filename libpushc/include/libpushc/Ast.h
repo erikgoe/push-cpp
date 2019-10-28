@@ -22,8 +22,11 @@ struct SyntaxRule {
     std::vector<sptr<Expr>> expr_list; // list which has to be matched against
     sptr<Expr> matching_expr; // the expression to translate into
 
-    // Checks if the end of a expression list matches this syntax rule
-    bool matches_end( std::vector<sptr<Expr>> &list );
+    // Checks if the end of a expression list matches this syntax rule (excluding the first element)
+    bool end_matches( std::vector<sptr<Expr>> &list );
+
+    // Checks if the first element of the syntax rule matches a element
+    bool front_matches( sptr<Expr> &front );
 
     // Create a new expression according to this rule.
     std::function<sptr<Expr>( std::vector<sptr<Expr>> & )> create;

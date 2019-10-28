@@ -97,7 +97,7 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "SYMBOL(" + to_string( symbol ) + ")"; }
+    String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")"; }
 };
 
 // Base class for a simple literal
@@ -206,7 +206,7 @@ public:
     u32 prec() override { return precedence; }
 
     String get_debug_repr() override {
-        return "OPERATOR(" + lvalue->get_debug_repr() + " " + op + " " + rvalue->get_debug_repr() + ")";
+        return "OP(" + lvalue->get_debug_repr() + " " + op + " " + rvalue->get_debug_repr() + ")";
     }
 };
 

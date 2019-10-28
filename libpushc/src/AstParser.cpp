@@ -156,7 +156,7 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
             // Check each syntax rule
             for ( auto &rule : a_ctx.rules ) {
                 u8 rule_length = rule.expr_list.size();
-                if ( expr_list.size() >= rule_length ) {
+                if ( expr_list.size() >= rule_length && rule.end_matches( expr_list ) ) {
                     // Prepare backtracing
                     std::vector<sptr<Expr>> deep_expr_list;
                     auto back_expr =
@@ -181,7 +181,7 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
                     deep_expr_list.insert( deep_expr_list.end(), expr_list.end() - rule_length + 1, expr_list.end() );
 
                     // Check if syntax matches
-                    if ( rule.matches_end( deep_expr_list ) ) {
+                    if ( rule.front_matches( *( deep_expr_list.end() - rule_length ) ) ) {
                         expr_list.resize( expr_list.size() - rule_length );
                         expr_list.insert( expr_list.end(), deep_expr_list.begin(),
                                           ( rule_length < deep_expr_list.size() ? deep_expr_list.end() - rule_length

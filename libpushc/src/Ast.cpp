@@ -14,14 +14,18 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/Ast.h"
 
-bool SyntaxRule::matches_end( std::vector<sptr<Expr>> &list ) {
-    if ( list.size() < expr_list.size() )
+bool SyntaxRule::end_matches( std::vector<sptr<Expr>> &list ) {
+    if ( list.size() < expr_list.size() - 1 )
         return false;
 
-    for ( int i = 1; i <= expr_list.size(); i++ ) {
+    for ( int i = 1; i < expr_list.size(); i++ ) {
         if ( !expr_list[expr_list.size() - i]->matches( list[list.size() - i] ) ) {
             return false;
         }
     }
     return true;
+}
+
+bool SyntaxRule::front_matches( sptr<Expr> &front ) {
+    return expr_list[0]->matches( front );
 }
