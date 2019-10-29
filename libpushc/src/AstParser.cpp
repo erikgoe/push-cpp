@@ -208,15 +208,15 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
         return block;
     } else if ( end_token == TT::block_end ) {
         auto block = make_shared<BlockExpr>();
+        block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
         block->sub_expr = expr_list;
         return block;
     } else if ( end_token == TT::term_end ) {
         auto block = make_shared<TermExpr>();
+        block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
         if ( expr_list.size() > 1 ) {
-            // TODO allow expr in error messages
-            // w_ctx.print_msg<MessageType::err_unexpected_eof_after>( MessageInfo( (*(expr_list.begin()+1)), 0,
-            // FmtStr::Color::Red ) );
-            LOG_ERR( "Incomplete error message" ); // TODO delete
+            w_ctx.print_msg<MessageType::err_term_with_multiple_expr>(
+                MessageInfo( ( *( expr_list.begin() + 1 ) )->get_position_info(), 0, FmtStr::Color::Red ) );
         }
         block->sub_expr = expr_list.empty() ? nullptr : expr_list.back();
         return block;

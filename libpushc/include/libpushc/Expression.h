@@ -26,6 +26,8 @@ constexpr TypeId TYPE_UNIT = 1;
 // Base class for expressions in the AST
 class Expr {
 public:
+    PosInfo pos_info;
+
     virtual ~Expr() {}
 
     // Get the return type of the expression
@@ -35,6 +37,9 @@ public:
     virtual bool matches( sptr<Expr> other ) { return std::dynamic_pointer_cast<Expr>( other ) != nullptr; }
 
     virtual String get_debug_repr() { return "EXPR"; }
+
+    // Returns the position information of this expression
+    virtual PosInfo get_position_info() { return pos_info; }
 };
 
 // Used internally to handle a single token as expr. Must be resolved to other expressions
@@ -42,7 +47,7 @@ class TokenExpr : public Expr {
 public:
     Token t;
 
-    TokenExpr( const Token &token ) : t( token ) {}
+    TokenExpr( const Token &token ) : t( token ) { pos_info = PosInfo{t.file, t.line, t.column, t.length}; }
 
     // Has no type because it is not a real AST node
     TypeId get_type() override { return 0; }
@@ -151,6 +156,8 @@ public:
     virtual bool matches( sptr<Expr> other ) override {
         return std::dynamic_pointer_cast<SeparableExpr>( other ) != nullptr;
     }
+
+    PosInfo get_position_info() override { return original_list.front()->get_position_info(); }
 };
 
 // Specifies a new funcion signature

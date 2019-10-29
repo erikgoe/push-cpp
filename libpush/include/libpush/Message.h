@@ -53,6 +53,8 @@ struct MessageInfo {
     }
     MessageInfo( const Token &t, u32 message_idx = 0, FmtStr::Color color = FmtStr::Color::Blue )
             : MessageInfo( t.file, t.line, t.line, t.column, t.length, message_idx, color ) {}
+    MessageInfo( const PosInfo &po, u32 message_idx = 0, FmtStr::Color color = FmtStr::Color::Blue )
+            : MessageInfo( po.file, po.line, po.line, po.column, po.length, message_idx, color ) {}
 
     bool operator<( const MessageInfo &other ) const {
         return ( file == other.file ? line_begin < other.line_begin : file < other.file );

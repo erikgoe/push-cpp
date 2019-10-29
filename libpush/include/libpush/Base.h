@@ -59,6 +59,7 @@ static void log( const std::string &msg ) {
     log_mtx.unlock();
 #endif
 }
+// Use this loggers for internal errors etc.
 #define LOG( msg ) log( std::string( "MSG: " ) + msg )
 #define LOG_ERR( msg ) log( std::string( "ERROR: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
 #define LOG_WARN( msg ) \

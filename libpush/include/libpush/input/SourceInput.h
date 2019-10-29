@@ -15,6 +15,14 @@
 #include "libpush/Base.h"
 #include "libpush/util/String.h"
 
+// Contains information about the position in the file
+struct PosInfo {
+    sptr<String> file; // The actual access goes through the SourceInput
+    size_t line = 0;
+    size_t column = 0;
+    size_t length = 0;
+};
+
 // Where in the code a token is
 enum class TokenLevel {
     normal, // in no special area
