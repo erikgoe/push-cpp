@@ -48,7 +48,7 @@ String extract_string( SourceInput &input, Worker &w_ctx ) {
     Token t;
     while ( ( t = input.get_token() ).type != TT::string_end ) {
         if ( t.type == TT::eof ) {
-            w_ctx.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
+            w_ctx.print_msg<MessageType::err_unexpected_eof_after>( MessageInfo( t, 0, FmtStr::Color::Red ) );
             break;
         }
         content += t.leading_ws + t.content;
@@ -96,7 +96,7 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
                           ->to<sptr<PreludeConfig>>();
         } else {
             // invalid prelude identifier
-            w_ctx.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
+            w_ctx.print_msg<MessageType::err_unexpected_eof_after>( MessageInfo( t, 0, FmtStr::Color::Red ) );
             // load default prelude as fallback
             p_conf = w_ctx.do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
         }
@@ -112,8 +112,8 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
     input.configure( w_ctx.unit_ctx()->prelude_conf.token_conf );
 }
 
-// Parses a scope into the ast. Used recursively
-sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token ) {
+// Parses a scope into the ast. Used recursively. @param last_token may be nullptr
+sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token, Token *last_token ) {
     std::vector<sptr<Expr>> expr_list;
 
     // Iterate through all tokens in this scope
@@ -125,13 +125,17 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
         if ( t.type == end_token ) {
             break;
         } else if ( t.type == TT::eof ) {
-            w_ctx.print_msg<MessageType::err_unexpected_eof>( MessageInfo( t, 0, FmtStr::Color::Red ) );
+            if ( last_token ) {
+                w_ctx.print_msg<MessageType::err_unexpected_eof_after>(
+                    MessageInfo( *last_token, 0, FmtStr::Color::Red ) );
+            } else {
+                w_ctx.print_msg<MessageType::err_unexpected_eof_after>( MessageInfo( 0, FmtStr::Color::Red ) );
+            }
             break;
         } else if ( t.type == TT::block_begin || t.type == TT::term_begin ) {
             // TODO change a_ctx.next_symbol.name_chain to procede into new scope
             expr_list.push_back(
-                parse_scope( input, w_ctx, a_ctx, ( t.type == TT::block_begin ? TT::block_end : TT::term_end ) ) );
-            continue;
+                parse_scope( input, w_ctx, a_ctx, ( t.type == TT::block_begin ? TT::block_end : TT::term_end ), &t ) );
         } else if ( t.type == TT::identifier ) {
             auto expr = make_shared<SymbolExpr>();
 
@@ -206,6 +210,16 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
         auto block = make_shared<BlockExpr>();
         block->sub_expr = expr_list;
         return block;
+    } else if ( end_token == TT::term_end ) {
+        auto block = make_shared<TermExpr>();
+        if ( expr_list.size() > 1 ) {
+            // TODO allow expr in error messages
+            // w_ctx.print_msg<MessageType::err_unexpected_eof_after>( MessageInfo( (*(expr_list.begin()+1)), 0,
+            // FmtStr::Color::Red ) );
+            LOG_ERR( "Incomplete error message" ); // TODO delete
+        }
+        block->sub_expr = expr_list.empty() ? nullptr : expr_list.back();
+        return block;
     } else {
         LOG_ERR( "Try to parse a block which is no block" );
         return nullptr;
@@ -232,7 +246,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         load_syntax_rules( w_ctx, a_ctx );
 
         // parse global scope
-        a_ctx.ast.block = parse_scope( *input, w_ctx, a_ctx, TT::eof );
+        a_ctx.ast.block = parse_scope( *input, w_ctx, a_ctx, TT::eof, nullptr );
 
         // DEBUG print AST
         log( "AST ----------" );

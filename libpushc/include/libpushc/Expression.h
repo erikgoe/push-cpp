@@ -52,7 +52,9 @@ public:
         return o != nullptr && t.content == o->t.content;
     }
 
-    String get_debug_repr() override { return "TOKEN \"" + t.content + "\""; }
+    String get_debug_repr() override {
+        return "TOKEN " + to_string( static_cast<int>( t.type ) ) + " \"" + t.content + "\"";
+    }
 };
 
 // Normally the global scope as root-expression
@@ -70,7 +72,7 @@ public:
     }
 };
 
-// A Block with multiple expressions
+// A block with multiple expressions
 class BlockExpr : public Expr {
 public:
     std::vector<sptr<Expr>> sub_expr;
@@ -85,6 +87,18 @@ public:
             str += s->get_debug_repr() + ", ";
         return str + " }";
     }
+};
+
+// A term with a sub expressions
+class TermExpr : public Expr {
+public:
+    sptr<Expr> sub_expr;
+
+    TypeId get_type() override { return sub_expr->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TermExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "TERM( " + sub_expr->get_debug_repr() + " )"; }
 };
 
 // A simple symbol/identifier (variable, function, etc.)
