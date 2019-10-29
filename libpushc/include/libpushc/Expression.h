@@ -22,6 +22,8 @@ using SymbolId = u32;
 
 // Constants
 constexpr TypeId TYPE_UNIT = 1;
+constexpr TypeId TYPE_INT = 2;
+constexpr TypeId SIZE_INT_LIT = 8; // size of a integer literal (should match the Number type)
 
 // Base class for expressions in the AST
 class Expr {
@@ -47,7 +49,7 @@ class TokenExpr : public Expr {
 public:
     Token t;
 
-    TokenExpr( const Token &token ) : t( token ) { pos_info = PosInfo{t.file, t.line, t.column, t.length}; }
+    TokenExpr( const Token &token ) : t( token ) { pos_info = PosInfo{ t.file, t.line, t.column, t.length }; }
 
     // Has no type because it is not a real AST node
     TypeId get_type() override { return 0; }
@@ -125,17 +127,27 @@ class LiteralExpr : public Expr {};
 // A literal type with a trivial memory layout
 template <u8 Bytes, TypeId type>
 class BlobLiteralExpr : public LiteralExpr {
+public:
     std::array<u8, Bytes> blob;
 
-public:
     TypeId get_type() override { return type; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<LiteralExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
+        bool non_zero = false;
         String str = "BLOB_LITERAL(";
-        for ( auto &b : blob )
-            str += to_string( b->get_debug_repr() ) + "-"; // TODO hex representation
+        for ( auto b = blob.rbegin(); b != blob.rend(); b++ ) {
+            non_zero = non_zero || *b != 0;
+            if ( non_zero ) {
+                u8 nibble = *b >> 4;
+                str += nibble < 10 ? nibble + '0' : nibble + 'a' - 10;
+                nibble = *b & 0xf;
+                str += nibble < 10 ? nibble + '0' : nibble + 'a' - 10;
+            }
+        }
+        if ( !non_zero )
+            str += "00";
         return str + ")";
     }
 };

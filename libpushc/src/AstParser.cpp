@@ -15,6 +15,7 @@
 #include "libpushc/AstParser.h"
 #include "libpushc/Prelude.h"
 #include "libpushc/Expression.h"
+#include "libpushc/Util.h"
 
 using TT = Token::Type;
 
@@ -147,6 +148,15 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
             sm[expr->symbol].id = expr->symbol;
             sm[expr->symbol].name_chain = a_ctx.next_symbol.name_chain;
             sm[expr->symbol].name_chain.push_back( t.content );
+
+            expr_list.push_back( expr );
+        } else if ( t.type == TT::number ) {
+            auto expr = make_shared<BlobLiteralExpr<SIZE_INT_LIT, TYPE_INT>>();
+
+            Number val = stoull( t.content );
+            u8 *tmp = reinterpret_cast<u8 *>( &val );
+            for ( size_t i = 0; i < SIZE_INT_LIT; i++ )
+                expr->blob[i] = tmp[i];
 
             expr_list.push_back( expr );
         } else {
