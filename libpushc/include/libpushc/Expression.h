@@ -13,6 +13,7 @@
 
 #pragma once
 #include "libpushc/stdafx.h"
+#include "libpushc/Util.h"
 
 // Identifies a type
 using TypeId = u32;
@@ -149,6 +150,14 @@ public:
         if ( !non_zero )
             str += "00";
         return str + ")";
+    }
+
+    // Loads the blob with a low endian representation of a number
+    void load_from_number( const Number &num, u8 max_mem_size = Bytes ) {
+        max_mem_size = std::min( max_mem_size, static_cast<u8>( sizeof( Number ) ) );
+        const u8 *tmp = reinterpret_cast<const u8 *>( &num );
+        for ( size_t i = 0; i < max_mem_size; i++ )
+            blob[i] = tmp[i];
     }
 };
 

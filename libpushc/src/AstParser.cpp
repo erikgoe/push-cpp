@@ -115,6 +115,7 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 
 // Parses a scope into the ast. Used recursively. @param last_token may be nullptr
 sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token, Token *last_token ) {
+    auto &conf = w_ctx.unit_ctx()->prelude_conf;
     std::vector<sptr<Expr>> expr_list;
 
     // Iterate through all tokens in this scope
@@ -138,25 +139,41 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
             expr_list.push_back(
                 parse_scope( input, w_ctx, a_ctx, ( t.type == TT::block_begin ? TT::block_end : TT::term_end ), &t ) );
         } else if ( t.type == TT::identifier ) {
-            auto expr = make_shared<SymbolExpr>();
+            if ( conf.literals.find( t.content ) != conf.literals.end() ) {
+                // Found a special literal keyword
+                auto literal = conf.literals[t.content];
+                auto expr = make_shared<BlobLiteralExpr<SIZE_INT_LIT, TYPE_INT>>();
 
-            // Create a new symbol TODO maybe extract into own function
-            expr->symbol = a_ctx.next_symbol.id++;
-            auto &sm = a_ctx.ast.symbol_map;
-            if ( sm.size() <= expr->symbol )
-                sm.resize( expr->symbol + 1 );
-            sm[expr->symbol].id = expr->symbol;
-            sm[expr->symbol].name_chain = a_ctx.next_symbol.name_chain;
-            sm[expr->symbol].name_chain.push_back( t.content );
+                u8 size = conf.memblob_types[literal.first];
+                expr->load_from_number( literal.second, size );
 
-            expr_list.push_back( expr );
+                expr->pos_info = { t.file, t.line, t.column, t.length };
+
+                expr_list.push_back( expr );
+            } else {
+                // Normal identifier/symbol
+                auto expr = make_shared<SymbolExpr>();
+
+                // Create a new symbol TODO maybe extract into own function
+                expr->symbol = a_ctx.next_symbol.id++;
+                auto &sm = a_ctx.ast.symbol_map;
+                if ( sm.size() <= expr->symbol )
+                    sm.resize( expr->symbol + 1 );
+                sm[expr->symbol].id = expr->symbol;
+                sm[expr->symbol].name_chain = a_ctx.next_symbol.name_chain;
+                sm[expr->symbol].name_chain.push_back( t.content );
+
+                expr->pos_info = { t.file, t.line, t.column, t.length };
+
+                expr_list.push_back( expr );
+            }
         } else if ( t.type == TT::number ) {
             auto expr = make_shared<BlobLiteralExpr<SIZE_INT_LIT, TYPE_INT>>();
 
             Number val = stoull( t.content );
-            u8 *tmp = reinterpret_cast<u8 *>( &val );
-            for ( size_t i = 0; i < SIZE_INT_LIT; i++ )
-                expr->blob[i] = tmp[i];
+            expr->load_from_number( val, SIZE_INT_LIT );
+
+            expr->pos_info = { t.file, t.line, t.column, t.length };
 
             expr_list.push_back( expr );
         } else {
