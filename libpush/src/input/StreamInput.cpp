@@ -127,7 +127,7 @@ Token StreamInput::get_token_impl( String whitespace ) {
         // ----------
         // Part B: Test for sticky tokens
         // ----------
-        
+
         next_ws_is_not_special = false; // reset flag
 
         // Unload loaded data
@@ -247,8 +247,11 @@ std::list<String> StreamInput::get_lines( size_t line_begin, size_t line_end, Wo
         last_c = c;
         stream->get( c );
         if ( stream->bad() || stream->eof() ) {
-            w_ctx.print_msg<MessageType::err_unexpected_eof_at_line_query>( MessageInfo(), {}, filename, line_count,
-                                                                            line_begin, line_end );
+            if ( line_begin != line_end || line_begin != line_count ) {
+                // Only error when eof is not *the* target line
+                w_ctx.print_msg<MessageType::err_unexpected_eof_at_line_query>( MessageInfo(), {}, filename, line_count,
+                                                                                line_begin, line_end );
+            }
             break;
         }
 
