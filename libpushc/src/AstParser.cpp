@@ -314,7 +314,7 @@ void load_base_types( AstCtx &a_ctx, PreludeConfig &cfg ) {
 
     // Memblob types
     for ( auto &mbt : cfg.memblob_types ) {
-        create_new_relative_type( a_ctx, mbt.first, mbt.second );
+        create_new_absolute_type( a_ctx, split_symbol_chain( mbt.first, cfg.scope_access_operator ), mbt.second );
     }
 
     // Literals
@@ -349,16 +349,6 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         // DEBUG print AST
         log( "AST ----------" );
         log( " " + a_ctx.ast.block->get_debug_repr().replace_all( "{", "{\n" ).replace_all( "}", "\n }" ) );
-        /*log( "SYMBOLS ------" );
-        for ( auto &s : a_ctx.ast.symbol_map ) {
-            if ( s.id != 0 ) {
-                String name;
-                for ( auto &c : s.name_chain ) {
-                    name += "::" + c;
-                }
-                log( " " + to_string( s.id ) + " - " + name );
-            }
-        }*/
         log( "TYPES --------" );
         for ( auto &t : a_ctx.ast.type_map ) {
             if ( t.id != 0 ) {
@@ -369,6 +359,16 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                 }
                 log( " id " + to_string( t.id ) + " size " + to_string( t.mem_size ) + " - sym " +
                      to_string( t.symbol ) + " " + sym_name );
+            }
+        }
+        log( "SYMBOLS ------" );
+        for ( auto &s : a_ctx.ast.symbol_map ) {
+            if ( s.id != 0 ) {
+                String name;
+                for ( auto &c : s.name_chain ) {
+                    name += "::" + c;
+                }
+                log( " " + to_string( s.id ) + " - " + name );
             }
         }
         log( "--------------" );
