@@ -35,10 +35,13 @@ struct SyntaxRule {
 // Maps syntax item labels to their position in a syntax
 using LabelMap = std::map<String, size_t>;
 
+using TypeMemSize = u64; // stores how many bytes a type has in memory
+
 // Contains information about a type
 struct TypeInfo {
     TypeId id = 0;
     SymbolId symbol = 0;
+    TypeMemSize mem_size;
 };
 
 // Contains information about a symbol
@@ -64,7 +67,9 @@ struct AstCtx {
     TypeId unit_type = TYPE_UNIT;
     TypeId int_type = 0; // type of the integer trait
 
-    std::unordered_map<String, TypeId> type_id_map; // maps symbols to their typeid
+    std::unordered_map<String, std::pair<TypeId, u64>> literals_map; // maps literals to their typeid and mem_value
+
+    std::unordered_map<std::vector<String>, TypeId> type_id_map; // maps symbol chains to their typeid
 
     std::vector<SyntaxRule> rules;
 };

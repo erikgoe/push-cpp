@@ -440,11 +440,11 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     input->get_token(); // consume
                     do {
                         token = input->get_token();
-                        auto begin = ( conf->token_conf.level_map[level].find( name ) ==
-                                               conf->token_conf.level_map[level].end()
-                                           ? ""
-                                           : conf->token_conf.level_map[level][name]
-                                                 .begin_token ); // find begin token of normal (if any)
+                        auto begin =
+                            ( conf->token_conf.level_map[level].find( name ) == conf->token_conf.level_map[level].end()
+                                  ? ""
+                                  : conf->token_conf.level_map[level][name]
+                                        .begin_token ); // find begin token of normal (if any)
                         conf->token_conf.allowed_level_overlay[begin].push_back( token.content );
                         token = input->preview_token();
                     } while ( token.type != Token::Type::term_end && token.content != "," );
@@ -550,6 +550,8 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             if ( !parse_operator( op, conf, input, w_ctx ) ) {
                 return false;
             }
+            auto op_idx = std::find_if( op.syntax.begin(), op.syntax.end(), []( auto &&op ) { return op.second == "op"; } );
+            conf->scope_access_operator = op_idx->first;
             conf->scope_access_op.push_back( op );
         } else if ( mci == "MEMBER_ACCESS" ) {
             Operator op;
@@ -618,6 +620,9 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 type = RangeOperator::Type::count; // never reached
 
             conf->range_op.push_back( RangeOperator{ type, op } );
+        } else if ( mci == "INTEGER_TRAIT" ) {
+            token = input->get_token();
+            conf->integer_trait = token.content;
         } else if ( mci == "SPECIAL_TYPE" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {

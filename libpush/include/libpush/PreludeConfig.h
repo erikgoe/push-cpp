@@ -100,6 +100,7 @@ struct PreludeConfig {
 
     // TODO templates
 
+    String scope_access_operator; // THE scope access operator
     std::list<Operator> scope_access_op; // how other scopes may be accessed
     std::list<Operator> member_access_op; // how sub-elements may be accessed
     // TODO array access
@@ -111,6 +112,7 @@ struct PreludeConfig {
     std::list<Operator> type_op; // special type defining operator
     std::list<RangeOperator> range_op; // any possible range
 
+    String integer_trait; // Basic trait to define a integer
     std::map<String, String> special_types; // maps special type keywords/operators to their meaning
     std::map<String, u8> memblob_types; // maps type names to their memory size
     std::map<String, std::pair<String, u64>> literals; // each literal keyword is mapped to its type and memory_value

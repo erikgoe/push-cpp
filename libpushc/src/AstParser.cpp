@@ -59,6 +59,58 @@ String extract_string( SourceInput &input, Worker &w_ctx ) {
     return content;
 }
 
+// Splits a symbol string into a chain of strings
+sptr<std::vector<String>> split_symbol_chain( const String &chained, String separator ) {
+    auto ret = make_shared<std::vector<String>>();
+    size_t pos = 0;
+    size_t prev_pos = pos;
+    while ( pos != String::npos ) {
+        pos = chained.find( separator, pos );
+        ret->push_back( chained.slice( prev_pos, pos - prev_pos ) );
+        if ( pos != String::npos )
+            pos += separator.size();
+        prev_pos = pos;
+    }
+    return ret;
+}
+
+// Creates a new symbol from a global name
+SymbolId create_new_absolute_symbol( AstCtx &a_ctx, const sptr<std::vector<String>> &name ) {
+    SymbolId sym_id = a_ctx.next_symbol.id++;
+    auto &sm = a_ctx.ast.symbol_map;
+    if ( sm.size() <= sym_id )
+        sm.resize( sym_id + 1 );
+    sm[sym_id].id = sym_id;
+    sm[sym_id].name_chain = *name;
+    return sym_id;
+}
+// Creates a new symbol from a local name
+SymbolId create_new_relative_symbol( AstCtx &a_ctx, const String &name ) {
+    auto tmp_name = make_shared<std::vector<String>>();
+    tmp_name->push_back( name );
+    return create_new_absolute_symbol( a_ctx, tmp_name );
+}
+// Creates a new type from a global name
+TypeId create_new_absolute_type( AstCtx &a_ctx, const sptr<std::vector<String>> &name, TypeMemSize size ) {
+    SymbolId sym_id = create_new_absolute_symbol( a_ctx, name );
+    TypeId type_id = a_ctx.next_type++;
+    auto &tm = a_ctx.ast.type_map;
+    if ( tm.size() <= type_id )
+        tm.resize( type_id + 1 );
+    tm[type_id].id = type_id;
+    tm[type_id].symbol = sym_id;
+    tm[type_id].mem_size = size;
+
+    a_ctx.type_id_map[*name] = type_id;
+    return type_id;
+}
+// Creates a new type from a local name
+TypeId create_new_relative_type( AstCtx &a_ctx, const String &name, TypeMemSize size ) {
+    auto tmp_name = make_shared<std::vector<String>>();
+    tmp_name->push_back( name );
+    return create_new_absolute_type( a_ctx, tmp_name, size );
+}
+
 // Checks if a prelude is defined and loads the proper prelude.
 // Should be called at the beginning of a file
 void select_prelude( SourceInput &input, Worker &w_ctx ) {
@@ -139,13 +191,13 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
             expr_list.push_back(
                 parse_scope( input, w_ctx, a_ctx, ( t.type == TT::block_begin ? TT::block_end : TT::term_end ), &t ) );
         } else if ( t.type == TT::identifier ) {
-            if ( conf.literals.find( t.content ) != conf.literals.end() ) {
+            if ( a_ctx.literals_map.find( t.content ) != a_ctx.literals_map.end() ) {
                 // Found a special literal keyword
-                auto literal = conf.literals[t.content];
+                auto literal = a_ctx.literals_map[t.content];
                 auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
-                expr->type = a_ctx.type_id_map[literal.first];
+                expr->type = literal.first;
 
-                u8 size = conf.memblob_types[literal.first];
+                u8 size = a_ctx.ast.type_map[literal.first].mem_size;
                 expr->load_from_number( literal.second, size );
 
                 expr->pos_info = { t.file, t.line, t.column, t.length };
@@ -256,23 +308,19 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
 }
 
 void load_base_types( AstCtx &a_ctx, PreludeConfig &cfg ) {
+    // Most basic types/traits
+    a_ctx.int_type =
+        create_new_absolute_type( a_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ), 0 );
+
+    // Memblob types
     for ( auto &mbt : cfg.memblob_types ) {
-        SymbolId sym_id = a_ctx.next_symbol.id++;
-        auto &sm = a_ctx.ast.symbol_map;
-        if ( sm.size() <= sym_id )
-            sm.resize( sym_id + 1 );
-        sm[sym_id].id = sym_id;
-        sm[sym_id].name_chain = a_ctx.next_symbol.name_chain;
-        sm[sym_id].name_chain.push_back( mbt.first );
+        create_new_relative_type( a_ctx, mbt.first, mbt.second );
+    }
 
-        TypeId type_id = a_ctx.next_type++;
-        auto &tm = a_ctx.ast.type_map;
-        if ( tm.size() <= type_id )
-            tm.resize( type_id + 1 );
-        tm[type_id].id = type_id;
-        tm[type_id].symbol = sym_id;
-
-        a_ctx.type_id_map[mbt.first] = type_id;
+    // Literals
+    for ( auto &lit : cfg.literals ) {
+        TypeId type = a_ctx.type_id_map[*split_symbol_chain( lit.second.first, cfg.scope_access_operator )];
+        a_ctx.literals_map[lit.first] = std::make_pair( type, lit.second.second );
     }
 }
 
@@ -319,7 +367,8 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                 for ( auto &c : s.name_chain ) {
                     sym_name += "::" + c;
                 }
-                log( " id " + to_string( t.id ) + " - sym " + to_string( t.symbol ) + " " + sym_name );
+                log( " id " + to_string( t.id ) + " size " + to_string( t.mem_size ) + " - sym " +
+                     to_string( t.symbol ) + " " + sym_name );
             }
         }
         log( "--------------" );

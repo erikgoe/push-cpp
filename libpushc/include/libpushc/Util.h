@@ -37,3 +37,22 @@ bool element_of( const T &element, const Collection &collection ) {
 
 // Whether a token is a operator or a keyword
 bool is_operator_token( const String &token );
+
+// Hash for std::vector
+namespace std {
+template <typename T>
+struct hash<vector<T>> {
+    size_t operator()( vector<T> const &in ) const {
+        size_t h = 0;
+        for ( size_t i = 0; i < in.size(); i++ )
+            hash_combine( h, in[i] );
+        return h;
+    }
+};
+
+// using boost::hash_combine
+template <class T>
+inline void hash_combine( std::size_t &seed, T const &v ) {
+    seed ^= std::hash<T>()( v ) + 0x9e3779b9 + ( seed << 6 ) + ( seed >> 2 );
+}
+} // namespace std
