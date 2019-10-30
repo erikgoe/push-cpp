@@ -61,5 +61,10 @@ struct AstCtx {
     SymbolInfo next_symbol; // contains next id and current name_chain
     TypeId next_type = TYPE_UNIT + 1; // the next type id
 
+    TypeId unit_type = TYPE_UNIT;
+    TypeId int_type = 0; // type of the integer trait
+
+    std::unordered_map<String, TypeId> type_id_map; // maps symbols to their typeid
+
     std::vector<SyntaxRule> rules;
 };

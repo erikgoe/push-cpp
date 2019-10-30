@@ -21,7 +21,7 @@ void consume_comment( sptr<SourceInput> &input, TokenConfig &conf );
 String parse_string( sptr<SourceInput> &input, Worker &w_ctx );
 
 // Representation of any integer
-using Number = u64; // should match SIZE_INT_LIT
+using Number = u64;
 
 // Pares a value
 Number parse_number( sptr<SourceInput> &input, Worker &w_ctx );

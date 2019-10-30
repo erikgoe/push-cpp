@@ -31,8 +31,8 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<BlockExpr>() );
         } else {
             // Keyword or operator
-            sr.expr_list.push_back(
-                make_shared<TokenExpr>( Token( Token::Type::op, expr.first, nullptr, 0, 0, 0, "", TokenLevel::normal ) ) );
+            sr.expr_list.push_back( make_shared<TokenExpr>(
+                Token( Token::Type::op, expr.first, nullptr, 0, 0, 0, "", TokenLevel::normal ) ) );
         }
         ctr++;
     }

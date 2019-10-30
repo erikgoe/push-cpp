@@ -142,7 +142,8 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
             if ( conf.literals.find( t.content ) != conf.literals.end() ) {
                 // Found a special literal keyword
                 auto literal = conf.literals[t.content];
-                auto expr = make_shared<BlobLiteralExpr<SIZE_INT_LIT, TYPE_INT>>();
+                auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
+                expr->type = a_ctx.type_id_map[literal.first];
 
                 u8 size = conf.memblob_types[literal.first];
                 expr->load_from_number( literal.second, size );
@@ -168,10 +169,11 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
                 expr_list.push_back( expr );
             }
         } else if ( t.type == TT::number ) {
-            auto expr = make_shared<BlobLiteralExpr<SIZE_INT_LIT, TYPE_INT>>();
+            auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
+            expr->type = a_ctx.int_type;
 
             Number val = stoull( t.content );
-            expr->load_from_number( val, SIZE_INT_LIT );
+            expr->load_from_number( val, sizeof( Number ) );
 
             expr->pos_info = { t.file, t.line, t.column, t.length };
 
@@ -253,6 +255,26 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
     }
 }
 
+void load_base_types( AstCtx &a_ctx, PreludeConfig &cfg ) {
+    for ( auto &mbt : cfg.memblob_types ) {
+        SymbolId sym_id = a_ctx.next_symbol.id++;
+        auto &sm = a_ctx.ast.symbol_map;
+        if ( sm.size() <= sym_id )
+            sm.resize( sym_id + 1 );
+        sm[sym_id].id = sym_id;
+        sm[sym_id].name_chain = a_ctx.next_symbol.name_chain;
+        sm[sym_id].name_chain.push_back( mbt.first );
+
+        TypeId type_id = a_ctx.next_type++;
+        auto &tm = a_ctx.ast.type_map;
+        if ( tm.size() <= type_id )
+            tm.resize( type_id + 1 );
+        tm[type_id].id = type_id;
+        tm[type_id].symbol = sym_id;
+
+        a_ctx.type_id_map[mbt.first] = type_id;
+    }
+}
 
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) { w_ctx.do_query( parse_ast ); } );
@@ -270,6 +292,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         // Create a new AST context
         AstCtx a_ctx;
         a_ctx.next_symbol.id = 1;
+        load_base_types( a_ctx, w_ctx.unit_ctx()->prelude_conf );
         load_syntax_rules( w_ctx, a_ctx );
 
         // parse global scope
@@ -278,13 +301,26 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         // DEBUG print AST
         log( "AST ----------" );
         log( " " + a_ctx.ast.block->get_debug_repr().replace_all( "{", "{\n" ).replace_all( "}", "\n }" ) );
-        log( "SYMBOLS ------" );
+        /*log( "SYMBOLS ------" );
         for ( auto &s : a_ctx.ast.symbol_map ) {
-            String name;
-            for ( auto &c : s.name_chain ) {
-                name += "::" + c;
+            if ( s.id != 0 ) {
+                String name;
+                for ( auto &c : s.name_chain ) {
+                    name += "::" + c;
+                }
+                log( " " + to_string( s.id ) + " - " + name );
             }
-            log( " " + to_string( s.id ) + " - " + name );
+        }*/
+        log( "TYPES --------" );
+        for ( auto &t : a_ctx.ast.type_map ) {
+            if ( t.id != 0 ) {
+                auto s = a_ctx.ast.symbol_map[t.symbol];
+                String sym_name;
+                for ( auto &c : s.name_chain ) {
+                    sym_name += "::" + c;
+                }
+                log( " id " + to_string( t.id ) + " - sym " + to_string( t.symbol ) + " " + sym_name );
+            }
         }
         log( "--------------" );
         auto duration = std::chrono::system_clock::now() - start_time;

@@ -22,9 +22,7 @@ using TypeId = u32;
 using SymbolId = u32;
 
 // Constants
-constexpr TypeId TYPE_UNIT = 1;
-constexpr TypeId TYPE_INT = 2;
-constexpr TypeId SIZE_INT_LIT = 8; // size of a integer literal (should match the Number type)
+constexpr TypeId TYPE_UNIT = 1; // The initial unit type
 
 // Base class for expressions in the AST
 class Expr {
@@ -126,10 +124,11 @@ public:
 class LiteralExpr : public Expr {};
 
 // A literal type with a trivial memory layout
-template <u8 Bytes, TypeId type>
+template <u8 Bytes>
 class BlobLiteralExpr : public LiteralExpr {
 public:
     std::array<u8, Bytes> blob;
+    TypeId type;
 
     TypeId get_type() override { return type; }
 
@@ -149,7 +148,7 @@ public:
         }
         if ( !non_zero )
             str += "00";
-        return str + ")";
+        return str + ":" + to_string( type ) + ")";
     }
 
     // Loads the blob with a low endian representation of a number
