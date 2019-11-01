@@ -85,7 +85,9 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.matching_expr = make_shared<OperatorExpr>();
         new_rule.create = [=]( auto &list ) {
             return make_shared<OperatorExpr>( std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content,
-                                              list[lm.at( "lvalue" )], list[lm.at( "rvalue" )], o.op.precedence, list );
+                                              ( lm.find( "lvalue" ) == lm.end() ? nullptr : list[lm.at( "lvalue" )] ),
+                                              ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ),
+                                              o.op.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }

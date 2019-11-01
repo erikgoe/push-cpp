@@ -276,8 +276,8 @@ public:
     u32 prec() override { return precedence; }
 
     String get_debug_repr() override {
-        return "OP(" + ( lvalue ? lvalue->get_debug_repr() : "null" ) + " " + op + " " +
-               ( lvalue ? rvalue->get_debug_repr() : "null" ) + ")";
+        return "OP(" + ( lvalue ? lvalue->get_debug_repr() + " " : "" ) + op +
+               ( rvalue ? " " + rvalue->get_debug_repr() : "" ) + ")";
     }
 };
 
