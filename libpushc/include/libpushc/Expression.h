@@ -304,3 +304,27 @@ public:
 
     String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")"; }
 };
+
+// Specifies a new symbol alias
+class AliasBindExpr : public SeparableExpr {
+protected:
+    u32 precedence = 0;
+
+public:
+    sptr<Expr> expr;
+
+    AliasBindExpr() {}
+    AliasBindExpr( sptr<Expr> expr, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->expr = expr;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_UNIT; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<AliasBindExpr>( other ) != nullptr; }
+
+    u32 prec() override { return precedence; }
+
+    String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")"; }
+};

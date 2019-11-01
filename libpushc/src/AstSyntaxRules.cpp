@@ -57,6 +57,16 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         };
         a_ctx.rules.push_back( new_rule );
     }
+    for ( auto &sb : pc.alias_bindings ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.matching_expr = make_shared<AliasBindExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<AliasBindExpr>( list[lm.at( "new_identifier" )], new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
 
     // Functions
     for ( auto &f : pc.fn_declarations ) {
