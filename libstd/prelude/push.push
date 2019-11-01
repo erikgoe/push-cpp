@@ -140,8 +140,8 @@ define_mci_rule( MATCH_EXPRESSION, triple_list, "match", expr -> selector, expr 
 
 // Functions
 //define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, expr -> parameters ); // a function head
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, double_list, identifier -> name, expr_block -> body ); // a zero-parameter function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, triple_list, identifier -> name, expr -> parameters, expr_block -> body ); // a function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, double_list, identifier -> name, completed -> body ); // a zero-parameter function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, triple_list, identifier -> name, expr -> parameters, completed -> body ); // a function with a body block
 //define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, expr -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations

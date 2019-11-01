@@ -176,6 +176,7 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
         consume_comment( input );
         auto t = input.get_token();
 
+        // First check what token it is
         if ( t.type == end_token ) {
             break;
         } else if ( t.type == TT::eof ) {
@@ -230,6 +231,15 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
             expr->pos_info = { t.file, t.line, t.column, t.length };
 
             expr_list.push_back( expr );
+        } else if ( t.type == TT::stat_divider ) {
+            if ( expr_list.empty() ) {
+                w_ctx.print_msg<MessageType::err_semicolon_without_meaning>( MessageInfo( t, 0, FmtStr::Color::Red ) );
+            } else {
+                auto expr = make_shared<SingleCompletedExpr>();
+                expr->pos_info = { t.file, t.line, t.column, t.length };
+                expr->sub_expr = expr_list.back();
+                expr_list.back() = expr;
+            }
         } else {
             expr_list.push_back( make_shared<TokenExpr>( t ) );
         }

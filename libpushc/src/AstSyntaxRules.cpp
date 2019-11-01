@@ -27,8 +27,10 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<Expr>() );
         } else if ( expr.first == "identifier" ) {
             sr.expr_list.push_back( make_shared<SymbolExpr>() );
-        } else if ( expr.first == "expr_block" ) {
+        } else if ( expr.first == "block" ) {
             sr.expr_list.push_back( make_shared<BlockExpr>() );
+        } else if ( expr.first == "completed" ) {
+            sr.expr_list.push_back( make_shared<CompletedExpr>() );
         } else {
             // Keyword or operator
             sr.expr_list.push_back( make_shared<TokenExpr>(
@@ -57,7 +59,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.matching_expr = make_shared<FuncExpr>();
         new_rule.create = [=]( auto &list ) {
             return make_shared<FuncExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
-                                          std::dynamic_pointer_cast<BlockExpr>( list[lm.at( "body" )] ), list );
+                                          std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), list );
         };
         a_ctx.rules.push_back( new_rule );
     }
@@ -75,5 +77,5 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     }
 
     // Sort rules after precedence
-    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto l, auto r ) { return l.precedence > r.precedence; } );
+    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto &l, auto &r ) { return l.precedence > r.precedence; } );
 }

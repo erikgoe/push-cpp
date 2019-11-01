@@ -38,6 +38,7 @@ enum class MessageType {
     err_expected_string,
     err_invalid_prelude,
     err_term_with_multiple_expr,
+    err_semicolon_without_meaning,
 
     warning = 5000,
 
@@ -97,6 +98,8 @@ MESSAGE_DEFINITION( MessageType::err_invalid_prelude, MessageClass::Error, "C",
                     "The given prelude name or path is invalid.", "" );
 MESSAGE_DEFINITION( MessageType::err_term_with_multiple_expr, MessageClass::Error, "C",
                     "The term contains multiple expressions, but may only contain one.", "remove this part" );
+MESSAGE_DEFINITION( MessageType::err_semicolon_without_meaning, MessageClass::Error, "C",
+                    "The semicolon does not finish an expression", "remove it" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

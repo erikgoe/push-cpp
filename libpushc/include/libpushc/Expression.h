@@ -78,12 +78,40 @@ public:
     }
 };
 
+// A block or semicolon-terminated expression
+class CompletedExpr : public Expr {
+public:
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<CompletedExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "COMPLETED"; }
+};
+
+// A Semicolon-terminated expression
+class SingleCompletedExpr : public CompletedExpr {
+public:
+    sptr<Expr> sub_expr;
+
+    TypeId get_type() override { return sub_expr->get_type(); }
+
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<SingleCompletedExpr>( other ) != nullptr;
+    }
+
+    String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";\n"; }
+};
+
 // A block with multiple expressions
-class BlockExpr : public Expr {
+class BlockExpr : public CompletedExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
 
-    TypeId get_type() override { return sub_expr.empty() ? TYPE_UNIT : sub_expr.back()->get_type(); }
+    TypeId get_type() override {
+        if ( sub_expr.empty() || !std::dynamic_pointer_cast<SingleCompletedExpr>( sub_expr.back() ) ) {
+            return TYPE_UNIT;
+        } else {
+            return sub_expr.back()->get_type();
+        }
+    }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<BlockExpr>( other ) != nullptr; }
 
@@ -204,11 +232,12 @@ public:
 class FuncExpr : public SeparableExpr {
     TypeId type; // Every funcion has its own type
     sptr<SymbolExpr> symbol;
-    sptr<BlockExpr> body;
+    sptr<CompletedExpr> body;
 
 public:
     FuncExpr() {}
-    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<BlockExpr> block, std::vector<sptr<Expr>> &original_list ) {
+    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<CompletedExpr> block,
+              std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
         body = block;
