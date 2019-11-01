@@ -481,8 +481,18 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             if ( level == TokenLevel::string ) {
                 conf->string_rules.push_back( string_rule );
             }
-        } else if ( mci == "ALIAS_EXPRESSION" ) { // TODO
-        } else if ( mci == "LET_STATEMENT" ) { // TODO
+        } else if ( mci == "ALIAS_EXPRESSION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->alias_bindings.push_back( op );
+        } else if ( mci == "LET_STATEMENT" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->simple_bindings.push_back( op );
         } else if ( mci == "SELF_EXPRESSION" ) { // TODO
         } else if ( mci == "STRUCT_DEFINITION" ) { // TODO
         } else if ( mci == "TRAIT_DEFINITION" ) { // TODO
@@ -550,7 +560,8 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             if ( !parse_operator( op, conf, input, w_ctx ) ) {
                 return false;
             }
-            auto op_idx = std::find_if( op.syntax.begin(), op.syntax.end(), []( auto &&op ) { return op.second == "op"; } );
+            auto op_idx =
+                std::find_if( op.syntax.begin(), op.syntax.end(), []( auto &&op ) { return op.second == "op"; } );
             conf->scope_access_operator = op_idx->first;
             conf->scope_access_op.push_back( op );
         } else if ( mci == "MEMBER_ACCESS" ) {

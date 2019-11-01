@@ -91,7 +91,9 @@ struct PreludeConfig {
     std::list<String> unused_prefix; // prefix for unused variables
     std::list<StringRule> string_rules;
 
-    // TODO special statements
+    std::list<Operator> alias_bindings; // use keyword
+    std::list<Operator> simple_bindings; // let keyword
+
     // TODO OOP constructs
     // TODO control flow
 

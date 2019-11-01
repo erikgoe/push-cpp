@@ -46,6 +46,19 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     SyntaxRule new_rule;
     LabelMap lm;
 
+    // Special statements
+    for ( auto &sb : pc.simple_bindings ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.matching_expr = make_shared<SimpleBindExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<SimpleBindExpr>( list[lm.at( "new_identifier" )], new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+
+    // Functions
     for ( auto &f : pc.fn_declarations ) {
         parse_rule( new_rule, lm, f.syntax );
         new_rule.matching_expr = make_shared<FuncDecExpr>();
@@ -64,6 +77,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         a_ctx.rules.push_back( new_rule );
     }
 
+    // Operators
     for ( auto &o : pc.operators ) {
         parse_rule( new_rule, lm, o.op.syntax );
         new_rule.precedence = o.op.precedence;

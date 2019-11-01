@@ -117,18 +117,18 @@ define_mci_rule( NEW_OPERATOR, std::literal::float_exp, 1, ltr, quintuple_list, 
 define_mci_rule( NEW_OPERATOR, std::literal::float_exp_neg, 1, ltr, sextuple_list, integer -> lvalue, ".", integer -> rvalue, "e", "-", integer -> expo ); // float with negative exponent
 define_mci_rule( NEW_OPERATOR, std::literal::float_exp_neg, 1, ltr, sextuple_list, integer -> lvalue, ".", integer -> rvalue, "E", "-", integer -> expo ); // float with negative exponent
 
-/*
 // Special statements
-define_mci_rule( ALIAS_EXPRESSION, double_list, "use", expr -> new_identifier ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
-define_mci_rule( LET_STATEMENT, double_list, "let", expr -> new_identifier ); // let keyword which starts a new variable binding
-define_mci_rule( SELF_EXPRESSION, single_list, "self" ); // the self keyword is the currently executed object in non-static methods
+define_mci_rule( ALIAS_EXPRESSION, 20, rtl, double_list, "use", expr -> new_identifier ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
+define_mci_rule( LET_STATEMENT, 20, rtl, double_list, "let", expr -> new_identifier ); // let keyword which starts a new variable binding
 
+/*
 // OOP constructs
 define_mci_rule( STRUCT_DEFINITION, triple_list, "struct", identifier -> new_identifier, expr -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
 define_mci_rule( STRUCT_DEFINITION, single_list, "struct" ); // anonymous struct
 define_mci_rule( TRAIT_DEFINITION, triple_list, "trait", identifier -> new_identifier, expr -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
 define_mci_rule( IMPL_DEFINITION, triple_list, "impl", identifier -> type, expr -> body ); // impl-blocks which defines methods for a struct independent of a trait
 define_mci_rule( IMPL_DEFINITION, quintuple_list, "impl", identifier -> trait, "for", identifier -> type, expr -> body ); // impl-blocks which defines a trait for a struct
+define_mci_rule( SELF_EXPRESSION, single_list, "self" ); // the self keyword is the currently executed object in non-static methods
 
 // Control flow
 define_mci_rule( IF_EXPRESSION, triple_list, "if", expr -> condition, expr -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block

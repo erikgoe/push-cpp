@@ -97,7 +97,7 @@ public:
         return std::dynamic_pointer_cast<SingleCompletedExpr>( other ) != nullptr;
     }
 
-    String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";\n"; }
+    String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";\n "; }
 };
 
 // A block with multiple expressions
@@ -276,24 +276,31 @@ public:
     u32 prec() override { return precedence; }
 
     String get_debug_repr() override {
-        return "OP(" + lvalue->get_debug_repr() + " " + op + " " + rvalue->get_debug_repr() + ")";
+        return "OP(" + ( lvalue ? lvalue->get_debug_repr() : "null" ) + " " + op + " " +
+               ( lvalue ? rvalue->get_debug_repr() : "null" ) + ")";
     }
-};
-
-// Assigns a rvalue to a lvalue
-class AssignExpr : public OperatorExpr {
-public:
-    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<AssignExpr>( other ) != nullptr; }
 };
 
 // Specifies a new variable binding without doing anything with it
 class SimpleBindExpr : public SeparableExpr {
-    sptr<AssignExpr> assign;
+protected:
+    u32 precedence = 0;
 
 public:
+    sptr<Expr> expr;
+
+    SimpleBindExpr() {}
+    SimpleBindExpr( sptr<Expr> expr, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->expr = expr;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
     TypeId get_type() override { return TYPE_UNIT; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SimpleBindExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "BINDING(" + assign->get_debug_repr() + ")"; }
+    u32 prec() override { return precedence; }
+
+    String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")"; }
 };
