@@ -151,16 +151,26 @@ public:
 // Base class for a simple literal
 class LiteralExpr : public Expr {};
 
+// Base class for all Blob literals
+class BasicBlobLiteralExpr : public Expr {
+public:
+    virtual bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<BasicBlobLiteralExpr>( other ) != nullptr;
+    }
+};
+
 // A literal type with a trivial memory layout
 template <u8 Bytes>
-class BlobLiteralExpr : public LiteralExpr {
+class BlobLiteralExpr : public BasicBlobLiteralExpr {
 public:
     std::array<u8, Bytes> blob;
     TypeId type;
 
     TypeId get_type() override { return type; }
 
-    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<LiteralExpr>( other ) != nullptr; }
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<BlobLiteralExpr<Bytes>>( other ) != nullptr;
+    }
 
     String get_debug_repr() override {
         bool non_zero = false;
@@ -200,9 +210,7 @@ public:
         return std::dynamic_pointer_cast<StringLiteralExpr>( other ) != nullptr;
     }
 
-    String get_debug_repr() override {
-        return "STR \"" + str + "\"";
-    }
+    String get_debug_repr() override { return "STR \"" + str + "\""; }
 };
 
 // An expression which can be broken into multiple sub-expressions by other rvalues/operators
