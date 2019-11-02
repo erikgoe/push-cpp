@@ -245,6 +245,16 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 expr->sub_expr = expr_list.back();
                 expr_list.back() = expr;
             }
+        } else if ( t.type == TT::list_divider ) {
+            input->get_token(); // consume
+            if ( expr_list.empty() ) {
+                w_ctx.print_msg<MessageType::err_comma_without_meaning>( MessageInfo( t, 0, FmtStr::Color::Red ) );
+            } else {
+                auto expr = make_shared<SingleListedExpr>();
+                expr->pos_info = { t.file, t.line, t.column, t.length };
+                expr->sub_expr = expr_list.back();
+                expr_list.back() = expr;
+            }
         } else if ( t.type == TT::string_begin ) {
             auto expr = make_shared<StringLiteralExpr>();
             expr->str = parse_string( input, w_ctx );
@@ -315,14 +325,28 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
         block->sub_expr = expr_list;
         return block;
     } else if ( end_token == TT::term_end ) {
-        auto block = make_shared<TermExpr>();
-        block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
         if ( expr_list.size() > 1 ) {
-            w_ctx.print_msg<MessageType::err_term_with_multiple_expr>(
-                MessageInfo( ( *( expr_list.begin() + 1 ) )->get_position_info(), 0, FmtStr::Color::Red ) );
+            size_t sl_count = 0;
+            for ( auto &e : expr_list ) {
+                if ( std::dynamic_pointer_cast<SingleListedExpr>( e ) != nullptr )
+                    sl_count++;
+            }
+            if ( sl_count >= expr_list.size() - 1 ) { // Found a tuple
+                auto block = make_shared<TupleExpr>();
+                block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
+                block->sub_expr = expr_list;
+                return block;
+            } else { // malformed "tuple" or so
+                w_ctx.print_msg<MessageType::err_term_with_multiple_expr>(
+                    MessageInfo( ( *( expr_list.begin() + 1 ) )->get_position_info(), 0, FmtStr::Color::Red ) );
+                return make_shared<TupleExpr>(); // default
+            }
+        } else { // normal term
+            auto block = make_shared<TermExpr>();
+            block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
+            block->sub_expr = expr_list.empty() ? nullptr : expr_list.back();
+            return block;
         }
-        block->sub_expr = expr_list.empty() ? nullptr : expr_list.back();
-        return block;
     } else {
         LOG_ERR( "Try to parse a block which is no block" );
         return nullptr;

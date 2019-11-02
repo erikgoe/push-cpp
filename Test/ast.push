@@ -3,5 +3,5 @@
 /// Basic function without anything special
 function {
     //let val = 42 + 5 * (3 + 2) + "this is a string";
-    5.4;
+    (a, b, c, d, 5, (4%2));
 }

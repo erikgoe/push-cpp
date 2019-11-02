@@ -138,6 +138,8 @@ String parse_string_literal( sptr<SourceInput> &input, Worker &w_ctx ) {
         input->get_token(); // consume
         if ( token.content == "semicolon" )
             return ";";
+        else if ( token.content == "comma" )
+            return ",";
         else if ( token.content == "left_brace" )
             return "{";
         else if ( token.content == "right_brace" )
@@ -330,6 +332,9 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             if ( token.content == "divide" ) {
                 PARSE_LITERAL( str );
                 conf->token_conf.stat_divider.push_back( str );
+            } else if ( token.content == "list" ) {
+                PARSE_LITERAL( str );
+                conf->token_conf.list_divider.push_back( str );
             } else if ( token.content == "block" ) {
                 PARSE_LITERAL( str );
                 PARSE_LITERAL( str2 );

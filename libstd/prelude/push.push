@@ -73,7 +73,7 @@
  */
 
 // Most basic rules
-define_mci_rule( EXPRESSION_RULES, divide semicolon, block left_brace right_brace, term left_parenthesis right_parenthesis ); // list of rules for expressions: semicolons divide expressions/statements, braces combine a block, parenthesis combine a term
+define_mci_rule( EXPRESSION_RULES, divide semicolon, list comma, block left_brace right_brace, term left_parenthesis right_parenthesis ); // list of rules for expressions: semicolons divide expressions/statements, braces combine a block, parenthesis combine a term
 define_mci_rule( IDENTIFIER_RULES, no_spaces, unused begin "_" ); // define rules for identifiers
 define_mci_rule( IDENTIFIER_CASE, functions snake, method snake, variables snake, modules snake, struct pascal, trait pascal ); // define how which identifiers have to be written
 

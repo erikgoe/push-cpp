@@ -86,7 +86,7 @@ public:
     String get_debug_repr() override { return "COMPLETED"; }
 };
 
-// A Semicolon-terminated expression
+// A semicolon-terminated expression
 class SingleCompletedExpr : public CompletedExpr {
 public:
     sptr<Expr> sub_expr;
@@ -98,6 +98,20 @@ public:
     }
 
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";\n "; }
+};
+
+// A comma-separated expression
+class SingleListedExpr : public CompletedExpr {
+public:
+    sptr<Expr> sub_expr;
+
+    TypeId get_type() override { return sub_expr->get_type(); }
+
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<SingleListedExpr>( other ) != nullptr;
+    }
+
+    String get_debug_repr() override { return "SL " + sub_expr->get_debug_repr() + ", "; }
 };
 
 // A block with multiple expressions
@@ -120,6 +134,24 @@ public:
         for ( auto &s : sub_expr )
             str += s->get_debug_repr() + ", ";
         return str + " }";
+    }
+};
+
+// A tuple with multiple elements
+class TupleExpr : public CompletedExpr {
+public:
+    std::vector<sptr<Expr>> sub_expr;
+    TypeId type = 0;
+
+    TypeId get_type() override { return type; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TupleExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        String str = "TUPLE ( ";
+        for ( auto &s : sub_expr )
+            str += s->get_debug_repr();
+        return str + " )";
     }
 };
 
