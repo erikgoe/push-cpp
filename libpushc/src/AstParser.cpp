@@ -166,18 +166,19 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 }
 
 // Parses a scope into the ast. Used recursively. @param last_token may be nullptr
-sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token, Token *last_token ) {
+sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token, Token *last_token ) {
     auto &conf = w_ctx.unit_ctx()->prelude_conf;
     std::vector<sptr<Expr>> expr_list;
 
     // Iterate through all tokens in this scope
     while ( true ) {
         // Load the next token
-        consume_comment( input );
-        auto t = input.get_token();
+        consume_comment( *input );
+        auto t = input->preview_token();
 
         // First check what token it is
         if ( t.type == end_token ) {
+            input->get_token(); // consume
             break;
         } else if ( t.type == TT::eof ) {
             if ( last_token ) {
@@ -189,9 +190,11 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
             break;
         } else if ( t.type == TT::block_begin || t.type == TT::term_begin ) {
             // TODO change a_ctx.next_symbol.name_chain to procede into new scope
+            input->get_token(); // consume
             expr_list.push_back(
                 parse_scope( input, w_ctx, a_ctx, ( t.type == TT::block_begin ? TT::block_end : TT::term_end ), &t ) );
         } else if ( t.type == TT::identifier ) {
+            input->get_token(); // consume
             if ( a_ctx.literals_map.find( t.content ) != a_ctx.literals_map.end() ) {
                 // Found a special literal keyword
                 auto literal = a_ctx.literals_map[t.content];
@@ -222,6 +225,7 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
                 expr_list.push_back( expr );
             }
         } else if ( t.type == TT::number ) {
+            input->get_token(); // consume
             auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
             expr->type = a_ctx.int_type;
 
@@ -232,6 +236,7 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
 
             expr_list.push_back( expr );
         } else if ( t.type == TT::stat_divider ) {
+            input->get_token(); // consume
             if ( expr_list.empty() ) {
                 w_ctx.print_msg<MessageType::err_semicolon_without_meaning>( MessageInfo( t, 0, FmtStr::Color::Red ) );
             } else {
@@ -240,7 +245,14 @@ sptr<Expr> parse_scope( SourceInput &input, Worker &w_ctx, AstCtx &a_ctx, TT end
                 expr->sub_expr = expr_list.back();
                 expr_list.back() = expr;
             }
+        } else if ( t.type == TT::string_begin ) {
+            auto expr = make_shared<StringLiteralExpr>();
+            expr->str = parse_string( input, w_ctx );
+            expr->type = a_ctx.str_type;
+            expr->pos_info = { t.file, t.line, t.column, t.length };
+            expr_list.push_back( expr );
         } else {
+            input->get_token(); // consume
             expr_list.push_back( make_shared<TokenExpr>( t ) );
         }
 
@@ -321,6 +333,8 @@ void load_base_types( AstCtx &a_ctx, PreludeConfig &cfg ) {
     // Most basic types/traits
     a_ctx.int_type =
         create_new_absolute_type( a_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ), 0 );
+    a_ctx.str_type =
+        create_new_absolute_type( a_ctx, split_symbol_chain( cfg.string_trait, cfg.scope_access_operator ), 0 );
 
     // Memblob types
     for ( auto &mbt : cfg.memblob_types ) {
@@ -354,7 +368,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         load_syntax_rules( w_ctx, a_ctx );
 
         // parse global scope
-        a_ctx.ast.block = parse_scope( *input, w_ctx, a_ctx, TT::eof, nullptr );
+        a_ctx.ast.block = parse_scope( input, w_ctx, a_ctx, TT::eof, nullptr );
 
         // DEBUG print AST
         log( "AST ----------" );

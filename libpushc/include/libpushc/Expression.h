@@ -188,6 +188,23 @@ public:
     }
 };
 
+// A literal containing a string
+class StringLiteralExpr : public LiteralExpr {
+public:
+    String str;
+    TypeId type;
+
+    TypeId get_type() override { return type; }
+
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<StringLiteralExpr>( other ) != nullptr;
+    }
+
+    String get_debug_repr() override {
+        return "STR \"" + str + "\"";
+    }
+};
+
 // An expression which can be broken into multiple sub-expressions by other rvalues/operators
 class SeparableExpr : public Expr {
 protected:

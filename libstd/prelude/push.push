@@ -218,7 +218,8 @@ define_mci_rule( RANGE_DEFINITION_INC, 10, ltr, triple_list, expr -> lvalue, "..
 define_mci_rule( RANGE_DEFINITION_TO_INC, 10, ltr, double_list, "..=" -> op, expr -> rvalue ); // define the range operator for ..=5
 
 // Primitive types
-define_mci_rule( INTEGER_TRAIT, std::num::Integer ); // Defines which trait describes the integer type
+define_mci_rule( BASE_TRAIT, INTEGER, std::num::Integer ); // Defines which trait describes the integer type
+define_mci_rule( BASE_TRAIT, STRING, std::str::String ); // Defines which trait describes the string type
 
 define_mci_rule( SPECIAL_TYPE, TYPE, "type" ); // definition of the "type" type
 define_mci_rule( SPECIAL_TYPE, NEVER, "!" ); // definition of the "!" type

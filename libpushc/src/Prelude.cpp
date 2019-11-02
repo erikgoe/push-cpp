@@ -631,9 +631,25 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 type = RangeOperator::Type::count; // never reached
 
             conf->range_op.push_back( RangeOperator{ type, op } );
-        } else if ( mci == "INTEGER_TRAIT" ) {
+        } else if ( mci == "BASE_TRAIT" ) {
             token = input->get_token();
-            conf->integer_trait = token.content;
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            String type = token.content;
+            CONSUME_COMMA( token );
+            token = input->get_token();
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+
+            if ( type == "INTEGER" ) {
+                conf->integer_trait = token.content;
+            } else if ( type == "STRING" ) {
+                conf->string_trait = token.content;
+            }
         } else if ( mci == "SPECIAL_TYPE" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {

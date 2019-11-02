@@ -66,6 +66,7 @@ struct AstCtx {
 
     TypeId unit_type = TYPE_UNIT;
     TypeId int_type = 0; // type of the integer trait
+    TypeId str_type = 0; // type of the string trait
 
     std::unordered_map<String, std::pair<TypeId, u64>> literals_map; // maps literals to their typeid and mem_value
 
