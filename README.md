@@ -8,6 +8,19 @@ WIP: The project is currently in a very early development stage. Everything may 
 ## Push?
 This is the current development name and thus the language may be renamed some day.
 
+## Current roadmap
+- [x] Basic dataflow management
+- [x] Input/Lexer
+- [x] Prelude loading
+- [ ] Ast parser
+- [ ] Symbol management
+- [ ] Type management
+- [ ] Ownership & mutability management
+- [ ] Mir generation
+- [ ] LLVM backend
+- [ ] C-api/-abi
+- [ ] Std-lib
+
 ## Dependencies
 * cotire: https://github.com/sakra/cotire (optional)
     * Used for precompiled headers
@@ -28,11 +41,21 @@ Vcpkg is optional to easier get catch2 for windows (visual studio projects). Set
     make
 
 ### Windows
-NOTE: Windows is not tested regularly any more, but should still work with minor code modifications.
+NOTE: Windows is not regularly tested any more, but may still work with some code modifications.
 
     mkdir build && cd build
     cmake .. -DCOTIRE_PATH=\path_to_cotire_repo\CMake\cotire.cmake -DVCPKG_SOURCE_DIR=C:\src\vcpkg -DVCPKG_TARGET_TRIPLET=x86-windows-static
 Compile the .sln file.
+
+## Usage
+Currently when you start *pushc* only the AST is generated and printed. 
+
+After a successful build you can try it out by typing:
+
+    build/pushc/src/pushc Test/ast.push
+in the repo root directory. Or get help with:
+
+    build/pushc/src/pushc --help
 
 ## Tests
 Most of the test cases only check the basic functionality, which is required for the functions/modules to be usable.
