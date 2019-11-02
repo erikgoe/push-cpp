@@ -559,6 +559,16 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             }
 
             conf->fn_definitions.push_back( FunctionDefinition{ trait, function, syntax } );
+        } else if ( mci == "FUNCTION_CALL" ) {
+            Syntax syntax;
+            auto list_size = parse_list_size( input );
+            CONSUME_COMMA( token );
+
+            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+                return false;
+            }
+
+            conf->fn_call.push_back( syntax );
         } else if ( mci == "DEFINE_TEMPLATE" ) { // TODO
         } else if ( mci == "SCOPE_ACCESS" ) {
             Operator op;

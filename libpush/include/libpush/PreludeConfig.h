@@ -99,6 +99,7 @@ struct PreludeConfig {
 
     std::list<FunctionDefinition> fn_declarations; // Function syntax
     std::list<FunctionDefinition> fn_definitions; // Function syntax
+    std::list<Syntax> fn_call; // Function call syntax
 
     // TODO templates
 

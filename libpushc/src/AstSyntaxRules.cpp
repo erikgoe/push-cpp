@@ -31,6 +31,10 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<BlockExpr>() );
         } else if ( expr.first == "completed" ) {
             sr.expr_list.push_back( make_shared<CompletedExpr>() );
+        } else if ( expr.first == "tuple" ) {
+            sr.expr_list.push_back( make_shared<TupleExpr>() );
+        } else if ( expr.first == "fn_head" ) {
+            sr.expr_list.push_back( make_shared<FuncCallExpr>() );
         } else if ( expr.first == "integer" ) {
             sr.expr_list.push_back( make_shared<BasicBlobLiteralExpr>() );
         } else {
@@ -71,6 +75,19 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     }
 
     // Functions
+    for ( auto &f : pc.fn_call ) {
+        parse_rule( new_rule, lm, f );
+        new_rule.matching_expr = make_shared<FuncCallExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<FuncCallExpr>(
+                std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "exec" )] ), 0,
+                ( lm.find( "parameters" ) == lm.end()
+                      ? nullptr
+                      : std::dynamic_pointer_cast<TupleExpr>( list[lm.at( "parameters" )] ) ),
+                list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
     for ( auto &f : pc.fn_declarations ) {
         parse_rule( new_rule, lm, f.syntax );
         new_rule.matching_expr = make_shared<FuncDecExpr>();
@@ -83,11 +100,18 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         parse_rule( new_rule, lm, f.syntax );
         new_rule.matching_expr = make_shared<FuncExpr>();
         new_rule.create = [=]( auto &list ) {
-            return make_shared<FuncExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
-                                          ( lm.find( "parameters" ) == lm.end()
-                                                ? nullptr
-                                                : std::dynamic_pointer_cast<TupleExpr>( list[lm.at( "parameters" )] ) ),
-                                          std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), list );
+            if ( lm.find( "head" ) != lm.end() ) { // function with parameters
+                auto head = std::dynamic_pointer_cast<FuncCallExpr>( list[lm.at( "head" )] );
+                return make_shared<FuncExpr>( head->symbol, head->type, head->parameters,
+                                              std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), list );
+            } else { // function with no parameters
+                return make_shared<FuncExpr>(
+                    std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
+                    ( lm.find( "parameters" ) == lm.end()
+                          ? nullptr
+                          : std::dynamic_pointer_cast<TupleExpr>( list[lm.at( "parameters" )] ) ),
+                    std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), list );
+            }
         };
         a_ctx.rules.push_back( new_rule );
     }

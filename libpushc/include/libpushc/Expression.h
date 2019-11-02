@@ -312,6 +312,32 @@ public:
     }
 };
 
+// Specifies a call of a funcion
+class FuncCallExpr : public SeparableExpr {
+public:
+    TypeId type; // Every funcion has its own type
+    sptr<TupleExpr> parameters;
+    sptr<SymbolExpr> symbol;
+
+    FuncCallExpr() {}
+    FuncCallExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<TupleExpr> parameters,
+                  std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->type = type;
+        this->parameters = parameters;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return type; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncCallExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "CALL(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
+               symbol->get_debug_repr() + ")";
+    }
+};
+
 class OperatorExpr : public SeparableExpr {
 protected:
     sptr<Expr> lvalue, rvalue;

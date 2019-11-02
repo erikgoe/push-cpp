@@ -139,9 +139,10 @@ define_mci_rule( MATCH_EXPRESSION, triple_list, "match", expr -> selector, expr 
 */
 
 // Functions
+define_mci_rule( FUNCTION_CALL, double_list, identifier -> exec, tuple -> parameters ); // function call with parameters
 //define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, expr -> parameters ); // a function head
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, double_list, identifier -> name, completed -> body ); // a zero-parameter function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, triple_list, identifier -> name, expr -> parameters, completed -> body ); // a function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, double_list, fn_head -> head, completed -> body ); // a parameterized function with a body block
 //define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, expr -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations
@@ -153,8 +154,6 @@ define_mci_rule( MEMBER_ACCESS, 1, ltr, triple_list, expr -> base, "." -> op, ex
 
 // Operators
 // NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple)
-//define_mci_rule( NEW_OPERATOR, std::op::function_call, 1, ltr, quadruple_list, identifier -> exec, "(" -> lop, expr -> parameters, ")" -> rop ); // function calls surround their parameters in parenthesis
-
 define_mci_rule( NEW_OPERATOR, std::op::log_not, 2, rtl, double_list, "!" -> op, expr -> rvalue ); // define the logical not operator
 define_mci_rule( NEW_OPERATOR, std::op::invert, 2, rtl, double_list, "~" -> op, expr -> rvalue ); // define the not/invert operator
 define_mci_rule( NEW_OPERATOR, std::op::negate, 2, rtl, double_list, "-" -> op, expr -> rvalue ); // define the negation operator
