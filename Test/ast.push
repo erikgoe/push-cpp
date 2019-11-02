@@ -1,7 +1,7 @@
 #prelude(push)
 
 /// Basic function without anything special
-function {
+function (a, b) {
     //let val = 42 + 5 * (3 + 2) + "this is a string";
     (a, b, c, d, 5, (4%2));
 }

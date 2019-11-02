@@ -138,7 +138,7 @@ public:
 };
 
 // A tuple with multiple elements
-class TupleExpr : public CompletedExpr {
+class TupleExpr : public Expr {
 public:
     std::vector<sptr<Expr>> sub_expr;
     TypeId type = 0;
@@ -288,15 +288,17 @@ public:
 // Specifies a new funcion
 class FuncExpr : public SeparableExpr {
     TypeId type; // Every funcion has its own type
+    sptr<TupleExpr> parameters;
     sptr<SymbolExpr> symbol;
     sptr<CompletedExpr> body;
 
 public:
     FuncExpr() {}
-    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<CompletedExpr> block,
+    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<TupleExpr> parameters, sptr<CompletedExpr> block,
               std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
+        this->parameters = parameters;
         body = block;
         this->original_list = original_list;
     }
@@ -305,7 +307,8 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncExpr>( other ) != nullptr; }
     String get_debug_repr() override {
-        return "FUNC(" + to_string( type ) + " " + symbol->get_debug_repr() + " " + body->get_debug_repr() + ")";
+        return "FUNC(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
+               symbol->get_debug_repr() + " " + body->get_debug_repr() + ")";
     }
 };
 

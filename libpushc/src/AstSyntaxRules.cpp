@@ -84,6 +84,9 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.matching_expr = make_shared<FuncExpr>();
         new_rule.create = [=]( auto &list ) {
             return make_shared<FuncExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
+                                          ( lm.find( "parameters" ) == lm.end()
+                                                ? nullptr
+                                                : std::dynamic_pointer_cast<TupleExpr>( list[lm.at( "parameters" )] ) ),
                                           std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), list );
         };
         a_ctx.rules.push_back( new_rule );
