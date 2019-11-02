@@ -104,5 +104,5 @@ bool is_operator_token( const String &token ) {
 
     // NOTE: just a simple implementation
     return !( ( token.front() >= 'a' && token.front() <= 'z' ) || ( token.front() >= 'A' && token.front() <= 'Z' ) ||
-              token.front() > (unsigned char) 128 );
+              ( token.front() >= '0' && token.front() <= '9' ) || token.front() > (unsigned char) 128 );
 }

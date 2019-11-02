@@ -108,9 +108,9 @@ define_mci_rule( NEW_LEVEL, NORMAL, n, overlay b ln lr bd lnd lrd c sb s sb sw s
 //define_mci_rule( NEW_LEVEL, NORMAL, v, "\\(" ")" ); // value extraction in strings
 
 // Special basic literals
-//define_mci_rule( NEW_OPERATOR, std::literal::bin_integer, 1, ltr, triple_list, "0", "b", integer -> value ); // binary radix
-//define_mci_rule( NEW_OPERATOR, std::literal::oct_integer, 1, ltr, triple_list, "0", "o", integer -> value ); // octal radix
-//define_mci_rule( NEW_OPERATOR, std::literal::hex_integer, 1, ltr, triple_list, "0", "x", integer -> value ); // hexadecimal radix
+define_mci_rule( NEW_OPERATOR, std::literal::bin_integer, 1, ltr, double_list, "0b", integer -> rvalue ); // binary radix
+define_mci_rule( NEW_OPERATOR, std::literal::oct_integer, 1, ltr, double_list, "0o", integer -> rvalue ); // octal radix
+define_mci_rule( NEW_OPERATOR, std::literal::hex_integer, 1, ltr, double_list, "0x", integer -> rvalue ); // hexadecimal radix
 define_mci_rule( NEW_OPERATOR, std::literal::float, 1, ltr, triple_list, integer -> lvalue, ".", integer -> rvalue ); // simple float
 define_mci_rule( NEW_OPERATOR, std::literal::float_exp, 1, ltr, quintuple_list, integer -> lvalue, ".", integer -> rvalue, "e", integer -> expo ); // float with positive exponent
 define_mci_rule( NEW_OPERATOR, std::literal::float_exp, 1, ltr, quintuple_list, integer -> lvalue, ".", integer -> rvalue, "E", integer -> expo ); // float with positive exponent
