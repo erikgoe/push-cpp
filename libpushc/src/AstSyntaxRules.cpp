@@ -74,6 +74,18 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         a_ctx.rules.push_back( new_rule );
     }
 
+    // Control flow
+    for ( auto &sb : pc.if_condition ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.matching_expr = make_shared<IfExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<IfExpr>( list[lm.at( "condition" )], list[lm.at( "exec0" )], new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+
     // Functions
     for ( auto &f : pc.fn_call ) {
         parse_rule( new_rule, lm, f );

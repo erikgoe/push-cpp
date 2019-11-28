@@ -502,7 +502,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
         } else if ( mci == "STRUCT_DEFINITION" ) { // TODO
         } else if ( mci == "TRAIT_DEFINITION" ) { // TODO
         } else if ( mci == "IMPL_DEFINITION" ) { // TODO
-        } else if ( mci == "IF_EXPRESSION" ) { // TODO
+        } else if ( mci == "IF_EXPRESSION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->if_condition.push_back( op );
         } else if ( mci == "IF_ELSE_EXPRESSION" ) { // TODO
         } else if ( mci == "WHILE_EXPRESSION" ) { // TODO
         } else if ( mci == "FOR_EXPRESSION" ) { // TODO

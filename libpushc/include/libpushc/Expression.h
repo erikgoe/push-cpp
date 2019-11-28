@@ -184,7 +184,7 @@ public:
 class LiteralExpr : public Expr {};
 
 // Base class for all Blob literals
-class BasicBlobLiteralExpr : public Expr {
+class BasicBlobLiteralExpr : public LiteralExpr {
 public:
     virtual bool matches( sptr<Expr> other ) override {
         return std::dynamic_pointer_cast<BasicBlobLiteralExpr>( other ) != nullptr;
@@ -342,7 +342,7 @@ class OperatorExpr : public SeparableExpr {
 protected:
     sptr<Expr> lvalue, rvalue;
     String op;
-    u32 precedence = 0;
+    u32 precedence = 0; // TODO move into SeparableExpr
 
 public:
     OperatorExpr() {}
@@ -413,4 +413,62 @@ public:
     u32 prec() override { return precedence; }
 
     String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")"; }
+};
+
+
+// If condition expression
+class IfExpr : public SeparableExpr {
+protected:
+    u32 precedence = 0;
+
+public:
+    sptr<Expr> cond, expr_t;
+
+    IfExpr() {}
+    IfExpr( sptr<Expr> cond, sptr<Expr> expr_t, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->cond = cond;
+        this->expr_t = expr_t;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_UNIT; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfExpr>( other ) != nullptr; }
+
+    u32 prec() override { return precedence; }
+
+    String get_debug_repr() override {
+        return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " )";
+    }
+};
+
+// If condition expression with a else clause
+class IfElseExpr : public SeparableExpr {
+protected:
+    u32 precedence = 0;
+
+public:
+    sptr<Expr> cond, expr_t, expr_f;
+
+    IfElseExpr() {}
+    IfElseExpr( sptr<IfExpr> if_expr, sptr<Expr> expr_f, u32 precedence,
+                std::vector<sptr<Expr>> &original_list ) {
+        this->cond = if_expr->cond;
+        this->expr_t = if_expr->expr_t;
+        this->expr_f = expr_f;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return expr_f->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfElseExpr>( other ) != nullptr; }
+
+    u32 prec() override { return precedence; }
+
+    String get_debug_repr() override {
+        return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " ELSE " +
+               expr_f->get_debug_repr() + " )";
+    }
 };
