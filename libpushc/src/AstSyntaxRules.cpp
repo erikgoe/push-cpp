@@ -37,6 +37,8 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<FuncCallExpr>() );
         } else if ( expr.first == "integer" ) {
             sr.expr_list.push_back( make_shared<BasicBlobLiteralExpr>() );
+        } else if ( expr.first == "if_expr" ) {
+            sr.expr_list.push_back( make_shared<IfExpr>() );
         } else {
             // Keyword or operator
             sr.expr_list.push_back( make_shared<TokenExpr>(
@@ -82,6 +84,17 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.matching_expr = make_shared<IfExpr>();
         new_rule.create = [=]( auto &list ) {
             return make_shared<IfExpr>( list[lm.at( "condition" )], list[lm.at( "exec0" )], new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &sb : pc.if_else_condition ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.matching_expr = make_shared<IfElseExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<IfElseExpr>( std::dynamic_pointer_cast<IfExpr>( list[lm.at( "exec0" )] ),
+                                            list[lm.at( "exec1" )], new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }

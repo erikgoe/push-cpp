@@ -132,7 +132,7 @@ define_mci_rule( SELF_EXPRESSION, single_list, "self" ); // the self keyword is 
 */
 // Control flow
 define_mci_rule( IF_EXPRESSION, 20, rtl, triple_list, "if", expr -> condition, expr -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
-//define_mci_rule( IF_ELSE_EXPRESSION, 20, rtl, quintuple_list, if_expr, "else", expr -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and a alternative executable block
+define_mci_rule( IF_ELSE_EXPRESSION, 21, rtl, triple_list, if_expr -> exec0, "else", expr -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and a alternative executable block
 /*define_mci_rule( WHILE_EXPRESSION, triple_list, "while", expr -> condition, expr -> exec ); // regular while loop
 define_mci_rule( FOR_EXPRESSION, triple_list, "for", expr -> condition, expr -> exec ); // for loop over an iterator
 define_mci_rule( MATCH_EXPRESSION, triple_list, "match", expr -> selector, expr -> body ); // match keyword which matches an expression

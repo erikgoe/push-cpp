@@ -96,7 +96,8 @@ struct PreludeConfig {
 
     // TODO OOP constructs
     // TODO control flow
-    std::list<Operator> if_condition; // if keyword
+    std::list<Operator> if_condition; // if keyword (without else)
+    std::list<Operator> if_else_condition; // if keyword (with else)
 
     std::list<FunctionDefinition> fn_declarations; // Function syntax
     std::list<FunctionDefinition> fn_definitions; // Function syntax

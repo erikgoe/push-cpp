@@ -5,7 +5,12 @@ function {
     //let val = 42 + 5 * (3 + 2) + "this is a string";
     //(a, b, c, d, 5, (4%2));
     //function(c, d);
-    if true {
+    if true 
         let val = 4;
-    }
+    if false
+        let val = 6
+    else
+        let val = 5;
+    let var = (if true 4 else 5);
+    
 }

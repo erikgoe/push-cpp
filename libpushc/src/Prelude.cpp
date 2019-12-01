@@ -508,7 +508,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->if_condition.push_back( op );
-        } else if ( mci == "IF_ELSE_EXPRESSION" ) { // TODO
+        } else if ( mci == "IF_ELSE_EXPRESSION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->if_else_condition.push_back( op );
         } else if ( mci == "WHILE_EXPRESSION" ) { // TODO
         } else if ( mci == "FOR_EXPRESSION" ) { // TODO
         } else if ( mci == "MATCH_EXPRESSION" ) { // TODO
