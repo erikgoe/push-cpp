@@ -23,6 +23,8 @@ using SymbolId = u32;
 
 // Constants
 constexpr TypeId TYPE_UNIT = 1; // The initial unit type
+constexpr TypeId TYPE_NEVER = 2; // The initial never type
+constexpr TypeId LAS_FIX_TYPE = TYPE_NEVER; // The initial unit type
 
 // Base class for expressions in the AST
 class Expr {
@@ -249,6 +251,7 @@ public:
 class SeparableExpr : public Expr {
 protected:
     std::vector<sptr<Expr>> original_list;
+    u32 precedence = 0;
 
 public:
     virtual ~SeparableExpr() {}
@@ -256,7 +259,7 @@ public:
     // Separate the expression into its parts
     const std::vector<sptr<Expr>> &split() { return original_list; };
     // Returns the precedence of this Expression binding. Lower values bind stronger
-    virtual u32 prec() { return 0; }
+    virtual u32 prec() { return precedence; }
 
     virtual bool matches( sptr<Expr> other ) override {
         return std::dynamic_pointer_cast<SeparableExpr>( other ) != nullptr;
@@ -342,7 +345,6 @@ class OperatorExpr : public SeparableExpr {
 protected:
     sptr<Expr> lvalue, rvalue;
     String op;
-    u32 precedence = 0; // TODO move into SeparableExpr
 
 public:
     OperatorExpr() {}
@@ -359,8 +361,6 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<OperatorExpr>( other ) != nullptr; }
 
-    u32 prec() override { return precedence; }
-
     String get_debug_repr() override {
         return "OP(" + ( lvalue ? lvalue->get_debug_repr() + " " : "" ) + op +
                ( rvalue ? " " + rvalue->get_debug_repr() : "" ) + ")";
@@ -369,9 +369,6 @@ public:
 
 // Specifies a new variable binding without doing anything with it
 class SimpleBindExpr : public SeparableExpr {
-protected:
-    u32 precedence = 0;
-
 public:
     sptr<Expr> expr;
 
@@ -386,16 +383,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SimpleBindExpr>( other ) != nullptr; }
 
-    u32 prec() override { return precedence; }
-
     String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")"; }
 };
 
 // Specifies a new symbol alias
 class AliasBindExpr : public SeparableExpr {
-protected:
-    u32 precedence = 0;
-
 public:
     sptr<Expr> expr;
 
@@ -410,17 +402,12 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<AliasBindExpr>( other ) != nullptr; }
 
-    u32 prec() override { return precedence; }
-
     String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")"; }
 };
 
 
 // If condition expression
 class IfExpr : public SeparableExpr {
-protected:
-    u32 precedence = 0;
-
 public:
     sptr<Expr> cond, expr_t;
 
@@ -436,8 +423,6 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfExpr>( other ) != nullptr; }
 
-    u32 prec() override { return precedence; }
-
     String get_debug_repr() override {
         return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " )";
     }
@@ -445,15 +430,11 @@ public:
 
 // If condition expression with a else clause
 class IfElseExpr : public SeparableExpr {
-protected:
-    u32 precedence = 0;
-
 public:
     sptr<Expr> cond, expr_t, expr_f;
 
     IfElseExpr() {}
-    IfElseExpr( sptr<IfExpr> if_expr, sptr<Expr> expr_f, u32 precedence,
-                std::vector<sptr<Expr>> &original_list ) {
+    IfElseExpr( sptr<IfExpr> if_expr, sptr<Expr> expr_f, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
         this->cond = if_expr->cond;
         this->expr_t = if_expr->expr_t;
         this->expr_f = expr_f;
@@ -465,10 +446,123 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfElseExpr>( other ) != nullptr; }
 
-    u32 prec() override { return precedence; }
-
     String get_debug_repr() override {
         return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " ELSE " +
                expr_f->get_debug_repr() + " )";
+    }
+};
+
+// Pre-condition loop expression
+class PreLoopExpr : public SeparableExpr {
+public:
+    sptr<Expr> cond, expr;
+    bool evaluation = true;
+
+    PreLoopExpr() {}
+    PreLoopExpr( sptr<Expr> cond, sptr<Expr> expr, bool evaluation, u32 precedence,
+                 std::vector<sptr<Expr>> &original_list ) {
+        this->cond = cond;
+        this->expr = expr;
+        this->evaluation = evaluation;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_UNIT; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PreLoopExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "PRE_LOOP(" + String( evaluation ? "TRUE: " : "FALSE: " ) + cond->get_debug_repr() + " DO " +
+               expr->get_debug_repr() + " )";
+    }
+};
+
+// Post-condition loop expression
+class PostLoopExpr : public SeparableExpr {
+public:
+    sptr<Expr> cond, expr;
+    bool evaluation = true;
+
+    PostLoopExpr() {}
+    PostLoopExpr( sptr<Expr> cond, sptr<Expr> expr, bool evaluation, u32 precedence,
+                  std::vector<sptr<Expr>> &original_list ) {
+        this->cond = cond;
+        this->expr = expr;
+        this->evaluation = evaluation;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return expr->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PostLoopExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "POST_LOOP(" + String( evaluation ? "TRUE: " : "FALSE: " ) + cond->get_debug_repr() + " DO " +
+               expr->get_debug_repr() + " )";
+    }
+};
+
+// Infinite loop expression
+class InfLoopExpr : public SeparableExpr {
+public:
+    sptr<Expr> expr;
+
+    InfLoopExpr() {}
+    InfLoopExpr( sptr<Expr> expr, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->expr = expr;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_NEVER; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<InfLoopExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "INF_LOOP(" + expr->get_debug_repr() + " )"; }
+};
+
+// Iterator loop expression
+class ItrLoopExpr : public SeparableExpr {
+public:
+    sptr<Expr> itr_expr, expr;
+
+    ItrLoopExpr() {}
+    ItrLoopExpr( sptr<Expr> itr_expr, sptr<Expr> expr, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->itr_expr = itr_expr;
+        this->expr = expr;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_UNIT; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ItrLoopExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "ITR_LOOP(" + itr_expr->get_debug_repr() + " DO " + expr->get_debug_repr() + " )";
+    }
+};
+
+// Pattern matching expression
+class MatchExpr : public SeparableExpr {
+public:
+    sptr<Expr> selector, cases;
+
+    MatchExpr() {}
+    MatchExpr( sptr<Expr> selector, sptr<Expr> cases, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->selector = selector;
+        this->cases = cases;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_UNIT; } // TODO update
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MatchExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "MATCH(" + selector->get_debug_repr() + " IN " + cases->get_debug_repr() + " )";
     }
 };

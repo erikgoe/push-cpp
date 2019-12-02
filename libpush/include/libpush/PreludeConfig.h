@@ -95,9 +95,14 @@ struct PreludeConfig {
     std::list<Operator> simple_bindings; // let keyword
 
     // TODO OOP constructs
-    // TODO control flow
+
     std::list<Operator> if_condition; // if keyword (without else)
     std::list<Operator> if_else_condition; // if keyword (with else)
+    std::list<std::pair<Operator, bool>> pre_loop; // loop with a pre-condition (including the required evaluation)
+    std::list<std::pair<Operator, bool>> post_loop; // loop with a post-condition (including the required evaluation)
+    std::list<Operator> inf_loop; // infinite loop with no condition
+    std::list<Operator> interator_loop; // loop which iterates over a range/collection
+    std::list<Operator> matching; // pattern matching construct
 
     std::list<FunctionDefinition> fn_declarations; // Function syntax
     std::list<FunctionDefinition> fn_definitions; // Function syntax

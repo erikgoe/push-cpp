@@ -130,13 +130,17 @@ define_mci_rule( IMPL_DEFINITION, triple_list, "impl", identifier -> type, expr 
 define_mci_rule( IMPL_DEFINITION, quintuple_list, "impl", identifier -> trait, "for", identifier -> type, expr -> body ); // impl-blocks which defines a trait for a struct
 define_mci_rule( SELF_EXPRESSION, single_list, "self" ); // the self keyword is the currently executed object in non-static methods
 */
+
 // Control flow
 define_mci_rule( IF_EXPRESSION, 20, rtl, triple_list, "if", expr -> condition, expr -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
 define_mci_rule( IF_ELSE_EXPRESSION, 21, rtl, triple_list, if_expr -> exec0, "else", expr -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and a alternative executable block
-/*define_mci_rule( WHILE_EXPRESSION, triple_list, "while", expr -> condition, expr -> exec ); // regular while loop
-define_mci_rule( FOR_EXPRESSION, triple_list, "for", expr -> condition, expr -> exec ); // for loop over an iterator
-define_mci_rule( MATCH_EXPRESSION, triple_list, "match", expr -> selector, expr -> body ); // match keyword which matches an expression
-*/
+define_mci_rule( PRE_CONDITION_LOOP, true, 20, rtl, triple_list, "while", expr -> condition, expr -> exec ); // regular while loop
+define_mci_rule( PRE_CONDITION_LOOP, false, 20, rtl, triple_list, "until", expr -> condition, expr -> exec ); // regular while loop with negated condition
+define_mci_rule( POST_CONDITION_LOOP, true, 20, rtl, quadruple_list, "do", expr -> exec, "while", expr -> condition ); // regular do-while loop
+define_mci_rule( POST_CONDITION_LOOP, false, 20, rtl, quadruple_list, "do", expr -> exec, "until", expr -> condition ); // regular do-while loop with negated condition
+define_mci_rule( INFINITE_LOOP, 20, rtl, double_list, "loop", expr -> exec ); // infinite loop
+define_mci_rule( ITR_LOOP_EXPRESSION, 20, rtl, triple_list, "for", expr -> iterator, expr -> exec ); // for loop over an iterator
+define_mci_rule( MATCH_EXPRESSION, 20, rtl, triple_list, "match", expr -> selector, expr -> cases ); // match keyword which matches an expression
 
 // Functions
 define_mci_rule( FUNCTION_CALL, double_list, identifier -> exec, tuple -> parameters ); // function call with parameters

@@ -62,9 +62,9 @@ struct AstCtx {
     Ast ast; // the current ast (so far)
 
     SymbolInfo next_symbol; // contains next id and current name_chain
-    TypeId next_type = TYPE_UNIT + 1; // the next type id
+    TypeId next_type = LAS_FIX_TYPE + 1; // the next type id
 
-    TypeId unit_type = TYPE_UNIT;
+    TypeId unit_type = LAS_FIX_TYPE;
     TypeId int_type = 0; // type of the integer trait
     TypeId str_type = 0; // type of the string trait
 

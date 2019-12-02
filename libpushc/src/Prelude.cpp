@@ -514,9 +514,58 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->if_else_condition.push_back( op );
-        } else if ( mci == "WHILE_EXPRESSION" ) { // TODO
-        } else if ( mci == "FOR_EXPRESSION" ) { // TODO
-        } else if ( mci == "MATCH_EXPRESSION" ) { // TODO
+        } else if ( mci == "PRE_CONDITION_LOOP" ) {
+            token = input->get_token();
+            bool evaluation;
+            if ( token.content == "true" ) {
+                evaluation = true;
+            } else if ( token.content == "false" ) {
+                evaluation = false;
+            } else {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            CONSUME_COMMA( token );
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->pre_loop.push_back( std::make_pair( op, evaluation ) );
+        } else if ( mci == "POST_CONDITION_LOOP" ) {
+            token = input->get_token();
+            bool evaluation;
+            if ( token.content == "true" ) {
+                evaluation = true;
+            } else if ( token.content == "false" ) {
+                evaluation = false;
+            } else {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            CONSUME_COMMA( token );
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->post_loop.push_back( std::make_pair( op, evaluation ) );
+        } else if ( mci == "INFINITE_LOOP" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->inf_loop.push_back( op );
+        } else if ( mci == "ITR_LOOP_EXPRESSION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->interator_loop.push_back( op );
+        } else if ( mci == "MATCH_EXPRESSION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->matching.push_back( op );
         } else if ( mci == "FUNCTION_DECLARATION" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {

@@ -98,6 +98,60 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         };
         a_ctx.rules.push_back( new_rule );
     }
+    for ( auto &sb : pc.pre_loop ) {
+        parse_rule( new_rule, lm, sb.first.syntax );
+        new_rule.precedence = sb.first.precedence;
+        new_rule.ltr = sb.first.ltr;
+        new_rule.matching_expr = make_shared<PreLoopExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<PreLoopExpr>( list[lm.at( "condition" )], list[lm.at( "exec" )], sb.second,
+                                             new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &sb : pc.post_loop ) {
+        parse_rule( new_rule, lm, sb.first.syntax );
+        new_rule.precedence = sb.first.precedence;
+        new_rule.ltr = sb.first.ltr;
+        new_rule.matching_expr = make_shared<PostLoopExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<PostLoopExpr>( list[lm.at( "condition" )], list[lm.at( "exec" )], sb.second,
+                                              new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &sb : pc.inf_loop ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.matching_expr = make_shared<InfLoopExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<InfLoopExpr>( list[lm.at( "exec" )], new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &sb : pc.interator_loop ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.matching_expr = make_shared<ItrLoopExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<ItrLoopExpr>( list[lm.at( "iterator" )], list[lm.at( "exec" )], new_rule.precedence,
+                                             list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &sb : pc.matching ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.matching_expr = make_shared<MatchExpr>();
+        new_rule.create = [=]( auto &list ) {
+            return make_shared<MatchExpr>( list[lm.at( "selector" )], list[lm.at( "cases" )], new_rule.precedence,
+                                           list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
 
     // Functions
     for ( auto &f : pc.fn_call ) {
