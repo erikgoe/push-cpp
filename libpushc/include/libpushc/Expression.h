@@ -24,7 +24,7 @@ using SymbolId = u32;
 // Constants
 constexpr TypeId TYPE_UNIT = 1; // The initial unit type
 constexpr TypeId TYPE_NEVER = 2; // The initial never type
-constexpr TypeId LAS_FIX_TYPE = TYPE_NEVER; // The initial unit type
+constexpr TypeId LAST_FIX_TYPE = TYPE_NEVER; // The initial unit type
 
 // Base class for expressions in the AST
 class Expr {
