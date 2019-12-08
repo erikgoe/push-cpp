@@ -148,6 +148,10 @@ String parse_string_literal( sptr<SourceInput> &input, Worker &w_ctx ) {
             return "(";
         else if ( token.content == "right_parenthesis" )
             return ")";
+        else if ( token.content == "left_bracket" )
+            return "[";
+        else if ( token.content == "right_bracket" )
+            return "]";
         else if ( token.content == "newline" )
             return "\n";
         else if ( token.content == "horizontal_tab" )
@@ -343,6 +347,10 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 PARSE_LITERAL( str );
                 PARSE_LITERAL( str2 );
                 conf->token_conf.term.push_back( std::make_pair( str, str2 ) );
+            } else if ( token.content == "array" ) {
+                PARSE_LITERAL( str );
+                PARSE_LITERAL( str2 );
+                conf->token_conf.array.push_back( std::make_pair( str, str2 ) );
             } else { // Unknown token
                 create_prelude_error_msg( w_ctx, token );
                 return false;
@@ -644,7 +652,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->member_access_op.push_back( op );
-        } else if ( mci == "ARRAY_SPECIFIER" ) { // TODO
+        } else if ( mci == "ARRAY_ACCESS" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->array_access_op.push_back( op );
         } else if ( mci == "NEW_OPERATOR" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {

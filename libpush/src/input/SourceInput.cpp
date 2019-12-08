@@ -207,6 +207,16 @@ void SourceInput::configure( const TokenConfig &cfg ) {
         insert_in_range( tc.first, CharRangeType::op );
         insert_in_range( tc.second, CharRangeType::op );
     }
+    for ( auto &tc : cfg.array ) {
+        if ( tc.first.size() > max_op_size )
+            max_op_size = tc.first.size();
+        if ( tc.second.size() > max_op_size )
+            max_op_size = tc.second.size();
+        add_sticky_token_to_all( tc.first, Token::Type::array_begin );
+        add_sticky_token_to_all( tc.second, Token::Type::array_end );
+        insert_in_range( tc.first, CharRangeType::op );
+        insert_in_range( tc.second, CharRangeType::op );
+    }
     for ( auto &lm : cfg.level_map ) {
         for ( auto &tc : lm.second ) {
             if ( tc.second.begin_token.size() > max_op_size )

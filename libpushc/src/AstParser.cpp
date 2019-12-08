@@ -188,11 +188,13 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 w_ctx.print_msg<MessageType::err_unexpected_eof_after>( MessageInfo( 0, FmtStr::Color::Red ) );
             }
             break;
-        } else if ( t.type == TT::block_begin || t.type == TT::term_begin ) {
+        } else if ( t.type == TT::block_begin || t.type == TT::term_begin || t.type == TT::array_begin ) {
             // TODO change a_ctx.next_symbol.name_chain to procede into new scope
             input->get_token(); // consume
-            expr_list.push_back(
-                parse_scope( input, w_ctx, a_ctx, ( t.type == TT::block_begin ? TT::block_end : TT::term_end ), &t ) );
+            expr_list.push_back( parse_scope(
+                input, w_ctx, a_ctx,
+                ( t.type == TT::block_begin ? TT::block_end : t.type == TT::term_begin ? TT::term_end : TT::array_end ),
+                &t ) );
         } else if ( t.type == TT::identifier ) {
             input->get_token(); // consume
             if ( a_ctx.literals_map.find( t.content ) != a_ctx.literals_map.end() ) {
@@ -304,7 +306,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                                           ( rule_length < deep_expr_list.size() ? deep_expr_list.end() - rule_length
                                                                                 : deep_expr_list.begin() ) );
                         deep_expr_list.erase( deep_expr_list.begin(), deep_expr_list.end() - rule_length );
-                        expr_list.push_back( rule.create( deep_expr_list ) );
+                        expr_list.push_back( rule.create( deep_expr_list, w_ctx ) );
 
                         recheck = true;
                         break;
@@ -347,6 +349,11 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
             block->sub_expr = expr_list.empty() ? nullptr : expr_list.back();
             return block;
         }
+    } else if ( end_token == TT::array_end ) {
+        auto block = make_shared<ArraySpecifierExpr>();
+        block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
+        block->sub_expr = expr_list;
+        return block;
     } else {
         LOG_ERR( "Try to parse a block which is no block" );
         return nullptr;

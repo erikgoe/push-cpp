@@ -29,7 +29,7 @@ struct SyntaxRule {
     bool front_matches( sptr<Expr> &front );
 
     // Create a new expression according to this rule.
-    std::function<sptr<Expr>( std::vector<sptr<Expr>> & )> create;
+    std::function<sptr<Expr>( std::vector<sptr<Expr>> &, Worker &w_ctx )> create;
 };
 
 // Maps syntax item labels to their position in a syntax

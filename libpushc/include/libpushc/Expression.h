@@ -134,7 +134,7 @@ public:
     String get_debug_repr() override {
         String str = "BLOCK { ";
         for ( auto &s : sub_expr )
-            str += s->get_debug_repr() + ", ";
+            str += s->get_debug_repr();
         return str + " }";
     }
 };
@@ -167,6 +167,23 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TermExpr>( other ) != nullptr; }
 
     String get_debug_repr() override { return "TERM( " + sub_expr->get_debug_repr() + " )"; }
+};
+
+// A array specifier with multiple expressions
+class ArraySpecifierExpr : public Expr {
+public:
+    std::vector<sptr<Expr>> sub_expr;
+
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<ArraySpecifierExpr>( other ) != nullptr;
+    }
+
+    String get_debug_repr() override {
+        String str = "ARRAY[ ";
+        for ( auto &s : sub_expr )
+            str += s->get_debug_repr();
+        return str + " ]";
+    }
 };
 
 // A simple symbol/identifier (variable, function, etc.)
@@ -564,5 +581,25 @@ public:
 
     String get_debug_repr() override {
         return "MATCH(" + selector->get_debug_repr() + " IN " + cases->get_debug_repr() + " )";
+    }
+};
+
+// Relative index access
+class ArrayAccessExpr : public SeparableExpr {
+public:
+    sptr<Expr> value, index;
+
+    ArrayAccessExpr() {}
+    ArrayAccessExpr( sptr<Expr> value, sptr<Expr> index, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->value = value;
+        this->index = index;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ArrayAccessExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "ARR_ACC " + value->get_debug_repr() + "[" + index->get_debug_repr() + "]";
     }
 };

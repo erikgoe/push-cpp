@@ -53,6 +53,8 @@ struct Token {
         block_end, // end of a block "}"
         term_begin, // begin of a term "("
         term_end, // end of a term ")"
+        array_begin, // begin of a array "["
+        array_end, // end of a array "]"
 
         comment_begin,
         comment_end,
@@ -112,31 +114,48 @@ struct Token {
                                      ? "end of block"
                                      : type == Type::term_begin || type == Type::term_end
                                            ? "parenthesis"
-                                           : type == Type::comment_begin
-                                                 ? "begin of comment"
-                                                 : type == Type::comment_end
-                                                       ? "end of comment"
-                                                       : type == Type::number
-                                                             ? "number literal"
-                                                             : type == Type::encoded_char
-                                                                   ? "encoded character literal"
-                                                                   : type == Type::string_begin
-                                                                         ? "begin of string"
-                                                                         : type == Type::string_end
-                                                                               ? "end of string"
-                                                                               : type == Type::op
-                                                                                     ? "operator"
-                                                                                     : type == Type::keyword
-                                                                                           ? "keyword"
-                                                                                           : type == Type::identifier
-                                                                                                 ? "identifier"
-                                                                                                 : type == Type::eof
-                                                                                                       ? "end of file"
+                                           : type == Type::array_begin || type == Type::array_end
+                                                 ? "array access"
+                                                 : type == Type::comment_begin
+                                                       ? "begin of comment"
+                                                       : type == Type::comment_end
+                                                             ? "end of comment"
+                                                             : type == Type::number
+                                                                   ? "number literal"
+                                                                   : type == Type::encoded_char
+                                                                         ? "encoded character literal"
+                                                                         : type == Type::string_begin
+                                                                               ? "begin of string"
+                                                                               : type == Type::string_end
+                                                                                     ? "end of string"
+                                                                                     : type == Type::op
+                                                                                           ? "operator"
+                                                                                           : type == Type::keyword
+                                                                                                 ? "keyword"
+                                                                                                 : type == Type::
+                                                                                                               identifier
+                                                                                                       ? "identifier"
                                                                                                        : type == Type::
-                                                                                                                     ws
-                                                                                                             ? "whitesp"
-                                                                                                               "ace"
-                                                                                                             : "token";
+                                                                                                                     eof
+                                                                                                             ? "end of "
+                                                                                                               "file"
+                                                                                                             : type == Type::
+                                                                                                                           ws
+                                                                                                                   ? "w"
+                                                                                                                     "h"
+                                                                                                                     "i"
+                                                                                                                     "t"
+                                                                                                                     "e"
+                                                                                                                     "s"
+                                                                                                                     "p"
+                                                                                                                     "a"
+                                                                                                                     "c"
+                                                                                                                     "e"
+                                                                                                                   : "t"
+                                                                                                                     "o"
+                                                                                                                     "k"
+                                                                                                                     "e"
+                                                                                                                     "n";
     }
 };
 
@@ -146,6 +165,7 @@ struct TokenConfig {
     std::vector<String> list_divider;
     std::vector<std::pair<String, String>> block; // begin => end pair
     std::vector<std::pair<String, String>> term; // begin => end pair
+    std::vector<std::pair<String, String>> array; // begin => end pair
 
     // Helper struct for level dependent begin-& end-pair
     struct LevelToken {

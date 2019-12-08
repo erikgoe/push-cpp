@@ -113,7 +113,7 @@ struct PreludeConfig {
     String scope_access_operator; // THE scope access operator
     std::list<Operator> scope_access_op; // how other scopes may be accessed
     std::list<Operator> member_access_op; // how sub-elements may be accessed
-    // TODO array access
+    std::list<Operator> array_access_op; // access with a index
 
     std::list<TraitOperator> operators; // all general operators
     std::list<Operator> reference_op; // used for borrowing

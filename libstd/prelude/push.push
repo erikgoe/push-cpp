@@ -73,7 +73,7 @@
  */
 
 // Most basic rules
-define_mci_rule( EXPRESSION_RULES, divide semicolon, list comma, block left_brace right_brace, term left_parenthesis right_parenthesis ); // list of rules for expressions: semicolons divide expressions/statements, braces combine a block, parenthesis combine a term
+define_mci_rule( EXPRESSION_RULES, divide semicolon, list comma, block left_brace right_brace, term left_parenthesis right_parenthesis, array left_bracket right_bracket ); // list of rules for expressions: semicolons divide expressions/statements, braces combine a block, parenthesis combine a term
 define_mci_rule( IDENTIFIER_RULES, no_spaces, unused begin "_" ); // define rules for identifiers
 define_mci_rule( IDENTIFIER_CASE, functions snake, method snake, variables snake, modules snake, struct pascal, trait pascal ); // define how which identifiers have to be written
 
@@ -154,7 +154,7 @@ define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, double_list, fn_hea
 define_mci_rule( SCOPE_ACCESS, 1, ltr, triple_list, expr -> base, "::" -> op, expr -> name ); // scope access is a symbol extension
 define_mci_rule( SCOPE_ACCESS, 1, rtl, double_list, "::" -> op, expr -> name ); // global scope access
 define_mci_rule( MEMBER_ACCESS, 1, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of a object
-//define_mci_rule( ARRAY_SPECIFIER, 1, ltr, triple_list, "[" -> lop, expr -> value, "]" -> rop ); // array appending to a type or variable. The size may be a number or a static variable, etc.
+define_mci_rule( ARRAY_ACCESS, 1, ltr, double_list, expr -> value, array_spec -> index ); // array access with a type or variable.
 
 // Operators
 // NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple)
@@ -207,8 +207,6 @@ define_mci_rule( NEW_OPERATOR, std::op::shift_right_assign, 16, rtl, triple_list
 define_mci_rule( NEW_OPERATOR, std::op::default_assign, 16, rtl, triple_list, expr -> lvalue, ":=" -> op, expr -> rvalue ); // simple default operator assignment
 
 define_mci_rule( NEW_OPERATOR, std::op::relation, 17, rtl, triple_list, expr -> lvalue, "=>" -> op, expr -> rvalue ); // pair two variables with a relation
-//define_mci_rule( NEW_OPERATOR, std::op::comma_combine, 18, lrt, triple_list, expr -> lvalue, "," -> op, expr -> rvalue ); // the comma-linking operator
-//define_mci_rule( NEW_OPERATOR, std::op::comma_end, 18, lrt, double_list, expr -> lvalue, "," -> op ); // the comma-linking operator which enables a ending comma in e. g. structs
 
 define_mci_rule( REFERENCE_TYPE, 2, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
 define_mci_rule( TYPE_OF, 2, rtl, double_list, "type_of" -> op, expr -> type ); // define the type_of operator
