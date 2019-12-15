@@ -525,9 +525,9 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
         } else if ( mci == "PRE_CONDITION_LOOP" ) {
             token = input->get_token();
             bool evaluation;
-            if ( token.content == "true" ) {
+            if ( token.content == "TRUE" ) {
                 evaluation = true;
-            } else if ( token.content == "false" ) {
+            } else if ( token.content == "FALSE" ) {
                 evaluation = false;
             } else {
                 create_prelude_error_msg( w_ctx, token );
@@ -542,9 +542,9 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
         } else if ( mci == "POST_CONDITION_LOOP" ) {
             token = input->get_token();
             bool evaluation;
-            if ( token.content == "true" ) {
+            if ( token.content == "TRUE" ) {
                 evaluation = true;
-            } else if ( token.content == "false" ) {
+            } else if ( token.content == "FALSE" ) {
                 evaluation = false;
             } else {
                 create_prelude_error_msg( w_ctx, token );
@@ -695,27 +695,29 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->type_op.push_back( op );
-        } else if ( mci == "RANGE_DEFINITION_EXC" || mci == "RANGE_DEFINITION_FROM_EXC" ||
-                    mci == "RANGE_DEFINITION_TO_EXC" || mci == "RANGE_DEFINITION_INC" ||
-                    mci == "RANGE_DEFINITION_TO_INC" ) {
+        } else if ( mci == "RANGE_DEFINITION" ) {
+            token = input->get_token();
+            RangeOperator::Type type;
+            if ( token.content == "EXCLUDING" )
+                type = RangeOperator::Type::exclude;
+            else if ( token.content == "FROM_EXCLUDING" )
+                type = RangeOperator::Type::exclude_from;
+            else if ( token.content == "TO_EXCLUDING" )
+                type = RangeOperator::Type::exclude_to;
+            else if ( token.content == "INCLUDING" )
+                type = RangeOperator::Type::include;
+            else if ( token.content == "TO_INCLUDING" )
+                type = RangeOperator::Type::include_to;
+            else {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            CONSUME_COMMA( token );
+
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {
                 return false;
             }
-
-            RangeOperator::Type type;
-            if ( mci == "RANGE_DEFINITION_EXC" )
-                type = RangeOperator::Type::exclude;
-            else if ( mci == "RANGE_DEFINITION_FROM_EXC" )
-                type = RangeOperator::Type::exclude_from;
-            else if ( mci == "RANGE_DEFINITION_TO_EXC" )
-                type = RangeOperator::Type::exclude_to;
-            else if ( mci == "RANGE_DEFINITION_INC" )
-                type = RangeOperator::Type::include;
-            else if ( mci == "RANGE_DEFINITION_TO_INC" )
-                type = RangeOperator::Type::include_to;
-            else
-                type = RangeOperator::Type::count; // never reached
 
             conf->range_op.push_back( RangeOperator{ type, op } );
         } else if ( mci == "BASE_TRAIT" ) {

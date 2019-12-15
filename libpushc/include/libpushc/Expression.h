@@ -609,9 +609,47 @@ public:
         this->original_list = original_list;
     }
 
+    TypeId get_type() override { return TYPE_UNIT; } // TODO update
+
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ArrayAccessExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
         return "ARR_ACC " + value->get_debug_repr() + "[" + index->get_debug_repr() + "]";
+    }
+};
+
+// Define a range of values
+class RangeExpr : public SeparableExpr {
+public:
+    sptr<Expr> from, to;
+    RangeOperator::Type range_type;
+    TypeId type; // TODO update
+
+    RangeExpr() {}
+    RangeExpr( sptr<Expr> from, sptr<Expr> to, RangeOperator::Type range_type, u32 precedence,
+               std::vector<sptr<Expr>> &original_list ) {
+        this->from = from;
+        this->to = to;
+        this->range_type = range_type;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return type; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<RangeExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        String rt = range_type == RangeOperator::Type::exclude
+                        ? "EXCLUDE"
+                        : range_type == RangeOperator::Type::exclude_from
+                              ? "EXCLUDE_FROM"
+                              : range_type == RangeOperator::Type::exclude_to
+                                    ? "EXCLUDE_TO"
+                                    : range_type == RangeOperator::Type::include
+                                          ? "INCLUDE"
+                                          : range_type == RangeOperator::Type::include_to ? "INCLUDE_TO" : "INVALID";
+        return "RANGE " + rt + " " + ( from ? from->get_debug_repr() : "" ) + ( from && to ? ".." : "" ) +
+               ( to ? to->get_debug_repr() : "" );
     }
 };

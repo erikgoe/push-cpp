@@ -203,6 +203,18 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         a_ctx.rules.push_back( new_rule );
     }
 
+    // Ranges
+    for ( auto &sb : pc.range_op ) {
+        parse_rule( new_rule, lm, sb.op.syntax );
+        new_rule.precedence = sb.op.precedence;
+        new_rule.ltr = sb.op.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<RangeExpr>( ( lm.find( "lvalue" ) != lm.end() ? list[lm.at( "lvalue" )] : nullptr ),
+                                           ( lm.find( "rvalue" ) != lm.end() ? list[lm.at( "rvalue" )] : nullptr ),
+                                           sb.type, new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
 
     // Operators
     for ( auto &o : pc.operators ) {
@@ -219,5 +231,6 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     }
 
     // Sort rules after precedence
-    std::sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto &l, auto &r ) { return l.precedence > r.precedence; } );
+    std::stable_sort( a_ctx.rules.begin(), a_ctx.rules.end(),
+                      []( auto &l, auto &r ) { return l.precedence > r.precedence; } );
 }
