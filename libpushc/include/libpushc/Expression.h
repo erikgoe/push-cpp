@@ -273,8 +273,18 @@ protected:
 public:
     virtual ~SeparableExpr() {}
 
-    // Separate the expression into its parts
-    const std::vector<sptr<Expr>> &split() { return original_list; };
+    // Separates the expression and all its sub expressions depending on their precedence
+    void split_prepend_recursively( std::vector<sptr<Expr>> &rev_list, u32 prec, bool ltr ) {
+        for ( auto expr_itr = original_list.rbegin(); expr_itr != original_list.rend(); expr_itr++ ) {
+            auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
+            if ( s_expr && ( prec < s_expr->prec() || ( !ltr && prec == s_expr->prec() ) ) ) {
+                s_expr->split_prepend_recursively( rev_list, prec, ltr );
+            } else {
+                rev_list.push_back( *expr_itr );
+            }
+        }
+    }
+
     // Returns the precedence of this Expression binding. Lower values bind stronger
     virtual u32 prec() { return precedence; }
 

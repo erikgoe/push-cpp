@@ -20,13 +20,9 @@ struct SyntaxRule {
     u32 precedence = 0; // precedence of this syntax matching
     bool ltr = true; // associativity
     std::vector<sptr<Expr>> expr_list; // list which has to be matched against
-    sptr<Expr> matching_expr; // the expression to translate into
 
-    // Checks if the end of a expression list matches this syntax rule (excluding the first element)
-    bool end_matches( std::vector<sptr<Expr>> &list );
-
-    // Checks if the first element of the syntax rule matches a element
-    bool front_matches( sptr<Expr> &front );
+    // Checks if a reversed expression list matches this syntax rule
+    bool matches_reversed( std::vector<sptr<Expr>> &rev_list );
 
     // Create a new expression according to this rule.
     std::function<sptr<Expr>( std::vector<sptr<Expr>> &, Worker &w_ctx )> create;
