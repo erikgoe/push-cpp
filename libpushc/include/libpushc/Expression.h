@@ -61,7 +61,7 @@ public:
     }
 
     String get_debug_repr() override {
-        return "TOKEN " + to_string( static_cast<int>( t.type ) ) + " \"" + t.content + "\"";
+        return "TOKEN " + to_string( static_cast<int>( t.type ) ) + " \"" + t.content + "\" ";
     }
 };
 
@@ -274,11 +274,12 @@ public:
     virtual ~SeparableExpr() {}
 
     // Separates the expression and all its sub expressions depending on their precedence
-    void split_prepend_recursively( std::vector<sptr<Expr>> &rev_list, u32 prec, bool ltr ) {
+    void split_prepend_recursively( std::vector<sptr<Expr>> &rev_list, u32 prec, bool ltr, u8 rule_length ) {
         for ( auto expr_itr = original_list.rbegin(); expr_itr != original_list.rend(); expr_itr++ ) {
             auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
-            if ( s_expr && ( prec < s_expr->prec() || ( !ltr && prec == s_expr->prec() ) ) ) {
-                s_expr->split_prepend_recursively( rev_list, prec, ltr );
+            if ( rev_list.size() < rule_length && s_expr &&
+                 ( prec < s_expr->prec() || ( !ltr && prec == s_expr->prec() ) ) ) {
+                s_expr->split_prepend_recursively( rev_list, prec, ltr, rule_length );
             } else {
                 rev_list.push_back( *expr_itr );
             }
@@ -461,9 +462,10 @@ public:
     sptr<Expr> cond, expr_t, expr_f;
 
     IfElseExpr() {}
-    IfElseExpr( sptr<IfExpr> if_expr, sptr<Expr> expr_f, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
-        this->cond = if_expr->cond;
-        this->expr_t = if_expr->expr_t;
+    IfElseExpr( sptr<Expr> cond, sptr<Expr> expr_t, sptr<Expr> expr_f, u32 precedence,
+                std::vector<sptr<Expr>> &original_list ) {
+        this->cond = cond;
+        this->expr_t = expr_t;
         this->expr_f = expr_f;
         this->precedence = precedence;
         this->original_list = original_list;

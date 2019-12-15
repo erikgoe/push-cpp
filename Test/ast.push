@@ -2,6 +2,21 @@
 
 /// Basic function without anything special
 function {
-    let var[4] = [0,1,2,3];
-    var[2]
+    if true {
+        let val = 4;
+    } else {
+        let val = 3;
+    }
+
+    if true 
+        let val = 4;
+    if false
+        let val = 6
+    else
+        let val = 5;
+    let var = (if true 4 else 5);
+    
+    if true
+        let v = 3
+    else let v = 2;
 }

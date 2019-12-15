@@ -281,12 +281,12 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 std::vector<sptr<Expr>> rev_deep_expr_list;
                 size_t cutout_ctr = 0;
                 for ( auto expr_itr = expr_list.rbegin();
-                      expr_itr != expr_list.rend() && rev_deep_expr_list.size() < rule_length; expr_itr++ ) {
+                      expr_itr != expr_list.rend(); expr_itr++ ) {
                     auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
-                    if ( cutout_ctr >= skip_ctr && s_expr &&
+                    if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
                          ( rule.precedence < s_expr->prec() || ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
                         // Split expr
-                        s_expr->split_prepend_recursively( rev_deep_expr_list, rule.precedence, rule.ltr );
+                        s_expr->split_prepend_recursively( rev_deep_expr_list, rule.precedence, rule.ltr, rule_length );
                     } else { // Don't split expr
                         rev_deep_expr_list.push_back( *expr_itr );
                     }
@@ -295,7 +295,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
 
                 // Check if syntax matches
                 if ( rule.matches_reversed( rev_deep_expr_list ) ) {
-                    expr_list.resize( expr_list.size() - cutout_ctr );
+                    expr_list.clear();
                     expr_list.insert( expr_list.end(), rev_deep_expr_list.rbegin(),
                                       rev_deep_expr_list.rend() - rule_length );
                     rev_deep_expr_list.erase( rev_deep_expr_list.begin() + rule_length, rev_deep_expr_list.end() );

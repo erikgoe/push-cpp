@@ -91,8 +91,8 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.precedence = sb.precedence;
         new_rule.ltr = sb.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<IfElseExpr>( std::dynamic_pointer_cast<IfExpr>( list[lm.at( "exec0" )] ),
-                                            list[lm.at( "exec1" )], new_rule.precedence, list );
+            return make_shared<IfElseExpr>( list[lm.at( "condition" )], list[lm.at( "exec0" )], list[lm.at( "exec1" )],
+                                            new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }
