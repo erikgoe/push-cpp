@@ -592,7 +592,7 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MatchExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "MATCH(" + selector->get_debug_repr() + " IN " + cases->get_debug_repr() + " )";
+        return "MATCH(" + selector->get_debug_repr() + " WITH " + cases->get_debug_repr() + " )";
     }
 };
 

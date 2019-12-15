@@ -738,6 +738,10 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 conf->integer_trait = token.content;
             } else if ( type == "STRING" ) {
                 conf->string_trait = token.content;
+            } else if ( type == "IMPLICATION" ) {
+                conf->implication_trait = token.content;
+            } else if ( type == "NEVER" ) {
+                conf->never_trait = token.content;
             }
         } else if ( mci == "SPECIAL_TYPE" ) {
             token = input->get_token();

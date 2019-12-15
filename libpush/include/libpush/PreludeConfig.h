@@ -122,8 +122,10 @@ struct PreludeConfig {
     std::list<Operator> type_op; // special type defining operator
     std::list<RangeOperator> range_op; // any possible range
 
-    String integer_trait; // Basic trait to define a integer
+    String integer_trait; // Basic trait to define an integer
     String string_trait; // Basic trait to define a string
+    String implication_trait; // Basic trait to define an implication
+    String never_trait; // Basic trait to define the never type
     std::map<String, String> special_types; // maps special type keywords/operators to their meaning
     std::map<String, u8> memblob_types; // maps type names to their memory size
     std::map<String, std::pair<String, u64>> literals; // each literal keyword is mapped to its type and memory_value
