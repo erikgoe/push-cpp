@@ -57,7 +57,7 @@ struct TraitOperator {
 struct FunctionDefinition {
     String function_trait;
     String function_fn; // function in the trait
-    Syntax syntax;
+    Operator op;
 };
 
 // Operator to describe a range
@@ -95,6 +95,7 @@ struct PreludeConfig {
     std::list<Operator> simple_bindings; // let keyword
 
     // TODO OOP constructs
+    std::list<Operator> structs; // struct definition
 
     std::list<Operator> if_condition; // if keyword (without else)
     std::list<Operator> if_else_condition; // if keyword (with else)
@@ -106,7 +107,7 @@ struct PreludeConfig {
 
     std::list<FunctionDefinition> fn_declarations; // Function syntax
     std::list<FunctionDefinition> fn_definitions; // Function syntax
-    std::list<Syntax> fn_call; // Function call syntax
+    std::list<Operator> fn_call; // Function call syntax
 
     // TODO templates
 

@@ -507,7 +507,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             }
             conf->simple_bindings.push_back( op );
         } else if ( mci == "SELF_EXPRESSION" ) { // TODO
-        } else if ( mci == "STRUCT_DEFINITION" ) { // TODO
+        } else if ( mci == "STRUCT_DEFINITION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->structs.push_back( op );
         } else if ( mci == "TRAIT_DEFINITION" ) { // TODO
         } else if ( mci == "IMPL_DEFINITION" ) { // TODO
         } else if ( mci == "IF_EXPRESSION" ) {
@@ -591,15 +596,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             auto function = token.content;
             CONSUME_COMMA( token );
 
-            Syntax syntax;
-            auto list_size = parse_list_size( input );
-            CONSUME_COMMA( token );
-
-            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
                 return false;
             }
 
-            conf->fn_declarations.push_back( FunctionDefinition{ trait, function, syntax } );
+            conf->fn_declarations.push_back( FunctionDefinition{ trait, function, op } );
         } else if ( mci == "FUNCTION_DEFINITION" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {
@@ -617,25 +619,19 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             auto function = token.content;
             CONSUME_COMMA( token );
 
-            Syntax syntax;
-            auto list_size = parse_list_size( input );
-            CONSUME_COMMA( token );
-
-            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
                 return false;
             }
 
-            conf->fn_definitions.push_back( FunctionDefinition{ trait, function, syntax } );
+            conf->fn_definitions.push_back( FunctionDefinition{ trait, function, op } );
         } else if ( mci == "FUNCTION_CALL" ) {
-            Syntax syntax;
-            auto list_size = parse_list_size( input );
-            CONSUME_COMMA( token );
-
-            if ( !parse_syntax( syntax, conf, list_size, input, w_ctx ) ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
                 return false;
             }
 
-            conf->fn_call.push_back( syntax );
+            conf->fn_call.push_back( op );
         } else if ( mci == "DEFINE_TEMPLATE" ) { // TODO
         } else if ( mci == "SCOPE_ACCESS" ) {
             Operator op;

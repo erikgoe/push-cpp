@@ -303,9 +303,10 @@ class FuncDecExpr : public SeparableExpr {
 
 public:
     FuncDecExpr() {}
-    FuncDecExpr( sptr<SymbolExpr> symbol, TypeId type, std::vector<sptr<Expr>> &original_list ) {
+    FuncDecExpr( sptr<SymbolExpr> symbol, TypeId type, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
+        this->precedence = precedence;
         this->original_list = original_list;
     }
 
@@ -326,11 +327,12 @@ class FuncExpr : public SeparableExpr {
 public:
     FuncExpr() {}
     FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<TupleExpr> parameters, sptr<CompletedExpr> block,
-              std::vector<sptr<Expr>> &original_list ) {
+              u32 precedence, std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
         this->parameters = parameters;
         body = block;
+        this->precedence = precedence;
         this->original_list = original_list;
     }
 
@@ -351,11 +353,12 @@ public:
     sptr<SymbolExpr> symbol;
 
     FuncCallExpr() {}
-    FuncCallExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<TupleExpr> parameters,
+    FuncCallExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<TupleExpr> parameters, u32 precedence,
                   std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
         this->parameters = parameters;
+        this->precedence = precedence;
         this->original_list = original_list;
     }
 
@@ -651,5 +654,29 @@ public:
                                           : range_type == RangeOperator::Type::include_to ? "INCLUDE_TO" : "INVALID";
         return "RANGE " + rt + " " + ( from ? from->get_debug_repr() : "" ) + ( from && to ? ".." : "" ) +
                ( to ? to->get_debug_repr() : "" );
+    }
+};
+
+// Struct definition/usage
+class StructExpr : public SeparableExpr {
+public:
+    sptr<Expr> name;
+    sptr<CompletedExpr> body;
+
+    StructExpr() {}
+    StructExpr( sptr<Expr> name, sptr<CompletedExpr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->name = name;
+        this->body = body;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_UNIT; } // TODO update
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<StructExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "STRUCT " + ( name ? name->get_debug_repr() : "<anonymous>" ) + " " +
+               ( body ? body->get_debug_repr() : "<undefined>" );
     }
 };

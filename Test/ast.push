@@ -2,5 +2,12 @@
 
 /// Basic function without anything special
 function {
-    1..5
+    // Anonymous struct
+    let a:struct = { name = "john", age=21 };
+}
+
+// Global struct
+struct A {
+    val1:int,
+    val2:float
 }
