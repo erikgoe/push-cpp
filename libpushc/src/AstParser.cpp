@@ -305,10 +305,17 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
         block->sub_expr = expr_list;
         return block;
     } else if ( end_token == TT::block_end ) {
-        auto block = make_shared<BlockExpr>();
-        block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
-        block->sub_expr = expr_list;
-        return block;
+        if ( expr_list.size() == 1 && std::dynamic_pointer_cast<CommaExpr>( expr_list.front() ) ) { // set
+            auto block = make_shared<SetExpr>();
+            block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
+            block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->exprs;
+            return block;
+        } else { // block
+            auto block = make_shared<BlockExpr>();
+            block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
+            block->sub_expr = expr_list;
+            return block;
+        }
     } else if ( end_token == TT::term_end ) {
         if ( expr_list.size() > 1 ) { // malformed "tuple" or so
             w_ctx.print_msg<MessageType::err_term_with_multiple_expr>(

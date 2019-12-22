@@ -33,6 +33,8 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<CompletedExpr>() );
         } else if ( expr.first == "tuple" ) {
             sr.expr_list.push_back( make_shared<TupleExpr>() );
+        } else if ( expr.first == "set" ) {
+            sr.expr_list.push_back( make_shared<SetExpr>() );
         } else if ( expr.first == "fn_head" ) {
             sr.expr_list.push_back( make_shared<FuncCallExpr>() );
         } else if ( expr.first == "integer" ) {

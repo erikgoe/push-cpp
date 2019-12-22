@@ -143,6 +143,24 @@ public:
     }
 };
 
+// A set with multiple elements
+class SetExpr : public Expr {
+public:
+    std::vector<sptr<Expr>> sub_expr;
+    TypeId type = 0;
+
+    TypeId get_type() override { return type; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SetExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        String str = "SET { ";
+        for ( auto &s : sub_expr )
+            str += s->get_debug_repr() + ", ";
+        return str + "}";
+    }
+};
+
 // A term with a sub expressions
 class TermExpr : public Expr {
 public:
