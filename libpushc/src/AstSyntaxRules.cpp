@@ -90,6 +90,28 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         };
         a_ctx.rules.push_back( new_rule );
     }
+    for ( auto &sb : pc.trait ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<TraitExpr>( list[lm.at( "name" )],
+                                           std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
+                                           new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &sb : pc.impl ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<ImplExpr>(
+                list[lm.at( "type" )], ( lm.find( "trait" ) != lm.end() ? list[lm.at( "trait" )] : nullptr ),
+                std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
 
     // Control flow
     for ( auto &sb : pc.if_condition ) {

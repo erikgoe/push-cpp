@@ -94,9 +94,12 @@ struct PreludeConfig {
     std::list<Operator> alias_bindings; // use keyword
     std::list<Operator> simple_bindings; // let keyword
 
-    // TODO OOP constructs
+    // OOP constructs
     std::list<Operator> structs; // struct definition
+    std::list<Operator> trait; // struct definition
+    std::list<Operator> impl; // struct definition
 
+    // Control flow
     std::list<Operator> if_condition; // if keyword (without else)
     std::list<Operator> if_else_condition; // if keyword (with else)
     std::list<std::pair<Operator, bool>> pre_loop; // loop with a pre-condition (including the required evaluation)
@@ -105,17 +108,20 @@ struct PreludeConfig {
     std::list<Operator> interator_loop; // loop which iterates over a range/collection
     std::list<Operator> matching; // pattern matching construct
 
+    // Functions
     std::list<FunctionDefinition> fn_declarations; // Function syntax
     std::list<FunctionDefinition> fn_definitions; // Function syntax
     std::list<Operator> fn_call; // Function call syntax
 
     // TODO templates
 
+    // Special access
     String scope_access_operator; // THE scope access operator
     std::list<Operator> scope_access_op; // how other scopes may be accessed
     std::list<Operator> member_access_op; // how sub-elements may be accessed
     std::list<Operator> array_access_op; // access with a index
 
+    // Special operations
     std::list<TraitOperator> operators; // all general operators
     std::list<Operator> reference_op; // used for borrowing
     std::list<Operator> type_of_op; // returns the type of a expression

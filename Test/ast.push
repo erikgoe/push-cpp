@@ -1,13 +1,17 @@
 #prelude(push)
 
-/// Basic function without anything special
-function {
-    // Anonymous struct
-    let a:struct = { name = "john", age=21 };
+trait Addable {
+
 }
 
-// Global struct
 struct A {
-    val1:int,
-    val2:float
+
+}
+
+impl A {
+
+}
+
+impl Addable for A {
+    
 }

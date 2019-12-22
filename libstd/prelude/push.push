@@ -125,11 +125,9 @@ define_mci_rule( LET_STATEMENT, 19, rtl, double_list, "let", expr -> expression 
 // OOP constructs
 define_mci_rule( STRUCT_DEFINITION, 1, rtl, triple_list, "struct", identifier -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
 define_mci_rule( STRUCT_DEFINITION, 1, rtl, single_list, "struct" ); // anonymous struct
-/*define_mci_rule( TRAIT_DEFINITION, 1, rtl, triple_list, "trait", identifier -> name, expr -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
+define_mci_rule( TRAIT_DEFINITION, 1, rtl, triple_list, "trait", identifier -> name, expr -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
 define_mci_rule( IMPL_DEFINITION, 1, rtl, triple_list, "impl", identifier -> type, expr -> body ); // impl-blocks which defines methods for a struct independent of a trait
 define_mci_rule( IMPL_DEFINITION, 1, rtl, quintuple_list, "impl", identifier -> trait, "for", identifier -> type, expr -> body ); // impl-blocks which defines a trait for a struct
-define_mci_rule( SELF_EXPRESSION, 1, rtl, single_list, "self" ); // the self keyword is the currently executed object in non-static methods
-*/
 
 // Control flow
 define_mci_rule( IF_EXPRESSION, 20, rtl, triple_list, "if", expr -> condition, expr -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
@@ -228,7 +226,8 @@ define_mci_rule( SPECIAL_TYPE, TYPE, "type" ); // definition of the "type" type
 define_mci_rule( SPECIAL_TYPE, UNIT, "()" ); // define the unit-type
 define_mci_rule( SPECIAL_TYPE, UNKNOWN, "_" ); // define the unknown type
 define_mci_rule( SPECIAL_TYPE, IDENTIFIER, "ident" ); // define the "identifier" type
-define_mci_rule( SPECIAL_TYPE, SELF, "Self" ); // define the "self" type
+define_mci_rule( SPECIAL_TYPE, SELF_TYPE, "Self" ); // define the "Self" type
+define_mci_rule( SPECIAL_TYPE, SELF, "self" ); // define the "self" symbol
 
 define_mci_rule( TYPE_MEMORY_BLOB, "bool", 1 );
 define_mci_rule( TYPE_MEMORY_BLOB, "char", 1 );

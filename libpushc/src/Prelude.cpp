@@ -506,15 +506,24 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->simple_bindings.push_back( op );
-        } else if ( mci == "SELF_EXPRESSION" ) { // TODO
         } else if ( mci == "STRUCT_DEFINITION" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {
                 return false;
             }
             conf->structs.push_back( op );
-        } else if ( mci == "TRAIT_DEFINITION" ) { // TODO
-        } else if ( mci == "IMPL_DEFINITION" ) { // TODO
+        } else if ( mci == "TRAIT_DEFINITION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->trait.push_back( op );
+        } else if ( mci == "IMPL_DEFINITION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->impl.push_back( op );
         } else if ( mci == "IF_EXPRESSION" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {

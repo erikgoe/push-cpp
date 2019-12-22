@@ -680,3 +680,54 @@ public:
                ( body ? body->get_debug_repr() : "<undefined>" );
     }
 };
+
+// Trait definition
+class TraitExpr : public SeparableExpr {
+public:
+    sptr<Expr> name;
+    sptr<CompletedExpr> body;
+
+    TraitExpr() {}
+    TraitExpr( sptr<Expr> name, sptr<CompletedExpr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->name = name;
+        this->body = body;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_UNIT; } // TODO update
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TraitExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "TRAIT " + name->get_debug_repr() + " " + body->get_debug_repr(); }
+};
+
+// Struct definition/usage
+class ImplExpr : public SeparableExpr {
+public:
+    sptr<Expr> struct_name, trait_name;
+    sptr<CompletedExpr> body;
+
+    ImplExpr() {}
+    ImplExpr( sptr<Expr> struct_name, sptr<Expr> trait_name, sptr<CompletedExpr> body, u32 precedence,
+              std::vector<sptr<Expr>> &original_list ) {
+        this->struct_name = struct_name;
+        this->trait_name = trait_name;
+        this->body = body;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_UNIT; } // TODO update
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ImplExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        if ( trait_name ) {
+            return "IMPL " + trait_name->get_debug_repr() + " FOR " + struct_name->get_debug_repr() + " " +
+                   body->get_debug_repr();
+        } else {
+            return "IMPL " + struct_name->get_debug_repr() + " " + body->get_debug_repr();
+        }
+    }
+};
