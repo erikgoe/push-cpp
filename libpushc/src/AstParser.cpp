@@ -247,16 +247,6 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 expr->sub_expr = expr_list.back();
                 expr_list.back() = expr;
             }
-        } else if ( t.type == TT::list_divider ) {
-            input->get_token(); // consume
-            if ( expr_list.empty() ) {
-                w_ctx.print_msg<MessageType::err_comma_without_meaning>( MessageInfo( t, 0, FmtStr::Color::Red ) );
-            } else {
-                auto expr = make_shared<SingleListedExpr>();
-                expr->pos_info = { t.file, t.line, t.column, t.length };
-                expr->sub_expr = expr_list.back();
-                expr_list.back() = expr;
-            }
         } else if ( t.type == TT::string_begin ) {
             auto expr = make_shared<StringLiteralExpr>();
             expr->str = parse_string( input, w_ctx );
@@ -280,8 +270,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 // Prepare backtracing
                 std::vector<sptr<Expr>> rev_deep_expr_list;
                 size_t cutout_ctr = 0;
-                for ( auto expr_itr = expr_list.rbegin();
-                      expr_itr != expr_list.rend(); expr_itr++ ) {
+                for ( auto expr_itr = expr_list.rbegin(); expr_itr != expr_list.rend(); expr_itr++ ) {
                     auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
                     if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
                          ( rule.precedence < s_expr->prec() || ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
@@ -321,27 +310,22 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
         block->sub_expr = expr_list;
         return block;
     } else if ( end_token == TT::term_end ) {
-        if ( expr_list.size() > 1 ) {
-            size_t sl_count = 0;
-            for ( auto &e : expr_list ) {
-                if ( std::dynamic_pointer_cast<SingleListedExpr>( e ) != nullptr )
-                    sl_count++;
-            }
-            if ( sl_count >= expr_list.size() - 1 ) { // Found a tuple
+        if ( expr_list.size() > 1 ) { // malformed "tuple" or so
+            w_ctx.print_msg<MessageType::err_term_with_multiple_expr>(
+                MessageInfo( ( *( expr_list.begin() + 1 ) )->get_position_info(), 0, FmtStr::Color::Red ) );
+            return make_shared<TupleExpr>(); // default
+        } else { // normal term or tuple
+            if ( expr_list.size() == 1 && std::dynamic_pointer_cast<CommaExpr>( expr_list.front() ) ) { // tuple
                 auto block = make_shared<TupleExpr>();
                 block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
-                block->sub_expr = expr_list;
+                block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->exprs;
                 return block;
-            } else { // malformed "tuple" or so
-                w_ctx.print_msg<MessageType::err_term_with_multiple_expr>(
-                    MessageInfo( ( *( expr_list.begin() + 1 ) )->get_position_info(), 0, FmtStr::Color::Red ) );
-                return make_shared<TupleExpr>(); // default
+            } else { // term
+                auto block = make_shared<TermExpr>();
+                block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
+                block->sub_expr = expr_list.empty() ? nullptr : expr_list.back();
+                return block;
             }
-        } else { // normal term
-            auto block = make_shared<TermExpr>();
-            block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
-            block->sub_expr = expr_list.empty() ? nullptr : expr_list.back();
-            return block;
         }
     } else if ( end_token == TT::array_end ) {
         auto block = make_shared<ArraySpecifierExpr>();

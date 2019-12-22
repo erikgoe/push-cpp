@@ -1,17 +1,6 @@
 #prelude(push)
 
-trait Addable {
-
-}
-
-struct A {
-
-}
-
-impl A {
-
-}
-
-impl Addable for A {
-    
+fn {
+    (a,b,c,d);
+    match a 1=>x, 2=>y, 3=>z;
 }

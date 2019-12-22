@@ -73,7 +73,7 @@
  */
 
 // Most basic rules
-define_mci_rule( EXPRESSION_RULES, divide semicolon, list comma, block left_brace right_brace, term left_parenthesis right_parenthesis, array left_bracket right_bracket ); // list of rules for expressions: semicolons divide expressions/statements, braces combine a block, parenthesis combine a term
+define_mci_rule( EXPRESSION_RULES, divide semicolon, block left_brace right_brace, term left_parenthesis right_parenthesis, array left_bracket right_bracket ); // list of rules for expressions: semicolons divide expressions/statements, braces combine a block, parenthesis combine a term
 define_mci_rule( IDENTIFIER_RULES, no_spaces, unused begin "_" ); // define rules for identifiers
 define_mci_rule( IDENTIFIER_CASE, functions snake, method snake, variables snake, modules snake, struct pascal, trait pascal ); // define how which identifiers have to be written
 
@@ -206,6 +206,8 @@ define_mci_rule( NEW_OPERATOR, std::op::default_assign, 16, rtl, triple_list, ex
 
 define_mci_rule( NEW_OPERATOR, std::op::implication, 17, rtl, triple_list, expr -> lvalue, "=>" -> op, expr -> rvalue ); // pair two variables in an implication
 
+define_mci_rule( COMMA_OPERATOR, 18, rtl, triple_list, expr -> lvalue, "," -> op, expr -> rvalue ); // the comma-linking operator
+define_mci_rule( COMMA_OPERATOR, 18, rtl, double_list, expr -> lvalue, "," -> op ); // the comma-linking operator with no following expression
 define_mci_rule( REFERENCE_TYPE, 2, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
 define_mci_rule( TYPE_OF, 2, rtl, double_list, "type_of" -> op, expr -> type ); // define the type_of operator
 define_mci_rule( STRUCT_TO_TUPLE, 2, ltr, double_list, expr -> type, "as_tuple" -> op ); // define the as_tuple operator

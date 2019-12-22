@@ -39,7 +39,6 @@ enum class MessageType {
     err_invalid_prelude,
     err_term_with_multiple_expr,
     err_semicolon_without_meaning,
-    err_comma_without_meaning,
     err_array_access_with_multiple_expr,
 
     warning = 5000,
@@ -102,8 +101,6 @@ MESSAGE_DEFINITION( MessageType::err_term_with_multiple_expr, MessageClass::Erro
                     "The term contains multiple expressions, but may only contain one.", "remove this part" );
 MESSAGE_DEFINITION( MessageType::err_semicolon_without_meaning, MessageClass::Error, "C",
                     "The semicolon does not finish an expression", "remove it" );
-MESSAGE_DEFINITION( MessageType::err_comma_without_meaning, MessageClass::Error, "C",
-                    "The comma does not finish an expression", "remove it" );
 MESSAGE_DEFINITION( MessageType::err_array_access_with_multiple_expr, MessageClass::Error, "C",
                     "An array access may only contain one expression", "" );
 

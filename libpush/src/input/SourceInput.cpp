@@ -181,12 +181,6 @@ void SourceInput::configure( const TokenConfig &cfg ) {
         add_sticky_token_to_all( tc, Token::Type::stat_divider );
         insert_in_range( tc, CharRangeType::op );
     }
-    for ( auto &tc : cfg.list_divider ) {
-        if ( tc.size() > max_op_size )
-            max_op_size = tc.size();
-        add_sticky_token_to_all( tc, Token::Type::list_divider );
-        insert_in_range( tc, CharRangeType::op );
-    }
     for ( auto &tc : cfg.block ) {
         if ( tc.first.size() > max_op_size )
             max_op_size = tc.first.size();

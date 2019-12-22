@@ -48,7 +48,6 @@ enum class CharRangeType {
 struct Token {
     enum class Type {
         stat_divider, // statement divider ";"
-        list_divider, // list divider ","
         block_begin, // begin of a block "{"
         block_end, // end of a block "}"
         term_begin, // begin of a term "("
@@ -106,63 +105,46 @@ struct Token {
     static const String get_name( Type type ) {
         return type == Type::stat_divider
                    ? "end of expression"
-                   : type == Type::list_divider
-                         ? "end of list entry"
-                         : type == Type::block_begin
-                               ? "begin of block"
-                               : type == Type::block_end
-                                     ? "end of block"
-                                     : type == Type::term_begin || type == Type::term_end
-                                           ? "parenthesis"
-                                           : type == Type::array_begin || type == Type::array_end
-                                                 ? "array access"
-                                                 : type == Type::comment_begin
-                                                       ? "begin of comment"
-                                                       : type == Type::comment_end
-                                                             ? "end of comment"
-                                                             : type == Type::number
-                                                                   ? "number literal"
-                                                                   : type == Type::encoded_char
-                                                                         ? "encoded character literal"
-                                                                         : type == Type::string_begin
-                                                                               ? "begin of string"
-                                                                               : type == Type::string_end
-                                                                                     ? "end of string"
-                                                                                     : type == Type::op
-                                                                                           ? "operator"
-                                                                                           : type == Type::keyword
-                                                                                                 ? "keyword"
-                                                                                                 : type == Type::
-                                                                                                               identifier
-                                                                                                       ? "identifier"
+                   : type == Type::block_begin
+                         ? "begin of block"
+                         : type == Type::block_end
+                               ? "end of block"
+                               : type == Type::term_begin || type == Type::term_end
+                                     ? "parenthesis"
+                                     : type == Type::array_begin || type == Type::array_end
+                                           ? "array access"
+                                           : type == Type::comment_begin
+                                                 ? "begin of comment"
+                                                 : type == Type::comment_end
+                                                       ? "end of comment"
+                                                       : type == Type::number
+                                                             ? "number literal"
+                                                             : type == Type::encoded_char
+                                                                   ? "encoded character literal"
+                                                                   : type == Type::string_begin
+                                                                         ? "begin of string"
+                                                                         : type == Type::string_end
+                                                                               ? "end of string"
+                                                                               : type == Type::op
+                                                                                     ? "operator"
+                                                                                     : type == Type::keyword
+                                                                                           ? "keyword"
+                                                                                           : type == Type::identifier
+                                                                                                 ? "identifier"
+                                                                                                 : type == Type::eof
+                                                                                                       ? "end of "
+                                                                                                         "file"
                                                                                                        : type == Type::
-                                                                                                                     eof
-                                                                                                             ? "end of "
-                                                                                                               "file"
-                                                                                                             : type == Type::
-                                                                                                                           ws
-                                                                                                                   ? "w"
-                                                                                                                     "h"
-                                                                                                                     "i"
-                                                                                                                     "t"
-                                                                                                                     "e"
-                                                                                                                     "s"
-                                                                                                                     "p"
-                                                                                                                     "a"
-                                                                                                                     "c"
-                                                                                                                     "e"
-                                                                                                                   : "t"
-                                                                                                                     "o"
-                                                                                                                     "k"
-                                                                                                                     "e"
-                                                                                                                     "n";
+                                                                                                                     ws
+                                                                                                             ? "whitesp"
+                                                                                                               "ace"
+                                                                                                             : "token";
     }
 };
 
 // Very basic set of rules to define how strings are divided into token lists
 struct TokenConfig {
     std::vector<String> stat_divider;
-    std::vector<String> list_divider;
     std::vector<std::pair<String, String>> block; // begin => end pair
     std::vector<std::pair<String, String>> term; // begin => end pair
     std::vector<std::pair<String, String>> array; // begin => end pair

@@ -102,20 +102,6 @@ public:
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";\n "; }
 };
 
-// A comma-separated expression
-class SingleListedExpr : public CompletedExpr {
-public:
-    sptr<Expr> sub_expr;
-
-    TypeId get_type() override { return sub_expr->get_type(); }
-
-    bool matches( sptr<Expr> other ) override {
-        return std::dynamic_pointer_cast<SingleListedExpr>( other ) != nullptr;
-    }
-
-    String get_debug_repr() override { return "SL " + sub_expr->get_debug_repr() + ", "; }
-};
-
 // A block with multiple expressions
 class BlockExpr : public CompletedExpr {
 public:
@@ -152,8 +138,8 @@ public:
     String get_debug_repr() override {
         String str = "TUPLE ( ";
         for ( auto &s : sub_expr )
-            str += s->get_debug_repr();
-        return str + " )";
+            str += s->get_debug_repr() + ", ";
+        return str + ")";
     }
 };
 
@@ -296,6 +282,40 @@ public:
     PosInfo get_position_info() override { return original_list.front()->get_position_info(); }
 };
 
+// Combines one ore multiple expressions with commas
+class CommaExpr : public SeparableExpr {
+public:
+    std::vector<sptr<Expr>> exprs;
+
+    CommaExpr() {}
+    CommaExpr( sptr<Expr> lvalue, sptr<Expr> rvalue, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        auto lvalue_list = std::dynamic_pointer_cast<CommaExpr>( lvalue );
+        if ( lvalue_list ) { // Is a comma expression
+            exprs = lvalue_list->exprs;
+        } else if ( lvalue ) {
+            exprs.push_back( lvalue );
+        }
+        auto rvalue_list = std::dynamic_pointer_cast<CommaExpr>( rvalue );
+        if ( rvalue_list ) { // Is a comma expression
+            exprs.insert( exprs.end(), rvalue_list->exprs.begin(), rvalue_list->exprs.end() );
+        } else if ( rvalue ) {
+            exprs.push_back( rvalue );
+        }
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return exprs.empty() ? TYPE_UNIT : exprs.back()->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<CommaExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        String str = "COMMA( ";
+        for ( auto &s : exprs )
+            str += s->get_debug_repr() + ", ";
+        return str + ")";
+    }
+};
 // Specifies a new funcion signature
 class FuncDecExpr : public SeparableExpr {
     TypeId type; // Every funcion has its own type
