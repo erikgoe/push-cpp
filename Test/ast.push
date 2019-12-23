@@ -1,14 +1,5 @@
 #prelude(push)
 
 fn (s) {
-    if true
-        let a = 2;
-    else 
-        let a = 3;
-
-    if true {
-        let a = 2
-    } else {
-        let a = 3
-    }
+    let a:&int = type_of s;
 }

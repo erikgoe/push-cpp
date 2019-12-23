@@ -24,7 +24,8 @@ using SymbolId = u32;
 // Constants
 constexpr TypeId TYPE_UNIT = 1; // The initial unit type
 constexpr TypeId TYPE_NEVER = 2; // The initial never type
-constexpr TypeId LAST_FIX_TYPE = TYPE_NEVER; // The initial unit type
+constexpr TypeId TYPE_TYPE = 2; // The initial never type
+constexpr TypeId LAST_FIX_TYPE = TYPE_TYPE; // The last not variable type
 
 // Base class for expressions in the AST
 class Expr {
@@ -817,5 +818,67 @@ public:
 
     String get_debug_repr() override {
         return "SCOPE(" + ( base ? base->get_debug_repr() : "<global>" ) + "::" + name->get_debug_repr() + ")";
+    }
+};
+
+// Borrow a symbol
+class ReferenceExpr : public SeparableExpr {
+public:
+    sptr<Expr> symbol;
+
+    ReferenceExpr() {}
+    ReferenceExpr( sptr<Expr> symbol, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return symbol->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ReferenceExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "REF(" + symbol->get_debug_repr() + ")"; }
+};
+
+
+// Type of operator
+class TypeOfExpr : public SeparableExpr {
+public:
+    sptr<Expr> symbol;
+
+    TypeOfExpr() {}
+    TypeOfExpr( sptr<Expr> symbol, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return TYPE_TYPE; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TypeOfExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "TYPE_OF(" + symbol->get_debug_repr() + ")"; }
+};
+
+
+// The typedef-operator
+class TypedExpr : public SeparableExpr {
+public:
+    sptr<Expr> symbol, type;
+
+    TypedExpr() {}
+    TypedExpr( sptr<Expr> symbol, sptr<Expr> type, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->type = type;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return symbol->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TypedExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "TYPED(" + symbol->get_debug_repr() + ":" + type->get_debug_repr() + ")";
     }
 };
