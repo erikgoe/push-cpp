@@ -1,6 +1,6 @@
 #prelude(push)
 
 fn (s) {
-    //s.b;
-    //A::B;
+    s.b;
+    A::B;
 }

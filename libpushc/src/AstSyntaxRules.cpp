@@ -197,10 +197,8 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<FuncCallExpr>(
                 std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "exec" )] ), 0,
-                ( lm.find( "parameters" ) == lm.end()
-                      ? nullptr
-                      : list[lm.at( "parameters" )] ),
-                new_rule.precedence, list );
+                ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ), new_rule.precedence,
+                list );
         };
         a_ctx.rules.push_back( new_rule );
     }
@@ -219,17 +217,35 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.precedence = f.op.precedence;
         new_rule.ltr = f.op.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<FuncExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
-                                          ( lm.find( "parameters" ) == lm.end()
-                                                ? nullptr
-                                                : list[lm.at( "parameters" )] ),
-                                          std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
-                                          new_rule.precedence, list );
+            return make_shared<FuncExpr>(
+                std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
+                ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ),
+                std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }
 
     // Relative access
+    for ( auto &sb : pc.member_access_op ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<MemberAccessExpr>( list[lm.at( "base" )], list[lm.at( "name" )], new_rule.precedence,
+                                                  list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &sb : pc.scope_access_op ) {
+        parse_rule( new_rule, lm, sb.syntax );
+        new_rule.precedence = sb.precedence;
+        new_rule.ltr = sb.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<ScopeAccessExpr>( ( lm.find( "base" ) != lm.end() ? list[lm.at( "base" )] : nullptr ),
+                                                 list[lm.at( "name" )], new_rule.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
     for ( auto &sb : pc.array_access_op ) {
         parse_rule( new_rule, lm, sb.syntax );
         new_rule.precedence = sb.precedence;

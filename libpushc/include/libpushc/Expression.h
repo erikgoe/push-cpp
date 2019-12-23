@@ -364,8 +364,8 @@ class FuncExpr : public SeparableExpr {
 
 public:
     FuncExpr() {}
-    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<Expr> parameters, sptr<CompletedExpr> block,
-              u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<Expr> parameters, sptr<CompletedExpr> block, u32 precedence,
+              std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
         this->parameters = parameters;
@@ -767,5 +767,51 @@ public:
         } else {
             return "IMPL " + struct_name->get_debug_repr() + " " + body->get_debug_repr();
         }
+    }
+};
+
+// Access to a member of a symbol
+class MemberAccessExpr : public SeparableExpr {
+public:
+    sptr<Expr> base, name;
+    TypeId type;
+
+    MemberAccessExpr() {}
+    MemberAccessExpr( sptr<Expr> base, sptr<Expr> name, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->base = base;
+        this->name = name;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return type; } // TODO update
+
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<MemberAccessExpr>( other ) != nullptr;
+    }
+
+    String get_debug_repr() override { return "MEMBER(" + base->get_debug_repr() + "." + name->get_debug_repr() + ")"; }
+};
+
+// Access to a element of a scope
+class ScopeAccessExpr : public SeparableExpr {
+public:
+    sptr<Expr> base, name;
+    TypeId type;
+
+    ScopeAccessExpr() {}
+    ScopeAccessExpr( sptr<Expr> base, sptr<Expr> name, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->base = base;
+        this->name = name;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return type; } // TODO update
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ScopeAccessExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "SCOPE(" + ( base ? base->get_debug_repr() : "<global>" ) + "::" + name->get_debug_repr() + ")";
     }
 };
