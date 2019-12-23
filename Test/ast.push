@@ -2,4 +2,5 @@
 
 fn (s) {
     let a:&int = type_of s;
+    let a:struct = 4;
 }

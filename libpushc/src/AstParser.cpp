@@ -263,38 +263,50 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
         size_t skip_ctr = 0; // skip already parsed token
         do {
             recheck = false;
+            SyntaxRule *best_rule = nullptr;
+            std::vector<sptr<Expr>> best_rule_rev_deep_expr_list;
             // Check each syntax rule
             for ( auto &rule : a_ctx.rules ) {
-                u8 rule_length = rule.expr_list.size();
+                if ( !best_rule || rule.precedence <= best_rule->precedence ) {
+                    u8 rule_length = rule.expr_list.size();
 
-                // Prepare backtracing
-                std::vector<sptr<Expr>> rev_deep_expr_list;
-                size_t cutout_ctr = 0;
-                for ( auto expr_itr = expr_list.rbegin(); expr_itr != expr_list.rend(); expr_itr++ ) {
-                    auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
-                    if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
-                         ( rule.precedence < s_expr->prec() || ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
-                        // Split expr
-                        s_expr->split_prepend_recursively( rev_deep_expr_list, rule.precedence, rule.ltr, rule_length );
-                    } else { // Don't split expr
-                        rev_deep_expr_list.push_back( *expr_itr );
+                    // Prepare backtracing
+                    std::vector<sptr<Expr>> rev_deep_expr_list;
+                    size_t cutout_ctr = 0;
+                    for ( auto expr_itr = expr_list.rbegin(); expr_itr != expr_list.rend(); expr_itr++ ) {
+                        auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
+                        if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
+                             ( rule.precedence < s_expr->prec() ||
+                               ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
+                            // Split expr
+                            s_expr->split_prepend_recursively( rev_deep_expr_list, rule.precedence, rule.ltr,
+                                                               rule_length );
+                        } else { // Don't split expr
+                            rev_deep_expr_list.push_back( *expr_itr );
+                        }
+                        cutout_ctr++;
                     }
-                    cutout_ctr++;
-                }
 
-                // Check if syntax matches
-                if ( rule.matches_reversed( rev_deep_expr_list ) ) {
-                    expr_list.clear();
-                    expr_list.insert( expr_list.end(), rev_deep_expr_list.rbegin(),
-                                      rev_deep_expr_list.rend() - rule_length );
-                    rev_deep_expr_list.erase( rev_deep_expr_list.begin() + rule_length, rev_deep_expr_list.end() );
-                    std::reverse( rev_deep_expr_list.begin(), rev_deep_expr_list.end() );
-                    expr_list.push_back( rule.create( rev_deep_expr_list, w_ctx ) );
-
-                    skip_ctr = 1; // 1 will always be desired even though more could technically be skipped
-                    recheck = true;
-                    break;
+                    // Check if syntax matches
+                    if ( rule.matches_reversed( rev_deep_expr_list ) ) {
+                        best_rule = &rule;
+                        best_rule_rev_deep_expr_list = rev_deep_expr_list;
+                    }
                 }
+            }
+
+            // Apply rule
+            if ( best_rule ) {
+                expr_list.clear();
+                expr_list.insert( expr_list.end(), best_rule_rev_deep_expr_list.rbegin(),
+                                  best_rule_rev_deep_expr_list.rend() - best_rule->expr_list.size() );
+                best_rule_rev_deep_expr_list.erase( best_rule_rev_deep_expr_list.begin() + best_rule->expr_list.size(),
+                                                    best_rule_rev_deep_expr_list.end() );
+                std::reverse( best_rule_rev_deep_expr_list.begin(), best_rule_rev_deep_expr_list.end() );
+                expr_list.push_back( best_rule->create( best_rule_rev_deep_expr_list, w_ctx ) );
+
+                skip_ctr = 1; // 1 will always be desired even though more could technically be skipped
+                recheck = true;
             }
         } while ( recheck );
     }
