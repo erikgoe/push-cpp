@@ -24,7 +24,7 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
     for ( auto &expr : syntax_list ) {
         lm[expr.second] = ctr;
         if ( expr.first == "expr" ) {
-            sr.expr_list.push_back( make_shared<Expr>() );
+            sr.expr_list.push_back( make_shared<OperandExpr>() );
         } else if ( expr.first == "identifier" ) {
             sr.expr_list.push_back( make_shared<SymbolExpr>() );
         } else if ( expr.first == "block" ) {

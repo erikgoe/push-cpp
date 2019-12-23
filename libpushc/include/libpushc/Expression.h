@@ -45,8 +45,14 @@ public:
     virtual PosInfo get_position_info() { return pos_info; }
 };
 
+// Nearly every expression is also an OperandExpr. Exceptions are SingleCompletedExpr.
+class OperandExpr : public virtual Expr {
+public:
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<OperandExpr>( other ) != nullptr; }
+};
+
 // Used internally to handle a single token as expr. Must be resolved to other expressions
-class TokenExpr : public Expr {
+class TokenExpr : public OperandExpr {
 public:
     Token t;
 
@@ -81,11 +87,9 @@ public:
 };
 
 // A block or semicolon-terminated expression
-class CompletedExpr : public Expr {
+class CompletedExpr : public virtual Expr {
 public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<CompletedExpr>( other ) != nullptr; }
-
-    String get_debug_repr() override { return "COMPLETED"; }
 };
 
 // A semicolon-terminated expression
@@ -103,7 +107,7 @@ public:
 };
 
 // A block with multiple expressions
-class BlockExpr : public CompletedExpr {
+class BlockExpr : public CompletedExpr, public OperandExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
 
@@ -126,7 +130,7 @@ public:
 };
 
 // A tuple with multiple elements
-class TupleExpr : public Expr {
+class TupleExpr : public OperandExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
     TypeId type = 0;
@@ -144,7 +148,7 @@ public:
 };
 
 // A set with multiple elements
-class SetExpr : public Expr {
+class SetExpr : public OperandExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
     TypeId type = 0;
@@ -162,7 +166,7 @@ public:
 };
 
 // A term with a sub expressions
-class TermExpr : public Expr {
+class TermExpr : public OperandExpr {
 public:
     sptr<Expr> sub_expr;
 
@@ -174,7 +178,7 @@ public:
 };
 
 // A array specifier with multiple expressions
-class ArraySpecifierExpr : public Expr {
+class ArraySpecifierExpr : public OperandExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
 
@@ -191,7 +195,7 @@ public:
 };
 
 // A simple symbol/identifier (variable, function, etc.)
-class SymbolExpr : public Expr {
+class SymbolExpr : public OperandExpr {
 public:
     TypeId type;
     SymbolId symbol;
@@ -204,7 +208,7 @@ public:
 };
 
 // Base class for a simple literal
-class LiteralExpr : public Expr {};
+class LiteralExpr : public OperandExpr {};
 
 // Base class for all Blob literals
 class BasicBlobLiteralExpr : public LiteralExpr {
@@ -269,7 +273,7 @@ public:
 };
 
 // An expression which can be broken into multiple sub-expressions by other rvalues/operators
-class SeparableExpr : public Expr {
+class SeparableExpr : public OperandExpr {
 protected:
     std::vector<sptr<Expr>> original_list;
     u32 precedence = 0;
