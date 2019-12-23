@@ -27,24 +27,14 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<OperandExpr>() );
         } else if ( expr.first == "identifier" ) {
             sr.expr_list.push_back( make_shared<SymbolExpr>() );
-        } else if ( expr.first == "block" ) {
-            sr.expr_list.push_back( make_shared<BlockExpr>() );
         } else if ( expr.first == "completed" ) {
             sr.expr_list.push_back( make_shared<CompletedExpr>() );
         } else if ( expr.first == "term" ) {
             sr.expr_list.push_back( make_shared<TermExpr>() );
-        } else if ( expr.first == "set" ) {
-            sr.expr_list.push_back( make_shared<SetExpr>() );
         } else if ( expr.first == "tuple" ) {
             sr.expr_list.push_back( make_shared<TupleExpr>() );
-        } else if ( expr.first == "set" ) {
-            sr.expr_list.push_back( make_shared<SetExpr>() );
-        } else if ( expr.first == "fn_head" ) {
-            sr.expr_list.push_back( make_shared<FuncCallExpr>() );
         } else if ( expr.first == "integer" ) {
             sr.expr_list.push_back( make_shared<BasicBlobLiteralExpr>() );
-        } else if ( expr.first == "if_expr" ) {
-            sr.expr_list.push_back( make_shared<IfExpr>() );
         } else if ( expr.first == "array_spec" ) {
             sr.expr_list.push_back( make_shared<ArraySpecifierExpr>() );
         } else {
