@@ -103,11 +103,11 @@ public:
         return std::dynamic_pointer_cast<SingleCompletedExpr>( other ) != nullptr;
     }
 
-    String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";\n "; }
+    String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";"; }
 };
 
 // A block with multiple expressions
-class BlockExpr : public CompletedExpr, public OperandExpr {
+class BlockExpr : public OperandExpr, public CompletedExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
 
@@ -124,7 +124,7 @@ public:
     String get_debug_repr() override {
         String str = "BLOCK { ";
         for ( auto &s : sub_expr )
-            str += s->get_debug_repr();
+            str += s->get_debug_repr() + "\n ";
         return str + " }";
     }
 };
@@ -360,7 +360,7 @@ public:
 };
 
 // Specifies a new funcion
-class FuncExpr : public SeparableExpr {
+class FuncExpr : public SeparableExpr, public CompletedExpr {
     TypeId type; // Every funcion has its own type
     sptr<Expr> parameters;
     sptr<SymbolExpr> symbol;
@@ -480,7 +480,7 @@ public:
 
 
 // If condition expression
-class IfExpr : public SeparableExpr {
+class IfExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> cond, expr_t;
 
@@ -502,7 +502,7 @@ public:
 };
 
 // If condition expression with a else clause
-class IfElseExpr : public SeparableExpr {
+class IfElseExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> cond, expr_t, expr_f;
 
@@ -527,7 +527,7 @@ public:
 };
 
 // Pre-condition loop expression
-class PreLoopExpr : public SeparableExpr {
+class PreLoopExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> cond, expr;
     bool evaluation = true;
@@ -553,7 +553,7 @@ public:
 };
 
 // Post-condition loop expression
-class PostLoopExpr : public SeparableExpr {
+class PostLoopExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> cond, expr;
     bool evaluation = true;
@@ -579,7 +579,7 @@ public:
 };
 
 // Infinite loop expression
-class InfLoopExpr : public SeparableExpr {
+class InfLoopExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> expr;
 
@@ -598,7 +598,7 @@ public:
 };
 
 // Iterator loop expression
-class ItrLoopExpr : public SeparableExpr {
+class ItrLoopExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> itr_expr, expr;
 
@@ -620,7 +620,7 @@ public:
 };
 
 // Pattern matching expression
-class MatchExpr : public SeparableExpr {
+class MatchExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> selector, cases;
 
@@ -700,7 +700,7 @@ public:
 };
 
 // Struct definition/usage
-class StructExpr : public SeparableExpr {
+class StructExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> name;
     sptr<CompletedExpr> body;
@@ -724,7 +724,7 @@ public:
 };
 
 // Trait definition
-class TraitExpr : public SeparableExpr {
+class TraitExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> name;
     sptr<CompletedExpr> body;
@@ -745,7 +745,7 @@ public:
 };
 
 // Struct definition/usage
-class ImplExpr : public SeparableExpr {
+class ImplExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> struct_name, trait_name;
     sptr<CompletedExpr> body;

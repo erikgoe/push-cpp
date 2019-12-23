@@ -1,7 +1,14 @@
 #prelude(push)
 
 fn (s) {
-    s.b;
-    A::B;
-    ::C;
+    if true
+        let a = 2;
+    else 
+        let a = 3;
+
+    if true {
+        let a = 2
+    } else {
+        let a = 3
+    }
 }
