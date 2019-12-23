@@ -1,5 +1,6 @@
 #prelude(push)
 
-fn {
-    let a = { a, b, c };
+fn (s) {
+    //s.b;
+    //A::B;
 }

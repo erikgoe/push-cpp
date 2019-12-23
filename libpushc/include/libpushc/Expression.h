@@ -358,13 +358,13 @@ public:
 // Specifies a new funcion
 class FuncExpr : public SeparableExpr {
     TypeId type; // Every funcion has its own type
-    sptr<TupleExpr> parameters;
+    sptr<Expr> parameters;
     sptr<SymbolExpr> symbol;
     sptr<CompletedExpr> body;
 
 public:
     FuncExpr() {}
-    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<TupleExpr> parameters, sptr<CompletedExpr> block,
+    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<Expr> parameters, sptr<CompletedExpr> block,
               u32 precedence, std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
@@ -387,11 +387,11 @@ public:
 class FuncCallExpr : public SeparableExpr {
 public:
     TypeId type; // Every funcion has its own type
-    sptr<TupleExpr> parameters;
+    sptr<Expr> parameters;
     sptr<SymbolExpr> symbol;
 
     FuncCallExpr() {}
-    FuncCallExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<TupleExpr> parameters, u32 precedence,
+    FuncCallExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<Expr> parameters, u32 precedence,
                   std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;

@@ -121,7 +121,6 @@ define_mci_rule( NEW_OPERATOR, std::literal::float, 1, ltr, triple_list, integer
 define_mci_rule( ALIAS_EXPRESSION, 19, rtl, double_list, "use", expr -> expression ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
 define_mci_rule( LET_STATEMENT, 19, rtl, double_list, "let", expr -> expression ); // let keyword which starts a new variable binding
 
-
 // OOP constructs
 define_mci_rule( STRUCT_DEFINITION, 1, rtl, triple_list, "struct", identifier -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
 define_mci_rule( STRUCT_DEFINITION, 1, rtl, single_list, "struct" ); // anonymous struct
@@ -142,9 +141,11 @@ define_mci_rule( MATCH_EXPRESSION, 20, rtl, triple_list, "match", expr -> select
 
 // Functions
 define_mci_rule( FUNCTION_CALL, 1, rtl, double_list, identifier -> exec, tuple -> parameters ); // function call with parameters
+define_mci_rule( FUNCTION_CALL, 1, rtl, double_list, identifier -> exec, term -> parameters ); // function call with a single parameter
 //define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, expr -> parameters ); // a function head
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 1, rtl, double_list, identifier -> name, completed -> body ); // a zero-parameter function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 1, rtl, double_list, fn_head -> head, completed -> body ); // a parameterized function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 1, rtl, triple_list, identifier -> name, tuple -> parameters, completed -> body ); // a parameterized function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 1, rtl, triple_list, identifier -> name, term -> parameters, completed -> body ); // a single parameter function with a body block
 //define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, expr -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations

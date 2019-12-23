@@ -31,6 +31,10 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<BlockExpr>() );
         } else if ( expr.first == "completed" ) {
             sr.expr_list.push_back( make_shared<CompletedExpr>() );
+        } else if ( expr.first == "term" ) {
+            sr.expr_list.push_back( make_shared<TermExpr>() );
+        } else if ( expr.first == "set" ) {
+            sr.expr_list.push_back( make_shared<SetExpr>() );
         } else if ( expr.first == "tuple" ) {
             sr.expr_list.push_back( make_shared<TupleExpr>() );
         } else if ( expr.first == "set" ) {
@@ -195,7 +199,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                 std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "exec" )] ), 0,
                 ( lm.find( "parameters" ) == lm.end()
                       ? nullptr
-                      : std::dynamic_pointer_cast<TupleExpr>( list[lm.at( "parameters" )] ) ),
+                      : list[lm.at( "parameters" )] ),
                 new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
@@ -215,19 +219,12 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.precedence = f.op.precedence;
         new_rule.ltr = f.op.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            if ( lm.find( "head" ) != lm.end() ) { // function with parameters
-                auto head = std::dynamic_pointer_cast<FuncCallExpr>( list[lm.at( "head" )] );
-                return make_shared<FuncExpr>( head->symbol, head->type, head->parameters,
-                                              std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
-                                              new_rule.precedence, list );
-            } else { // function with no parameters
-                return make_shared<FuncExpr>(
-                    std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
-                    ( lm.find( "parameters" ) == lm.end()
-                          ? nullptr
-                          : std::dynamic_pointer_cast<TupleExpr>( list[lm.at( "parameters" )] ) ),
-                    std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
-            }
+            return make_shared<FuncExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
+                                          ( lm.find( "parameters" ) == lm.end()
+                                                ? nullptr
+                                                : list[lm.at( "parameters" )] ),
+                                          std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
+                                          new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }
