@@ -707,6 +707,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->modules.push_back( op );
+        } else if ( mci == "STATIC_STATEMENT" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->static_statements.push_back( op );
         } else if ( mci == "RANGE_DEFINITION" ) {
             token = input->get_token();
             RangeOperator::Type type;

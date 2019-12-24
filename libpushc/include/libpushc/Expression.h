@@ -25,12 +25,16 @@ using SymbolId = u32;
 constexpr TypeId TYPE_UNIT = 1; // The initial unit type
 constexpr TypeId TYPE_NEVER = 2; // The initial never type
 constexpr TypeId TYPE_TYPE = 2; // The initial never type
-constexpr TypeId LAST_FIX_TYPE = TYPE_TYPE; // The last not variable type
+constexpr TypeId MODULE_TYPE = 2; // The initial module type
+constexpr TypeId LAST_FIX_TYPE = MODULE_TYPE; // The last not variable type
+
+class StaticStatementExpr;
 
 // Base class for expressions in the AST
 class Expr {
 public:
     PosInfo pos_info;
+    std::vector<sptr<StaticStatementExpr>> static_statements;
 
     virtual ~Expr() {}
 
@@ -41,6 +45,9 @@ public:
     virtual bool matches( sptr<Expr> other ) { return std::dynamic_pointer_cast<Expr>( other ) != nullptr; }
 
     virtual String get_debug_repr() { return "EXPR"; }
+
+    // Returns additional information like static statements
+    String get_additional_debug_data();
 
     // Returns the position information of this expression
     virtual PosInfo get_position_info() { return pos_info; }
@@ -68,7 +75,8 @@ public:
     }
 
     String get_debug_repr() override {
-        return "TOKEN " + to_string( static_cast<int>( t.type ) ) + " \"" + t.content + "\" ";
+        return "TOKEN " + to_string( static_cast<int>( t.type ) ) + " \"" + t.content + "\" " +
+               get_additional_debug_data();
     }
 };
 
@@ -80,10 +88,10 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        String str = "GLOBAL { ";
+        String str = "GLOBAL {\n ";
         for ( auto &s : sub_expr )
             str += s->get_debug_repr() + "\n ";
-        return str + " }";
+        return str + " }" + get_additional_debug_data();
     }
 };
 
@@ -104,7 +112,7 @@ public:
         return std::dynamic_pointer_cast<SingleCompletedExpr>( other ) != nullptr;
     }
 
-    String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";"; }
+    String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";" + get_additional_debug_data(); }
 };
 
 // A block with multiple expressions
@@ -123,10 +131,10 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<BlockExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        String str = "BLOCK { ";
+        String str = "BLOCK {\n ";
         for ( auto &s : sub_expr )
             str += s->get_debug_repr() + "\n ";
-        return str + " }";
+        return str + " }" + get_additional_debug_data();
     }
 };
 
@@ -144,7 +152,7 @@ public:
         String str = "TUPLE ( ";
         for ( auto &s : sub_expr )
             str += s->get_debug_repr() + ", ";
-        return str + ")";
+        return str + ")" + get_additional_debug_data();
     }
 };
 
@@ -162,7 +170,7 @@ public:
         String str = "SET { ";
         for ( auto &s : sub_expr )
             str += s->get_debug_repr() + ", ";
-        return str + "}";
+        return str + "}" + get_additional_debug_data();
     }
 };
 
@@ -175,7 +183,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TermExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "TERM( " + sub_expr->get_debug_repr() + " )"; }
+    String get_debug_repr() override {
+        return "TERM( " + sub_expr->get_debug_repr() + " )" + get_additional_debug_data();
+    }
 };
 
 // A array specifier with multiple expressions
@@ -191,7 +201,7 @@ public:
         String str = "ARRAY[ ";
         for ( auto &s : sub_expr )
             str += s->get_debug_repr();
-        return str + " ]";
+        return str + " ]" + get_additional_debug_data();
     }
 };
 
@@ -205,7 +215,7 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")"; }
+    String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")" + get_additional_debug_data(); }
 };
 
 // Base class for a simple literal
@@ -246,7 +256,7 @@ public:
         }
         if ( !non_zero )
             str += "00";
-        return str + ":" + to_string( type ) + ")";
+        return str + ":" + to_string( type ) + ")" + get_additional_debug_data();
     }
 
     // Loads the blob with a low endian representation of a number
@@ -270,7 +280,7 @@ public:
         return std::dynamic_pointer_cast<StringLiteralExpr>( other ) != nullptr;
     }
 
-    String get_debug_repr() override { return "STR \"" + str + "\""; }
+    String get_debug_repr() override { return "STR \"" + str + "\"" + get_additional_debug_data(); }
 };
 
 // An expression which can be broken into multiple sub-expressions by other rvalues/operators
@@ -336,7 +346,7 @@ public:
         String str = "COMMA( ";
         for ( auto &s : exprs )
             str += s->get_debug_repr() + ", ";
-        return str + ")";
+        return str + ")" + get_additional_debug_data();
     }
 };
 // Specifies a new funcion signature
@@ -357,7 +367,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncDecExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "FUNC_DEC(" + to_string( type ) + " " + symbol->get_debug_repr() + ")"; }
+    String get_debug_repr() override {
+        return "FUNC_DEC(" + to_string( type ) + " " + symbol->get_debug_repr() + ")" + get_additional_debug_data();
+    }
 };
 
 // Specifies a new funcion
@@ -384,7 +396,7 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncExpr>( other ) != nullptr; }
     String get_debug_repr() override {
         return "FUNC(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
-               symbol->get_debug_repr() + " " + body->get_debug_repr() + ")";
+               symbol->get_debug_repr() + " " + body->get_debug_repr() + ")" + get_additional_debug_data();
     }
 };
 
@@ -411,7 +423,7 @@ public:
 
     String get_debug_repr() override {
         return "CALL(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
-               symbol->get_debug_repr() + ")";
+               symbol->get_debug_repr() + ")" + get_additional_debug_data();
     }
 };
 
@@ -437,7 +449,7 @@ public:
 
     String get_debug_repr() override {
         return "OP(" + ( lvalue ? lvalue->get_debug_repr() + " " : "" ) + op +
-               ( rvalue ? " " + rvalue->get_debug_repr() : "" ) + ")";
+               ( rvalue ? " " + rvalue->get_debug_repr() : "" ) + ")" + get_additional_debug_data();
     }
 };
 
@@ -457,7 +469,7 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SimpleBindExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")"; }
+    String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
 
 // Specifies a new symbol alias
@@ -476,7 +488,7 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<AliasBindExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")"; }
+    String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
 
 
@@ -498,7 +510,8 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " )";
+        return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " )" +
+               get_additional_debug_data();
     }
 };
 
@@ -523,7 +536,7 @@ public:
 
     String get_debug_repr() override {
         return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " ELSE " +
-               expr_f->get_debug_repr() + " )";
+               expr_f->get_debug_repr() + " )" + get_additional_debug_data();
     }
 };
 
@@ -549,7 +562,7 @@ public:
 
     String get_debug_repr() override {
         return "PRE_LOOP(" + String( evaluation ? "TRUE: " : "FALSE: " ) + cond->get_debug_repr() + " DO " +
-               expr->get_debug_repr() + " )";
+               expr->get_debug_repr() + " )" + get_additional_debug_data();
     }
 };
 
@@ -575,7 +588,7 @@ public:
 
     String get_debug_repr() override {
         return "POST_LOOP(" + String( evaluation ? "TRUE: " : "FALSE: " ) + cond->get_debug_repr() + " DO " +
-               expr->get_debug_repr() + " )";
+               expr->get_debug_repr() + " )" + get_additional_debug_data();
     }
 };
 
@@ -595,7 +608,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<InfLoopExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "INF_LOOP(" + expr->get_debug_repr() + " )"; }
+    String get_debug_repr() override {
+        return "INF_LOOP(" + expr->get_debug_repr() + " )" + get_additional_debug_data();
+    }
 };
 
 // Iterator loop expression
@@ -616,7 +631,8 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ItrLoopExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "ITR_LOOP(" + itr_expr->get_debug_repr() + " DO " + expr->get_debug_repr() + " )";
+        return "ITR_LOOP(" + itr_expr->get_debug_repr() + " DO " + expr->get_debug_repr() + " )" +
+               get_additional_debug_data();
     }
 };
 
@@ -638,7 +654,8 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MatchExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "MATCH(" + selector->get_debug_repr() + " WITH " + cases->get_debug_repr() + " )";
+        return "MATCH(" + selector->get_debug_repr() + " WITH " + cases->get_debug_repr() + " )" +
+               get_additional_debug_data();
     }
 };
 
@@ -660,7 +677,7 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ArrayAccessExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "ARR_ACC " + value->get_debug_repr() + "[" + index->get_debug_repr() + "]";
+        return "ARR_ACC " + value->get_debug_repr() + "[" + index->get_debug_repr() + "]" + get_additional_debug_data();
     }
 };
 
@@ -696,7 +713,7 @@ public:
                                           ? "INCLUDE"
                                           : range_type == RangeOperator::Type::include_to ? "INCLUDE_TO" : "INVALID";
         return "RANGE " + rt + " " + ( from ? from->get_debug_repr() : "" ) + ( from && to ? ".." : "" ) +
-               ( to ? to->get_debug_repr() : "" );
+               ( to ? to->get_debug_repr() : "" ) + get_additional_debug_data();
     }
 };
 
@@ -720,7 +737,7 @@ public:
 
     String get_debug_repr() override {
         return "STRUCT " + ( name ? name->get_debug_repr() : "<anonymous>" ) + " " +
-               ( body ? body->get_debug_repr() : "<undefined>" );
+               ( body ? body->get_debug_repr() : "<undefined>" ) + get_additional_debug_data();
     }
 };
 
@@ -742,7 +759,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TraitExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "TRAIT " + name->get_debug_repr() + " " + body->get_debug_repr(); }
+    String get_debug_repr() override {
+        return "TRAIT " + name->get_debug_repr() + " " + body->get_debug_repr() + get_additional_debug_data();
+    }
 };
 
 // Struct definition/usage
@@ -768,9 +787,9 @@ public:
     String get_debug_repr() override {
         if ( trait_name ) {
             return "IMPL " + trait_name->get_debug_repr() + " FOR " + struct_name->get_debug_repr() + " " +
-                   body->get_debug_repr();
+                   body->get_debug_repr() + get_additional_debug_data();
         } else {
-            return "IMPL " + struct_name->get_debug_repr() + " " + body->get_debug_repr();
+            return "IMPL " + struct_name->get_debug_repr() + " " + body->get_debug_repr() + get_additional_debug_data();
         }
     }
 };
@@ -795,7 +814,9 @@ public:
         return std::dynamic_pointer_cast<MemberAccessExpr>( other ) != nullptr;
     }
 
-    String get_debug_repr() override { return "MEMBER(" + base->get_debug_repr() + "." + name->get_debug_repr() + ")"; }
+    String get_debug_repr() override {
+        return "MEMBER(" + base->get_debug_repr() + "." + name->get_debug_repr() + ")" + get_additional_debug_data();
+    }
 };
 
 // Access to a element of a scope
@@ -817,7 +838,8 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ScopeAccessExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "SCOPE(" + ( base ? base->get_debug_repr() : "<global>" ) + "::" + name->get_debug_repr() + ")";
+        return "SCOPE(" + ( base ? base->get_debug_repr() : "<global>" ) + "::" + name->get_debug_repr() + ")" +
+               get_additional_debug_data();
     }
 };
 
@@ -837,7 +859,7 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ReferenceExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "REF(" + symbol->get_debug_repr() + ")"; }
+    String get_debug_repr() override { return "REF(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
 
 
@@ -857,7 +879,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TypeOfExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override { return "TYPE_OF(" + symbol->get_debug_repr() + ")"; }
+    String get_debug_repr() override {
+        return "TYPE_OF(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
+    }
 };
 
 // The typedef-operator
@@ -878,11 +902,11 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TypedExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "TYPED(" + symbol->get_debug_repr() + ":" + type->get_debug_repr() + ")";
+        return "TYPED(" + symbol->get_debug_repr() + ":" + type->get_debug_repr() + ")" + get_additional_debug_data();
     }
 };
 
-// The module specification
+// Specification of a module
 class ModuleExpr : public SeparableExpr {
 public:
     sptr<Expr> symbol;
@@ -894,11 +918,28 @@ public:
         this->original_list = original_list;
     }
 
-    TypeId get_type() override { return symbol->get_type(); }
+    TypeId get_type() override { return MODULE_TYPE; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ModuleExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "MODULE(" + symbol->get_debug_repr() + ")";
+        return "MODULE(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
     }
+};
+
+// Declaration of an static statement
+class StaticStatementExpr : public Expr {
+public:
+    sptr<Expr> body;
+
+    StaticStatementExpr() {}
+    StaticStatementExpr( sptr<Expr> body ) { this->body = body; }
+
+    TypeId get_type() override { return TYPE_NEVER; }
+
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<StaticStatementExpr>( other ) != nullptr;
+    }
+
+    String get_debug_repr() override { return "STST " + body->get_debug_repr() + get_additional_debug_data(); }
 };

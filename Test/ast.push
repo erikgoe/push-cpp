@@ -1,3 +1,7 @@
 #prelude(push)
 
-mod modulename;
+fn {
+    let val = 4;
+    
+    let result = 40 ${val != 0} / val;
+}

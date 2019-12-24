@@ -265,6 +265,8 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
             recheck = false;
             SyntaxRule *best_rule = nullptr;
             std::vector<sptr<Expr>> best_rule_rev_deep_expr_list;
+            std::vector<sptr<StaticStatementExpr>> best_rule_stst_set;
+            size_t best_rule_cutout_ctr;
             // Check each syntax rule
             for ( auto &rule : a_ctx.rules ) {
                 if ( !best_rule || rule.precedence <= best_rule->precedence ) {
@@ -272,17 +274,24 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
 
                     // Prepare backtracing
                     std::vector<sptr<Expr>> rev_deep_expr_list;
+                    std::vector<sptr<StaticStatementExpr>> stst_set;
                     size_t cutout_ctr = 0;
-                    for ( auto expr_itr = expr_list.rbegin(); expr_itr != expr_list.rend(); expr_itr++ ) {
-                        auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
-                        if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
-                             ( rule.precedence < s_expr->prec() ||
-                               ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
-                            // Split expr
-                            s_expr->split_prepend_recursively( rev_deep_expr_list, rule.precedence, rule.ltr,
-                                                               rule_length );
-                        } else { // Don't split expr
-                            rev_deep_expr_list.push_back( *expr_itr );
+                    for ( auto expr_itr = expr_list.rbegin();
+                          expr_itr != expr_list.rend() && rev_deep_expr_list.size() < rule_length; expr_itr++ ) {
+                        auto stst_expr = std::dynamic_pointer_cast<StaticStatementExpr>( *expr_itr );
+                        if ( stst_expr ) { // is a static statement
+                            stst_set.push_back( stst_expr );
+                        } else {
+                            auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
+                            if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
+                                 ( rule.precedence < s_expr->prec() ||
+                                   ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
+                                // Split expr
+                                s_expr->split_prepend_recursively( rev_deep_expr_list, rule.precedence, rule.ltr,
+                                                                   rule_length );
+                            } else { // Don't split expr
+                                rev_deep_expr_list.push_back( *expr_itr );
+                            }
                         }
                         cutout_ctr++;
                     }
@@ -291,19 +300,23 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                     if ( rule.matches_reversed( rev_deep_expr_list ) ) {
                         best_rule = &rule;
                         best_rule_rev_deep_expr_list = rev_deep_expr_list;
+                        best_rule_stst_set = stst_set;
+                        best_rule_cutout_ctr = cutout_ctr;
                     }
                 }
             }
 
             // Apply rule
             if ( best_rule ) {
-                expr_list.clear();
+                expr_list.resize( expr_list.size() - best_rule_cutout_ctr );
                 expr_list.insert( expr_list.end(), best_rule_rev_deep_expr_list.rbegin(),
                                   best_rule_rev_deep_expr_list.rend() - best_rule->expr_list.size() );
                 best_rule_rev_deep_expr_list.erase( best_rule_rev_deep_expr_list.begin() + best_rule->expr_list.size(),
                                                     best_rule_rev_deep_expr_list.end() );
                 std::reverse( best_rule_rev_deep_expr_list.begin(), best_rule_rev_deep_expr_list.end() );
-                expr_list.push_back( best_rule->create( best_rule_rev_deep_expr_list, w_ctx ) );
+                auto result_expr = best_rule->create( best_rule_rev_deep_expr_list, w_ctx );
+                result_expr->static_statements = best_rule_stst_set;
+                expr_list.push_back( result_expr );
 
                 skip_ctr = 1; // 1 will always be desired even though more could technically be skipped
                 recheck = true;
@@ -400,7 +413,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
         // DEBUG print AST
         log( "AST ----------" );
-        log( " " + a_ctx.ast.block->get_debug_repr().replace_all( "{", "{\n" ).replace_all( "}", "\n }" ) );
+        log( " " + a_ctx.ast.block->get_debug_repr() );
         log( "TYPES --------" );
         for ( auto &t : a_ctx.ast.type_map ) {
             if ( t.id != 0 ) {

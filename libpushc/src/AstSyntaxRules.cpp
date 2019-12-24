@@ -328,6 +328,15 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         };
         a_ctx.rules.push_back( new_rule );
     }
+    for ( auto &o : pc.static_statements ) {
+        parse_rule( new_rule, lm, o.syntax );
+        new_rule.precedence = o.precedence;
+        new_rule.ltr = o.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<StaticStatementExpr>( list[lm.at( "body" )] );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
 
     // Sort rules after precedence
     std::stable_sort( a_ctx.rules.begin(), a_ctx.rules.end(),

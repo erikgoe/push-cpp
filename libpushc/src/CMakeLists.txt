@@ -7,6 +7,7 @@ add_library(${LIB_NAME}
     AstSyntaxRules.cpp
     Backend.cpp
     Compiler.cpp
+    Expression.cpp
     Linker.cpp
     MirTranslation.cpp
     Prelude.cpp
