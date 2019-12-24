@@ -292,13 +292,16 @@ protected:
 public:
     virtual ~SeparableExpr() {}
 
-    // Separates the expression and all its sub expressions depending on their precedence
-    void split_prepend_recursively( std::vector<sptr<Expr>> &rev_list, u32 prec, bool ltr, u8 rule_length ) {
+    // Separates the expression and all its sub expressions depending on their precedence.
+    // Also adds all static statements recursively
+    void split_prepend_recursively( std::vector<sptr<Expr>> &rev_list, std::vector<sptr<StaticStatementExpr>> &stst_set,
+                                    u32 prec, bool ltr, u8 rule_length ) {
+        stst_set.insert( stst_set.end(), static_statements.begin(), static_statements.end() );
         for ( auto expr_itr = original_list.rbegin(); expr_itr != original_list.rend(); expr_itr++ ) {
             auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
             if ( rev_list.size() < rule_length && s_expr &&
                  ( prec < s_expr->prec() || ( !ltr && prec == s_expr->prec() ) ) ) {
-                s_expr->split_prepend_recursively( rev_list, prec, ltr, rule_length );
+                s_expr->split_prepend_recursively( rev_list, stst_set, prec, ltr, rule_length );
             } else {
                 rev_list.push_back( *expr_itr );
             }

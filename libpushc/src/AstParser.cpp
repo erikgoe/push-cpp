@@ -287,7 +287,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                                  ( rule.precedence < s_expr->prec() ||
                                    ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
                                 // Split expr
-                                s_expr->split_prepend_recursively( rev_deep_expr_list, rule.precedence, rule.ltr,
+                                s_expr->split_prepend_recursively( rev_deep_expr_list, stst_set, rule.precedence, rule.ltr,
                                                                    rule_length );
                             } else { // Don't split expr
                                 rev_deep_expr_list.push_back( *expr_itr );
