@@ -128,6 +128,7 @@ struct PreludeConfig {
     std::list<Operator> type_of_op; // returns the type of a expression
     std::list<Operator> struct_to_tuple_op; // translates a struct into a tuple
     std::list<Operator> type_op; // special type defining operator
+    std::list<Operator> modules; // module specifier (mod keyword)
     std::list<RangeOperator> range_op; // any possible range
 
     String integer_trait; // Basic trait to define an integer

@@ -143,9 +143,9 @@ define_mci_rule( MATCH_EXPRESSION, 20, rtl, triple_list, "match", expr -> select
 define_mci_rule( FUNCTION_CALL, 1, rtl, double_list, identifier -> exec, tuple -> parameters ); // function call with parameters
 define_mci_rule( FUNCTION_CALL, 1, rtl, double_list, identifier -> exec, term -> parameters ); // function call with a single parameter
 //define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, expr -> parameters ); // a function head
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 1, rtl, double_list, identifier -> name, completed -> body ); // a zero-parameter function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 1, rtl, triple_list, identifier -> name, tuple -> parameters, completed -> body ); // a parameterized function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 1, rtl, triple_list, identifier -> name, term -> parameters, completed -> body ); // a single parameter function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 2, rtl, double_list, identifier -> name, completed -> body ); // a zero-parameter function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 2, rtl, triple_list, identifier -> name, tuple -> parameters, completed -> body ); // a parameterized function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 2, rtl, triple_list, identifier -> name, term -> parameters, completed -> body ); // a single parameter function with a body block
 //define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, expr -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations
@@ -210,14 +210,15 @@ define_mci_rule( NEW_OPERATOR, std::op::implication, 17, rtl, triple_list, expr 
 define_mci_rule( COMMA_OPERATOR, 18, rtl, triple_list, expr -> lvalue, "," -> op, expr -> rvalue ); // the comma-linking operator
 define_mci_rule( COMMA_OPERATOR, 18, rtl, double_list, expr -> lvalue, "," -> op ); // the comma-linking operator with no following expression
 define_mci_rule( REFERENCE_TYPE, 2, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
-define_mci_rule( TYPE_OF, 2, rtl, double_list, "type_of" -> op, expr -> type ); // define the type_of operator
-//define_mci_rule( STRUCT_TO_TUPLE, 2, ltr, double_list, expr -> type, "as_tuple" -> op ); // define the as_tuple operator
-define_mci_rule( OPERATION_TYPE, 4, ltr, triple_list, expr -> value, ":" -> op, expr -> type ); // define the type operator
-define_mci_rule( RANGE_DEFINITION, EXCLUDING, 10, rtl, triple_list, expr -> lvalue, ".." -> op, expr -> rvalue ); // define the range operator for 0..5
-define_mci_rule( RANGE_DEFINITION, FROM_EXCLUDING, 10, rtl, double_list, expr -> lvalue, ".." -> op ); // define the range operator 5..
-define_mci_rule( RANGE_DEFINITION, TO_EXCLUDING, 10, rtl, double_list, ".." -> op, expr -> rvalue ); // define the range operator for ..5
-define_mci_rule( RANGE_DEFINITION, INCLUDING, 10, rtl, triple_list, expr -> lvalue, "..=" -> op, expr -> rvalue ); // define the range operator for 0..=5
-define_mci_rule( RANGE_DEFINITION, TO_INCLUDING, 10, rtl, double_list, "..=" -> op, expr -> rvalue ); // define the range operator for ..=5
+define_mci_rule( TYPE_OF, 2, rtl, double_list, "type_of" -> op, expr -> type ); // type_of operator
+//define_mci_rule( STRUCT_TO_TUPLE, 2, ltr, double_list, expr -> type, "as_tuple" -> op ); // as_tuple operator
+define_mci_rule( OPERATION_TYPE, 4, ltr, triple_list, expr -> value, ":" -> op, expr -> type ); // type defining operator
+define_mci_rule( MODULE_SPECIFIER, 1, rtl, double_list, "mod", completed -> name ); // module specification ("mod" keyword)
+define_mci_rule( RANGE_DEFINITION, EXCLUDING, 10, rtl, triple_list, expr -> lvalue, ".." -> op, expr -> rvalue ); // range operator for 0..5
+define_mci_rule( RANGE_DEFINITION, FROM_EXCLUDING, 10, rtl, double_list, expr -> lvalue, ".." -> op ); // range operator 5..
+define_mci_rule( RANGE_DEFINITION, TO_EXCLUDING, 10, rtl, double_list, ".." -> op, expr -> rvalue ); // range operator for ..5
+define_mci_rule( RANGE_DEFINITION, INCLUDING, 10, rtl, triple_list, expr -> lvalue, "..=" -> op, expr -> rvalue ); // range operator for 0..=5
+define_mci_rule( RANGE_DEFINITION, TO_INCLUDING, 10, rtl, double_list, "..=" -> op, expr -> rvalue ); // range operator for ..=5
 
 // Primitive types
 define_mci_rule( BASE_TRAIT, INTEGER, std::num::Integer ); // Defines which trait describes the integer type
@@ -225,12 +226,12 @@ define_mci_rule( BASE_TRAIT, STRING, std::str::String ); // Defines which trait 
 define_mci_rule( BASE_TRAIT, IMPLICATION, std::base::Implication ); // Defines which trait describes the implication type
 define_mci_rule( BASE_TRAIT, NEVER, std::base::Never ); // Defines which trait describes the never type
 
-define_mci_rule( SPECIAL_TYPE, TYPE, "type" ); // definition of the "type" type
-define_mci_rule( SPECIAL_TYPE, UNIT, "()" ); // define the unit-type
-define_mci_rule( SPECIAL_TYPE, UNKNOWN, "_" ); // define the unknown type
-define_mci_rule( SPECIAL_TYPE, IDENTIFIER, "ident" ); // define the "identifier" type
-define_mci_rule( SPECIAL_TYPE, SELF_TYPE, "Self" ); // define the "Self" type
-define_mci_rule( SPECIAL_TYPE, SELF, "self" ); // define the "self" symbol
+define_mci_rule( SPECIAL_TYPE, TYPE, "type" ); // "type" type
+define_mci_rule( SPECIAL_TYPE, UNIT, "()" ); // unit-type
+define_mci_rule( SPECIAL_TYPE, UNKNOWN, "_" ); // unknown type
+define_mci_rule( SPECIAL_TYPE, IDENTIFIER, "ident" ); // "identifier" type
+define_mci_rule( SPECIAL_TYPE, SELF_TYPE, "Self" ); // "Self" type
+define_mci_rule( SPECIAL_TYPE, SELF, "self" ); // "self" symbol
 
 define_mci_rule( TYPE_MEMORY_BLOB, "bool", 1 );
 define_mci_rule( TYPE_MEMORY_BLOB, "char", 1 );

@@ -318,6 +318,17 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         a_ctx.rules.push_back( new_rule );
     }
 
+    // Special specifiers
+    for ( auto &o : pc.modules ) {
+        parse_rule( new_rule, lm, o.syntax );
+        new_rule.precedence = o.precedence;
+        new_rule.ltr = o.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<ModuleExpr>( list[lm.at( "name" )], o.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+
     // Sort rules after precedence
     std::stable_sort( a_ctx.rules.begin(), a_ctx.rules.end(),
                       []( auto &l, auto &r ) { return l.precedence > r.precedence; } );

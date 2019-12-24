@@ -82,7 +82,7 @@ public:
     String get_debug_repr() override {
         String str = "GLOBAL { ";
         for ( auto &s : sub_expr )
-            str += s->get_debug_repr() + ", ";
+            str += s->get_debug_repr() + "\n ";
         return str + " }";
     }
 };
@@ -149,7 +149,7 @@ public:
 };
 
 // A set with multiple elements
-class SetExpr : public OperandExpr {
+class SetExpr : public OperandExpr, public CompletedExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
     TypeId type = 0;
@@ -860,7 +860,6 @@ public:
     String get_debug_repr() override { return "TYPE_OF(" + symbol->get_debug_repr() + ")"; }
 };
 
-
 // The typedef-operator
 class TypedExpr : public SeparableExpr {
 public:
@@ -880,5 +879,26 @@ public:
 
     String get_debug_repr() override {
         return "TYPED(" + symbol->get_debug_repr() + ":" + type->get_debug_repr() + ")";
+    }
+};
+
+// The module specification
+class ModuleExpr : public SeparableExpr {
+public:
+    sptr<Expr> symbol;
+
+    ModuleExpr() {}
+    ModuleExpr( sptr<Expr> symbol, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return symbol->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ModuleExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "MODULE(" + symbol->get_debug_repr() + ")";
     }
 };
