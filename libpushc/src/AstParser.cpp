@@ -211,7 +211,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 expr_list.push_back( expr );
             } else {
                 // Normal identifier/symbol
-                auto expr = make_shared<SymbolExpr>();
+                auto expr = make_shared<AtomicSymbolExpr>();
 
                 // Create a new symbol TODO maybe extract into own function
                 expr->symbol = a_ctx.next_symbol.id++;
@@ -287,8 +287,8 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                                  ( rule.precedence < s_expr->prec() ||
                                    ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
                                 // Split expr
-                                s_expr->split_prepend_recursively( rev_deep_expr_list, stst_set, rule.precedence, rule.ltr,
-                                                                   rule_length );
+                                s_expr->split_prepend_recursively( rev_deep_expr_list, stst_set, rule.precedence,
+                                                                   rule.ltr, rule_length );
                             } else { // Don't split expr
                                 rev_deep_expr_list.push_back( *expr_itr );
                             }
@@ -347,7 +347,11 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 MessageInfo( ( *( expr_list.begin() + 1 ) )->get_position_info(), 0, FmtStr::Color::Red ) );
             return make_shared<TupleExpr>(); // default
         } else { // normal term or tuple
-            if ( expr_list.size() == 1 && std::dynamic_pointer_cast<CommaExpr>( expr_list.front() ) ) { // tuple
+            if ( expr_list.empty() ) { // Unit type
+                auto block = make_shared<UnitExpr>();
+                block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
+                return block;
+            } else if ( expr_list.size() == 1 && std::dynamic_pointer_cast<CommaExpr>( expr_list.front() ) ) { // tuple
                 auto block = make_shared<TupleExpr>();
                 block->pos_info = { last_token->file, last_token->line, last_token->column, last_token->length };
                 block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->exprs;

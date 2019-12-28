@@ -140,19 +140,20 @@ define_mci_rule( ITR_LOOP_EXPRESSION, 20, rtl, triple_list, "for", expr -> itera
 define_mci_rule( MATCH_EXPRESSION, 20, rtl, triple_list, "match", expr -> selector, completed -> cases ); // match keyword which matches an expression
 
 // Functions
-define_mci_rule( FUNCTION_CALL, 1, rtl, double_list, identifier -> exec, tuple -> parameters ); // function call with parameters
-define_mci_rule( FUNCTION_CALL, 1, rtl, double_list, identifier -> exec, term -> parameters ); // function call with a single parameter
+define_mci_rule( FUNCTION_CALL, 2, ltr, double_list, expr -> exec, unit -> parameters ); // function call with no parameters
+define_mci_rule( FUNCTION_CALL, 2, ltr, double_list, expr -> exec, tuple -> parameters ); // function call with parameters
+define_mci_rule( FUNCTION_CALL, 2, ltr, double_list, expr -> exec, term -> parameters ); // function call with a single parameter
 //define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, expr -> parameters ); // a function head
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 2, rtl, double_list, identifier -> name, completed -> body ); // a zero-parameter function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 2, rtl, triple_list, identifier -> name, tuple -> parameters, completed -> body ); // a parameterized function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 2, rtl, triple_list, identifier -> name, term -> parameters, completed -> body ); // a single parameter function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, double_list, identifier -> name, completed -> body ); // a zero-parameter function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, triple_list, identifier -> name, tuple -> parameters, completed -> body ); // a parameterized function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, triple_list, identifier -> name, term -> parameters, completed -> body ); // a single parameter function with a body block
 //define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, expr -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations
 //define_mci_rule( DEFINE_TEMPLATE, 1, ltr, triple_list, "<" -> lop, identifier -> value, ">" -> rop ); // template arguments are surrounded by angular brackets
-define_mci_rule( SCOPE_ACCESS, 1, ltr, triple_list, expr -> base, "::" -> op, expr -> name ); // scope access is a symbol extension
-define_mci_rule( SCOPE_ACCESS, 1, rtl, double_list, "::" -> op, expr -> name ); // global scope access
-define_mci_rule( MEMBER_ACCESS, 1, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of a object
+define_mci_rule( SCOPE_ACCESS, 1, rtl, triple_list, identifier -> base, "::" -> op, identifier -> name ); // scope access is a symbol extension
+define_mci_rule( SCOPE_ACCESS, 2, rtl, double_list, "::" -> op, identifier -> name ); // global scope access
+define_mci_rule( MEMBER_ACCESS, 2, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of a object
 define_mci_rule( ARRAY_ACCESS, 1, ltr, double_list, expr -> value, array_spec -> index ); // array access with a type or variable.
 
 // Operators

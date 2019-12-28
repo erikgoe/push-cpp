@@ -29,6 +29,8 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<SymbolExpr>() );
         } else if ( expr.first == "completed" ) {
             sr.expr_list.push_back( make_shared<CompletedExpr>() );
+        } else if ( expr.first == "unit" ) {
+            sr.expr_list.push_back( make_shared<UnitExpr>() );
         } else if ( expr.first == "term" ) {
             sr.expr_list.push_back( make_shared<TermExpr>() );
         } else if ( expr.first == "tuple" ) {
@@ -186,7 +188,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.ltr = f.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<FuncCallExpr>(
-                std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "exec" )] ), 0,
+                list[lm.at( "exec" )], 0,
                 ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ), new_rule.precedence,
                 list );
         };

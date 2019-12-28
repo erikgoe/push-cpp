@@ -1,7 +1,6 @@
 #prelude(push)
 
-fn {
-    let val = 4;
-    
-    let result = 40 ${val != 0} / val;
+scope::fn {
+    let val = a.b;
+    obj.func().member++;
 }

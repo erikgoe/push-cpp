@@ -138,6 +138,16 @@ public:
     }
 };
 
+// The unit type
+class UnitExpr : public OperandExpr {
+public:
+    TypeId get_type() override { return TYPE_UNIT; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<UnitExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "UNIT()"; }
+};
+
 // A tuple with multiple elements
 class TupleExpr : public OperandExpr {
 public:
@@ -205,15 +215,23 @@ public:
     }
 };
 
-// A simple symbol/identifier (variable, function, etc.)
+// Base class for symbols
 class SymbolExpr : public OperandExpr {
+public:
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
+};
+
+// A simple symbol/identifier (variable, function, etc.)
+class AtomicSymbolExpr : public SymbolExpr {
 public:
     TypeId type;
     SymbolId symbol;
 
     TypeId get_type() override { return type; }
 
-    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<AtomicSymbolExpr>( other ) != nullptr;
+    }
 
     String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")" + get_additional_debug_data(); }
 };
@@ -408,10 +426,10 @@ class FuncCallExpr : public SeparableExpr {
 public:
     TypeId type; // Every funcion has its own type
     sptr<Expr> parameters;
-    sptr<SymbolExpr> symbol;
+    sptr<Expr> symbol;
 
     FuncCallExpr() {}
-    FuncCallExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<Expr> parameters, u32 precedence,
+    FuncCallExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, u32 precedence,
                   std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
@@ -823,7 +841,7 @@ public:
 };
 
 // Access to a element of a scope
-class ScopeAccessExpr : public SeparableExpr {
+class ScopeAccessExpr : public SeparableExpr, public SymbolExpr {
 public:
     sptr<Expr> base, name;
     TypeId type;
