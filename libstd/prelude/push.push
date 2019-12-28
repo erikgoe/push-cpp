@@ -122,11 +122,11 @@ define_mci_rule( ALIAS_EXPRESSION, 19, rtl, double_list, "use", expr -> expressi
 define_mci_rule( LET_STATEMENT, 19, rtl, double_list, "let", expr -> expression ); // let keyword which starts a new variable binding
 
 // OOP constructs
-define_mci_rule( STRUCT_DEFINITION, 1, rtl, triple_list, "struct", identifier -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
+define_mci_rule( STRUCT_DEFINITION, 1, rtl, triple_list, "struct", symbol -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
 define_mci_rule( STRUCT_DEFINITION, 1, rtl, single_list, "struct" ); // anonymous struct
-define_mci_rule( TRAIT_DEFINITION, 1, rtl, triple_list, "trait", identifier -> name, completed -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
-define_mci_rule( IMPL_DEFINITION, 1, rtl, triple_list, "impl", identifier -> type, completed -> body ); // impl-blocks which defines methods for a struct independent of a trait
-define_mci_rule( IMPL_DEFINITION, 1, rtl, quintuple_list, "impl", identifier -> trait, "for", identifier -> type, completed -> body ); // impl-blocks which defines a trait for a struct
+define_mci_rule( TRAIT_DEFINITION, 1, rtl, triple_list, "trait", symbol -> name, completed -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
+define_mci_rule( IMPL_DEFINITION, 1, rtl, triple_list, "impl", symbol -> type, completed -> body ); // impl-blocks which defines methods for a struct independent of a trait
+define_mci_rule( IMPL_DEFINITION, 1, rtl, quintuple_list, "impl", symbol -> trait, "for", symbol -> type, completed -> body ); // impl-blocks which defines a trait for a struct
 
 // Control flow
 define_mci_rule( IF_EXPRESSION, 20, rtl, triple_list, "if", expr -> condition, completed -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
@@ -143,17 +143,17 @@ define_mci_rule( MATCH_EXPRESSION, 20, rtl, triple_list, "match", expr -> select
 define_mci_rule( FUNCTION_CALL, 2, ltr, double_list, expr -> exec, unit -> parameters ); // function call with no parameters
 define_mci_rule( FUNCTION_CALL, 2, ltr, double_list, expr -> exec, tuple -> parameters ); // function call with parameters
 define_mci_rule( FUNCTION_CALL, 2, ltr, double_list, expr -> exec, term -> parameters ); // function call with a single parameter
-//define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, identifier -> name, expr -> parameters ); // a function head
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, double_list, identifier -> name, completed -> body ); // a zero-parameter function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, triple_list, identifier -> name, tuple -> parameters, completed -> body ); // a parameterized function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, triple_list, identifier -> name, term -> parameters, completed -> body ); // a single parameter function with a body block
-//define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, identifier -> name, expr -> parameters, "->", expr -> body ); // a single-line function
+//define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, symbol -> name, expr -> parameters ); // a function head
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, double_list, symbol -> name, completed -> body ); // a zero-parameter function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, triple_list, symbol -> name, tuple -> parameters, completed -> body ); // a parameterized function with a body block
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 3, rtl, triple_list, symbol -> name, term -> parameters, completed -> body ); // a single parameter function with a body block
+//define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, symbol -> name, expr -> parameters, "->", expr -> body ); // a single-line function
 
 // Appending operations
-//define_mci_rule( DEFINE_TEMPLATE, 1, ltr, triple_list, "<" -> lop, identifier -> value, ">" -> rop ); // template arguments are surrounded by angular brackets
-define_mci_rule( SCOPE_ACCESS, 1, rtl, triple_list, identifier -> base, "::" -> op, identifier -> name ); // scope access is a symbol extension
-define_mci_rule( SCOPE_ACCESS, 2, rtl, double_list, "::" -> op, identifier -> name ); // global scope access
-define_mci_rule( MEMBER_ACCESS, 2, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of a object
+//define_mci_rule( DEFINE_TEMPLATE, 1, ltr, triple_list, "<" -> lop, symbol -> value, ">" -> rop ); // template arguments are surrounded by angular brackets
+define_mci_rule( SCOPE_ACCESS, 1, ltr, triple_list, symbol -> base, "::" -> op, symbol -> name ); // scope access is a symbol extension
+define_mci_rule( SCOPE_ACCESS, 2, ltr, double_list, "::" -> op, symbol -> name ); // global scope access
+define_mci_rule( MEMBER_ACCESS, 2, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of an object
 define_mci_rule( ARRAY_ACCESS, 1, ltr, double_list, expr -> value, array_spec -> index ); // array access with a type or variable.
 
 // Operators
@@ -220,7 +220,7 @@ define_mci_rule( RANGE_DEFINITION, TO_EXCLUDING, 10, rtl, double_list, ".." -> o
 define_mci_rule( RANGE_DEFINITION, INCLUDING, 10, rtl, triple_list, expr -> lvalue, "..=" -> op, expr -> rvalue ); // range operator for 0..=5
 define_mci_rule( RANGE_DEFINITION, TO_INCLUDING, 10, rtl, double_list, "..=" -> op, expr -> rvalue ); // range operator for ..=5
 
-define_mci_rule( MODULE_SPECIFIER, 1, rtl, double_list, "mod", identifier -> name ); // module specification ("mod" keyword)
+define_mci_rule( MODULE_SPECIFIER, 1, rtl, double_list, "mod", symbol -> name ); // module specification ("mod" keyword)
 define_mci_rule( STATIC_STATEMENT, 1, rtl, double_list, "$", completed -> body ); // static statement
 
 // Primitive types
