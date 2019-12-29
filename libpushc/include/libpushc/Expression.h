@@ -965,6 +965,24 @@ public:
     String get_debug_repr() override { return "STST " + body->get_debug_repr() + get_additional_debug_data(); }
 };
 
+// Specify a block or function to be unsafe
+class UnsafeExpr : public SeparableExpr, public SymbolExpr {
+public:
+    sptr<Expr> block;
+
+    UnsafeExpr() {}
+    UnsafeExpr( sptr<Expr> block, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->block = block;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+    TypeId get_type() override { return block->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<UnsafeExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override { return "UNSAFE " + block->get_debug_repr() + get_additional_debug_data(); }
+};
+
 // Specification of a symbol with generic attributes
 class TemplateExpr : public SeparableExpr, public SymbolExpr {
 public:

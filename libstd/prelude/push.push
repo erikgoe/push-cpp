@@ -124,6 +124,7 @@ define_mci_rule( MODULE_SPECIFIER, 1, rtl, double_list, "mod", symbol -> name );
 
 // Special specifiers
 define_mci_rule( STATIC_STATEMENT, 1, rtl, double_list, "$", completed -> body ); // static statement
+define_mci_rule( UNSAFE_BLOCK, 1, rtl, double_list, "unsafe", completed -> body ); // unsafe block
 define_mci_rule( DEFINE_TEMPLATE, 4, ltr, quadruple_list, symbol -> name, "<" -> lop, comma_list -> attributes, ">" -> rop ); // multiple template arguments are surrounded by angular brackets and separated by commas
 define_mci_rule( DEFINE_TEMPLATE, 4, ltr, quadruple_list, symbol -> name, "<" -> lop, expr -> attributes, ">" -> rop ); // single template arguments are surrounded by angular brackets
 

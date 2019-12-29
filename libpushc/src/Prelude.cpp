@@ -712,6 +712,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->static_statements.push_back( op );
+        } else if ( mci == "UNSAFE_BLOCK" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->unsafe.push_back( op );
         } else if ( mci == "DEFINE_TEMPLATE" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {

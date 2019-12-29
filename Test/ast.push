@@ -1,7 +1,7 @@
 #prelude(push)
 
-fn<T:type> {
-    let val:T = 3;
-    fn<int>();
-
+fn {
+    unsafe {
+        C::printf("hello world\n");
+    }
 }

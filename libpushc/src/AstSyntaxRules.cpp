@@ -341,6 +341,15 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         };
         a_ctx.rules.push_back( new_rule );
     }
+    for ( auto &o : pc.unsafe ) {
+        parse_rule( new_rule, lm, o.syntax );
+        new_rule.precedence = o.precedence;
+        new_rule.ltr = o.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<UnsafeExpr>( list[lm.at( "body" )], o.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
     for ( auto &o : pc.templates ) {
         parse_rule( new_rule, lm, o.syntax );
         new_rule.precedence = o.precedence;

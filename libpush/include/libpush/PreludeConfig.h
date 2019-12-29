@@ -130,6 +130,7 @@ struct PreludeConfig {
 
     std::list<Operator> modules; // module specifier (mod keyword)
     std::list<Operator> static_statements; // static statement
+    std::list<Operator> unsafe; // unsafe blocks
     std::list<Operator> templates; // generic types
 
     String integer_trait; // Basic trait to define an integer
