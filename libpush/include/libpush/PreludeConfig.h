@@ -113,8 +113,6 @@ struct PreludeConfig {
     std::list<FunctionDefinition> fn_definitions; // Function syntax
     std::list<Operator> fn_call; // Function call syntax
 
-    // TODO templates
-
     // Special access
     String scope_access_operator; // THE scope access operator
     std::list<Operator> scope_access_op; // how other scopes may be accessed
@@ -132,6 +130,7 @@ struct PreludeConfig {
 
     std::list<Operator> modules; // module specifier (mod keyword)
     std::list<Operator> static_statements; // static statement
+    std::list<Operator> templates; // generic types
 
     String integer_trait; // Basic trait to define an integer
     String string_trait; // Basic trait to define a string

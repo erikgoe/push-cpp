@@ -636,7 +636,6 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             }
 
             conf->fn_call.push_back( op );
-        } else if ( mci == "DEFINE_TEMPLATE" ) { // TODO
         } else if ( mci == "SCOPE_ACCESS" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {
@@ -713,6 +712,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->static_statements.push_back( op );
+        } else if ( mci == "DEFINE_TEMPLATE" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->templates.push_back( op );
         } else if ( mci == "RANGE_DEFINITION" ) {
             token = input->get_token();
             RangeOperator::Type type;

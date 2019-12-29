@@ -1,6 +1,7 @@
 #prelude(push)
 
-scope::fn {
-    let val = a.b;
-    A::S.func().member++;
+fn<T:type> {
+    let val:T = 3;
+    fn<int>();
+
 }

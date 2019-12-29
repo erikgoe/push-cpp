@@ -29,6 +29,8 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<SymbolExpr>() );
         } else if ( expr.first == "completed" ) {
             sr.expr_list.push_back( make_shared<CompletedExpr>() );
+        } else if ( expr.first == "comma_list" ) {
+            sr.expr_list.push_back( make_shared<CommaExpr>() );
         } else if ( expr.first == "unit" ) {
             sr.expr_list.push_back( make_shared<UnitExpr>() );
         } else if ( expr.first == "term" ) {
@@ -336,6 +338,15 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.ltr = o.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<StaticStatementExpr>( list[lm.at( "body" )] );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &o : pc.templates ) {
+        parse_rule( new_rule, lm, o.syntax );
+        new_rule.precedence = o.precedence;
+        new_rule.ltr = o.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<TemplateExpr>( list[lm.at( "name" )], list[lm.at( "attributes" )], o.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }

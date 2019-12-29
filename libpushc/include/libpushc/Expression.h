@@ -964,3 +964,26 @@ public:
 
     String get_debug_repr() override { return "STST " + body->get_debug_repr() + get_additional_debug_data(); }
 };
+
+// Specification of a symbol with generic attributes
+class TemplateExpr : public SeparableExpr, public SymbolExpr {
+public:
+    sptr<Expr> symbol;
+    sptr<Expr> attributes;
+
+    TemplateExpr() {}
+    TemplateExpr( sptr<Expr> symbol, sptr<Expr> attributes, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->attributes = attributes;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+    TypeId get_type() override { return symbol->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TemplateExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "TEMPLATE " + symbol->get_debug_repr() + "<" + attributes->get_debug_repr() + ">" +
+               get_additional_debug_data();
+    }
+};
