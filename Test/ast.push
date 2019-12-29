@@ -2,5 +2,5 @@
 
 scope::fn {
     let val = a.b;
-    obj.func().member++;
+    A::S.func().member++;
 }

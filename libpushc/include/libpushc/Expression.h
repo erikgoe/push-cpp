@@ -216,7 +216,7 @@ public:
 };
 
 // Base class for symbols
-class SymbolExpr : public OperandExpr {
+class SymbolExpr : public virtual OperandExpr {
 public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
 };
@@ -302,7 +302,7 @@ public:
 };
 
 // An expression which can be broken into multiple sub-expressions by other rvalues/operators
-class SeparableExpr : public OperandExpr {
+class SeparableExpr : public virtual OperandExpr {
 protected:
     std::vector<sptr<Expr>> original_list;
     u32 precedence = 0;
