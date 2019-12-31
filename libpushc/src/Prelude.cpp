@@ -32,7 +32,6 @@ PreludeConfig get_prelude_prelude() {
     pc.unused_prefix.clear();
     pc.string_rules.push_back( StringRule{ "\"", "\"", "", "", "", true, false, true } );
 
-    pc.fn_declarations.clear();
     pc.fn_definitions.clear();
 
     pc.scope_access_op.clear();
@@ -583,29 +582,6 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->matching.push_back( op );
-        } else if ( mci == "FUNCTION_DECLARATION" ) {
-            token = input->get_token();
-            if ( token.type != Token::Type::identifier ) {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            auto trait = token.content;
-            CONSUME_COMMA( token );
-
-            token = input->get_token();
-            if ( token.type != Token::Type::identifier ) {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            auto function = token.content;
-            CONSUME_COMMA( token );
-
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-
-            conf->fn_declarations.push_back( FunctionDefinition{ trait, function, op } );
         } else if ( mci == "FUNCTION_DEFINITION" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {
@@ -635,7 +611,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
 
-            conf->fn_call.push_back( op );
+            conf->fn_signature.push_back( op );
         } else if ( mci == "SCOPE_ACCESS" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {
@@ -706,6 +682,18 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->modules.push_back( op );
+        } else if ( mci == "DECLARATION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->declaration.push_back( op );
+        } else if ( mci == "PUBLIC_ATTRIBUTE" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->public_attr.push_back( op );
         } else if ( mci == "STATIC_STATEMENT" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {

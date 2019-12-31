@@ -1,7 +1,4 @@
 #prelude(push)
 
-fn {
-    unsafe {
-        C::printf("hello world\n");
-    }
-}
+decl fn1(arg:int); // implicitly public
+pub fn2(arg:int);

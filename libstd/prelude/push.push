@@ -121,6 +121,9 @@ define_mci_rule( NEW_OPERATOR, std::literal::float, 1, ltr, triple_list, integer
 define_mci_rule( ALIAS_EXPRESSION, 19, rtl, double_list, "use", expr -> expression ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
 define_mci_rule( LET_STATEMENT, 19, rtl, double_list, "let", expr -> expression ); // let keyword which starts a new variable binding
 define_mci_rule( MODULE_SPECIFIER, 1, rtl, double_list, "mod", symbol -> name ); // module specification ("mod" keyword)
+define_mci_rule( DECLARATION, 1, rtl, double_list, "decl", function_signature -> symbol ); // declaration of a symbol
+define_mci_rule( PUBLIC_ATTRIBUTE, 1, rtl, double_list, "pub", function_signature -> symbol ); // specification of a public function
+define_mci_rule( PUBLIC_ATTRIBUTE, 1, rtl, double_list, "pub", competed -> symbol ); // specification of a public symbol other than a function
 
 // Special specifiers
 define_mci_rule( STATIC_STATEMENT, 1, rtl, double_list, "$", completed -> body ); // static statement

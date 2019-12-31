@@ -41,6 +41,8 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<BasicBlobLiteralExpr>() );
         } else if ( expr.first == "array_spec" ) {
             sr.expr_list.push_back( make_shared<ArraySpecifierExpr>() );
+        } else if ( expr.first == "function_signature" ) {
+            sr.expr_list.push_back( make_shared<FuncSignExpr>() );
         } else {
             // Keyword or operator
             sr.expr_list.push_back( make_shared<TokenExpr>(
@@ -184,25 +186,15 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     }
 
     // Functions
-    for ( auto &f : pc.fn_call ) {
+    for ( auto &f : pc.fn_signature ) {
         parse_rule( new_rule, lm, f.syntax );
         new_rule.precedence = f.precedence;
         new_rule.ltr = f.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<FuncCallExpr>(
+            return make_shared<FuncSignExpr>(
                 list[lm.at( "exec" )], 0,
                 ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ), new_rule.precedence,
                 list );
-        };
-        a_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &f : pc.fn_declarations ) {
-        parse_rule( new_rule, lm, f.op.syntax );
-        new_rule.precedence = f.op.precedence;
-        new_rule.ltr = f.op.ltr;
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<FuncDecExpr>( std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
-                                             new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }
@@ -329,6 +321,24 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.ltr = o.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<ModuleExpr>( list[lm.at( "name" )], o.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &o : pc.declaration ) {
+        parse_rule( new_rule, lm, o.syntax );
+        new_rule.precedence = o.precedence;
+        new_rule.ltr = o.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<DeclarationExpr>( list[lm.at( "symbol" )], o.precedence, list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &o : pc.public_attr ) {
+        parse_rule( new_rule, lm, o.syntax );
+        new_rule.precedence = o.precedence;
+        new_rule.ltr = o.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<PublicAttrExpr>( list[lm.at( "symbol" )], o.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }

@@ -109,9 +109,8 @@ struct PreludeConfig {
     std::list<Operator> matching; // pattern matching construct
 
     // Functions
-    std::list<FunctionDefinition> fn_declarations; // Function syntax
     std::list<FunctionDefinition> fn_definitions; // Function syntax
-    std::list<Operator> fn_call; // Function call syntax
+    std::list<Operator> fn_signature; // Function call or definition syntax
 
     // Special access
     String scope_access_operator; // THE scope access operator
@@ -129,6 +128,8 @@ struct PreludeConfig {
     std::list<RangeOperator> range_op; // any possible range
 
     std::list<Operator> modules; // module specifier (mod keyword)
+    std::list<Operator> declaration; // declaration syntax
+    std::list<Operator> public_attr; // public attribute syntax
     std::list<Operator> static_statements; // static statement
     std::list<Operator> unsafe; // unsafe blocks
     std::list<Operator> templates; // generic types

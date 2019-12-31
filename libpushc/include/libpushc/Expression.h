@@ -370,28 +370,6 @@ public:
         return str + ")" + get_additional_debug_data();
     }
 };
-// Specifies a new funcion signature
-class FuncDecExpr : public SeparableExpr {
-    TypeId type; // Every funcion has its own type
-    sptr<SymbolExpr> symbol;
-
-public:
-    FuncDecExpr() {}
-    FuncDecExpr( sptr<SymbolExpr> symbol, TypeId type, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
-        this->symbol = symbol;
-        this->type = type;
-        this->precedence = precedence;
-        this->original_list = original_list;
-    }
-
-    TypeId get_type() override { return type; }
-
-    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncDecExpr>( other ) != nullptr; }
-
-    String get_debug_repr() override {
-        return "FUNC_DEC(" + to_string( type ) + " " + symbol->get_debug_repr() + ")" + get_additional_debug_data();
-    }
-};
 
 // Specifies a new funcion
 class FuncExpr : public SeparableExpr, public CompletedExpr {
@@ -421,15 +399,15 @@ public:
     }
 };
 
-// Specifies a call of a funcion
-class FuncCallExpr : public SeparableExpr {
+// Specifies a funcion signature
+class FuncSignExpr : public SeparableExpr {
 public:
     TypeId type; // Every funcion has its own type
     sptr<Expr> parameters;
     sptr<Expr> symbol;
 
-    FuncCallExpr() {}
-    FuncCallExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, u32 precedence,
+    FuncSignExpr() {}
+    FuncSignExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, u32 precedence,
                   std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
@@ -440,10 +418,10 @@ public:
 
     TypeId get_type() override { return type; }
 
-    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncCallExpr>( other ) != nullptr; }
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncSignExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "CALL(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
+        return "FN_SIGN(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
                symbol->get_debug_repr() + ")" + get_additional_debug_data();
     }
 };
@@ -945,6 +923,48 @@ public:
 
     String get_debug_repr() override {
         return "MODULE(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
+    }
+};
+
+// Declaration of a symbol (function)
+class DeclarationExpr : public SeparableExpr {
+public:
+    sptr<Expr> symbol;
+
+    DeclarationExpr() {}
+    DeclarationExpr( sptr<Expr> symbol, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return symbol->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclarationExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "DECL(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
+    }
+};
+
+// "Public" attribute to a symbol
+class PublicAttrExpr : public SeparableExpr {
+public:
+    sptr<Expr> symbol;
+
+    PublicAttrExpr() {}
+    PublicAttrExpr( sptr<Expr> symbol, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return symbol->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PublicAttrExpr>( other ) != nullptr; }
+
+    String get_debug_repr() override {
+        return "PUBLIC(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
     }
 };
 
