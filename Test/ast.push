@@ -1,4 +1,14 @@
 #prelude(push)
 
-decl fn1(arg:int); // implicitly public
-pub fn2(arg:int);
+scope::B::fn(a) {
+    a.fn();
+}
+
+fn2 {
+}
+
+fn3 (a:int, b:int) -> int {
+    [&]() { a++ }
+
+    arr[2];
+}

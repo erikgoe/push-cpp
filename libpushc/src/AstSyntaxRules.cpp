@@ -29,6 +29,8 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<SymbolExpr>() );
         } else if ( expr.first == "completed" ) {
             sr.expr_list.push_back( make_shared<CompletedExpr>() );
+        } else if ( expr.first == "fn_head" ) {
+            sr.expr_list.push_back( make_shared<FuncHeadExpr>() );
         } else if ( expr.first == "comma_list" ) {
             sr.expr_list.push_back( make_shared<CommaExpr>() );
         } else if ( expr.first == "unit" ) {
@@ -42,7 +44,7 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
         } else if ( expr.first == "array_spec" ) {
             sr.expr_list.push_back( make_shared<ArraySpecifierExpr>() );
         } else if ( expr.first == "function_signature" ) {
-            sr.expr_list.push_back( make_shared<FuncSignExpr>() );
+            sr.expr_list.push_back( make_shared<FuncCallExpr>() );
         } else {
             // Keyword or operator
             sr.expr_list.push_back( make_shared<TokenExpr>(
@@ -186,15 +188,25 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     }
 
     // Functions
-    for ( auto &f : pc.fn_signature ) {
+    for ( auto &f : pc.fn_head ) {
         parse_rule( new_rule, lm, f.syntax );
         new_rule.precedence = f.precedence;
         new_rule.ltr = f.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<FuncSignExpr>(
-                list[lm.at( "exec" )], 0,
+            return make_shared<FuncHeadExpr>(
+                list[lm.at( "symbol" )],
                 ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ), new_rule.precedence,
                 list );
+        };
+        a_ctx.rules.push_back( new_rule );
+    }
+    for ( auto &f : pc.fn_call ) {
+        parse_rule( new_rule, lm, f.syntax );
+        new_rule.precedence = f.precedence;
+        new_rule.ltr = f.ltr;
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            auto head = std::dynamic_pointer_cast<FuncHeadExpr>( list[lm.at( "head" )] );
+            return make_shared<FuncCallExpr>( head->symbol, 0, head->parameters, new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }
@@ -203,10 +215,19 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.precedence = f.op.precedence;
         new_rule.ltr = f.op.ltr;
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<FuncExpr>(
-                std::dynamic_pointer_cast<SymbolExpr>( list[lm.at( "name" )] ), 0,
-                ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ),
-                std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
+            if ( lm.find( "head" ) != lm.end() ) {
+                auto head = std::dynamic_pointer_cast<FuncHeadExpr>( list[lm.at( "head" )] );
+                return make_shared<FuncExpr>( head->symbol, 0, head->parameters,
+                                              ( lm.find( "return" ) == lm.end() ? nullptr : list[lm.at( "return" )] ),
+                                              std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
+                                              new_rule.precedence, list );
+            } else {
+                return make_shared<FuncExpr>(
+                    list[lm.at( "symbol" )], 0,
+                    ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ),
+                    ( lm.find( "return" ) == lm.end() ? nullptr : list[lm.at( "return" )] ),
+                    std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
+            }
         };
         a_ctx.rules.push_back( new_rule );
     }

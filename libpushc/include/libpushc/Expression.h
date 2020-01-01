@@ -371,20 +371,45 @@ public:
     }
 };
 
+// The head of a function. Must be resolved into other expressions
+class FuncHeadExpr : public SeparableExpr {
+public:
+    sptr<Expr> symbol;
+    sptr<Expr> parameters;
+
+    FuncHeadExpr() {}
+    FuncHeadExpr( sptr<Expr> symbol, sptr<Expr> parameters, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->parameters = parameters;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return 0; }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncHeadExpr>( other ) != nullptr; }
+    String get_debug_repr() override {
+        return "FUNC_HEAD(" + ( parameters ? parameters->get_debug_repr() + " " : "" ) + symbol->get_debug_repr() +
+               get_additional_debug_data();
+    }
+};
+
 // Specifies a new funcion
 class FuncExpr : public SeparableExpr, public CompletedExpr {
     TypeId type; // Every funcion has its own type
     sptr<Expr> parameters;
-    sptr<SymbolExpr> symbol;
+    sptr<Expr> return_type;
+    sptr<Expr> symbol;
     sptr<CompletedExpr> body;
 
 public:
     FuncExpr() {}
-    FuncExpr( sptr<SymbolExpr> symbol, TypeId type, sptr<Expr> parameters, sptr<CompletedExpr> block, u32 precedence,
-              std::vector<sptr<Expr>> &original_list ) {
+    FuncExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, sptr<Expr> return_type, sptr<CompletedExpr> block,
+              u32 precedence, std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
         this->parameters = parameters;
+        this->return_type = return_type;
         body = block;
         this->precedence = precedence;
         this->original_list = original_list;
@@ -395,19 +420,21 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncExpr>( other ) != nullptr; }
     String get_debug_repr() override {
         return "FUNC(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
-               symbol->get_debug_repr() + " " + body->get_debug_repr() + ")" + get_additional_debug_data();
+               ( symbol ? symbol->get_debug_repr() : "<anonymous>" ) +
+               ( return_type ? " -> " + return_type->get_debug_repr() : "" ) + " " + body->get_debug_repr() + ")" +
+               get_additional_debug_data();
     }
 };
 
-// Specifies a funcion signature
-class FuncSignExpr : public SeparableExpr {
+// Specifies a call to a funcion
+class FuncCallExpr : public SeparableExpr {
 public:
     TypeId type; // Every funcion has its own type
     sptr<Expr> parameters;
     sptr<Expr> symbol;
 
-    FuncSignExpr() {}
-    FuncSignExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, u32 precedence,
+    FuncCallExpr() {}
+    FuncCallExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, u32 precedence,
                   std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
         this->type = type;
@@ -418,10 +445,10 @@ public:
 
     TypeId get_type() override { return type; }
 
-    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncSignExpr>( other ) != nullptr; }
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncCallExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "FN_SIGN(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
+        return "FN_CALL(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
                symbol->get_debug_repr() + ")" + get_additional_debug_data();
     }
 };
@@ -942,9 +969,7 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclarationExpr>( other ) != nullptr; }
 
-    String get_debug_repr() override {
-        return "DECL(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
-    }
+    String get_debug_repr() override { return "DECL(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
 
 // "Public" attribute to a symbol

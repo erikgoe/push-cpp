@@ -109,8 +109,9 @@ struct PreludeConfig {
     std::list<Operator> matching; // pattern matching construct
 
     // Functions
+    std::list<Operator> fn_head; // Function head syntax
     std::list<FunctionDefinition> fn_definitions; // Function syntax
-    std::list<Operator> fn_signature; // Function call or definition syntax
+    std::list<Operator> fn_call; // Function call
 
     // Special access
     String scope_access_operator; // THE scope access operator

@@ -150,14 +150,21 @@ define_mci_rule( ITR_LOOP_EXPRESSION, 20, rtl, triple_list, "for", expr -> itera
 define_mci_rule( MATCH_EXPRESSION, 20, rtl, triple_list, "match", expr -> selector, completed -> cases ); // match keyword which matches an expression
 
 // Functions
-define_mci_rule( FUNCTION_CALL, 4, ltr, double_list, expr -> exec, unit -> parameters ); // function call with no parameters
-define_mci_rule( FUNCTION_CALL, 4, ltr, double_list, expr -> exec, tuple -> parameters ); // function call with parameters
-define_mci_rule( FUNCTION_CALL, 4, ltr, double_list, expr -> exec, term -> parameters ); // function call with a single parameter
-//define_mci_rule( FUNCTION_DECLARATION, std::op::Function, fn, double_list, symbol -> name, expr -> parameters ); // a function head
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, double_list, symbol -> name, completed -> body ); // a zero-parameter function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, triple_list, symbol -> name, tuple -> parameters, completed -> body ); // a parameterized function with a body block
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, triple_list, symbol -> name, term -> parameters, completed -> body ); // a single parameter function with a body block
-//define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, quadruple_list, symbol -> name, expr -> parameters, "->", expr -> body ); // a single-line function
+define_mci_rule( FUNCTION_HEAD, 4, ltr, double_list, expr -> symbol, unit -> parameters ); // function head without parameters
+define_mci_rule( FUNCTION_HEAD, 4, ltr, double_list, expr -> symbol, term -> parameters ); // function head with a single parameter
+define_mci_rule( FUNCTION_HEAD, 4, ltr, double_list, expr -> symbol, tuple -> parameters ); // function head with multiple parameters
+define_mci_rule( FUNCTION_HEAD, 4, rtl, double_list, array_spec -> symbol, unit -> parameters ); // lambda syntax without parameters
+define_mci_rule( FUNCTION_HEAD, 4, rtl, double_list, array_spec -> symbol, term -> parameters ); // lambda syntax with a single parameter
+define_mci_rule( FUNCTION_HEAD, 4, rtl, double_list, array_spec -> symbol, tuple -> parameters ); // lambda syntax with multiple parameters
+
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, double_list, array_spec -> symbol, completed -> body ); // lambda without an explicit return type nor parameters
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, quadruple_list, array_spec -> symbol, "->", expr -> return, completed -> body ); // lambda with an explicit return type, but no parameters
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, double_list, symbol -> symbol, completed -> body ); // function without an explicit return type nor parameters
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, quadruple_list, symbol -> symbol, "->", expr -> return, completed -> body ); // function with an explicit return type, but no parameters
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, double_list, fn_head -> head, completed -> body ); // function without an explicit return type
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 5, rtl, quadruple_list, fn_head -> head, "->", expr -> return, completed -> body ); // function with an explicit return type
+
+define_mci_rule( FUNCTION_CALL, 5, rtl, single_list, fn_head -> head ); // function call
 
 // Appending operations
 define_mci_rule( SCOPE_ACCESS, 1, ltr, triple_list, symbol -> base, "::" -> op, symbol -> name ); // scope access is a symbol extension

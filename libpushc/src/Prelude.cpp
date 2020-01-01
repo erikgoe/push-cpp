@@ -582,6 +582,13 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->matching.push_back( op );
+        } else if ( mci == "FUNCTION_HEAD" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+
+            conf->fn_head.push_back( op );
         } else if ( mci == "FUNCTION_DEFINITION" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {
@@ -611,7 +618,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
 
-            conf->fn_signature.push_back( op );
+            conf->fn_call.push_back( op );
         } else if ( mci == "SCOPE_ACCESS" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {
