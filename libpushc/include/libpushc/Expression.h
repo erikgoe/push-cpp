@@ -1010,6 +1010,58 @@ public:
     String get_debug_repr() override { return "STST " + body->get_debug_repr() + get_additional_debug_data(); }
 };
 
+// An annotation to give special instructions to the compiler
+class CompilerAnnotationExpr : public SeparableExpr {
+public:
+    sptr<Expr> name;
+    sptr<Expr> body;
+
+    CompilerAnnotationExpr() {}
+    CompilerAnnotationExpr( sptr<Expr> name, sptr<Expr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->name = name;
+        this->body = body;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return body->get_type(); }
+
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<CompilerAnnotationExpr>( other ) != nullptr;
+    }
+
+    String get_debug_repr() override {
+        return "ANNOTATE(" + name->get_debug_repr() + " for " + body->get_debug_repr() + ")" +
+               get_additional_debug_data();
+    }
+};
+
+// A macro usage
+class MacroExpr : public SeparableExpr {
+public:
+    sptr<Expr> name;
+    sptr<Expr> body;
+
+    MacroExpr() {}
+    MacroExpr( sptr<Expr> name, sptr<Expr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->name = name;
+        this->body = body;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return 0; }
+
+    bool matches( sptr<Expr> other ) override {
+        return std::dynamic_pointer_cast<MacroExpr>( other ) != nullptr;
+    }
+
+    String get_debug_repr() override {
+        return "MACRO(" + name->get_debug_repr() + "! " + body->get_debug_repr() + ")" +
+               get_additional_debug_data();
+    }
+};
+
 // Specify a block or function to be unsafe
 class UnsafeExpr : public SeparableExpr, public SymbolExpr {
 public:

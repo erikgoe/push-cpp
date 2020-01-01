@@ -707,6 +707,18 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->static_statements.push_back( op );
+        } else if ( mci == "ANNOTATION" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->compiler_annotations.push_back( op );
+        } else if ( mci == "MACRO" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->macros.push_back( op );
         } else if ( mci == "UNSAFE_BLOCK" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {

@@ -132,6 +132,8 @@ struct PreludeConfig {
     std::list<Operator> declaration; // declaration syntax
     std::list<Operator> public_attr; // public attribute syntax
     std::list<Operator> static_statements; // static statement
+    std::list<Operator> compiler_annotations; // compiler annotations
+    std::list<Operator> macros; // macros
     std::list<Operator> unsafe; // unsafe blocks
     std::list<Operator> templates; // generic types
 
