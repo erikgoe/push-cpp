@@ -168,7 +168,10 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 // Parses a scope into the ast. Used recursively. @param last_token may be nullptr
 sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token, Token *last_token ) {
     auto &conf = w_ctx.unit_ctx()->prelude_conf;
-    std::vector<sptr<Expr>> expr_list;
+    std::vector<std::pair<std::vector<sptr<Expr>>, std::vector<u32>>>
+        expr_lists; // the paths with their expression lists and precedence lists
+    expr_lists.push_back(
+        std::make_pair( std::vector<sptr<Expr>>(), std::vector<u32>{ UINT16_MAX } ) ); // add a starting path
 
     // Iterate through all tokens in this scope
     while ( true ) {
@@ -177,6 +180,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
         auto t = input->preview_token();
 
         // First check what token it is
+        sptr<Expr> add_to_all_paths;
         if ( t.type == end_token ) {
             input->get_token(); // consume
             break;
@@ -189,12 +193,12 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
             }
             break;
         } else if ( t.type == TT::block_begin || t.type == TT::term_begin || t.type == TT::array_begin ) {
-            // TODO change a_ctx.next_symbol.name_chain to procede into new scope
+            // TODO change a_ctx.next_symbol.name_chain to proceed into the new scope
             input->get_token(); // consume
-            expr_list.push_back( parse_scope(
+            add_to_all_paths = parse_scope(
                 input, w_ctx, a_ctx,
                 ( t.type == TT::block_begin ? TT::block_end : t.type == TT::term_begin ? TT::term_end : TT::array_end ),
-                &t ) );
+                &t );
         } else if ( t.type == TT::identifier ) {
             input->get_token(); // consume
             if ( a_ctx.literals_map.find( t.content ) != a_ctx.literals_map.end() ) {
@@ -208,7 +212,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
 
                 expr->pos_info = { t.file, t.line, t.column, t.length };
 
-                expr_list.push_back( expr );
+                add_to_all_paths = expr;
             } else {
                 // Normal identifier/symbol
                 auto expr = make_shared<AtomicSymbolExpr>();
@@ -224,7 +228,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
 
                 expr->pos_info = { t.file, t.line, t.column, t.length };
 
-                expr_list.push_back( expr );
+                add_to_all_paths = expr;
             }
         } else if ( t.type == TT::number ) {
             input->get_token(); // consume
@@ -236,93 +240,137 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
 
             expr->pos_info = { t.file, t.line, t.column, t.length };
 
-            expr_list.push_back( expr );
+            add_to_all_paths = expr;
         } else if ( t.type == TT::stat_divider ) {
             input->get_token(); // consume
-            if ( expr_list.empty() ) {
-                w_ctx.print_msg<MessageType::err_semicolon_without_meaning>( MessageInfo( t, 0, FmtStr::Color::Red ) );
-            } else {
-                auto expr = make_shared<SingleCompletedExpr>();
-                expr->pos_info = { t.file, t.line, t.column, t.length };
-                expr->sub_expr = expr_list.back();
-                expr_list.back() = expr;
+            for ( auto &expr_list : expr_lists ) {
+                if ( expr_list.first.empty() ) {
+                    if ( expr_list == expr_lists.front() ) { // only error once
+                        w_ctx.print_msg<MessageType::err_semicolon_without_meaning>(
+                            MessageInfo( t, 0, FmtStr::Color::Red ) );
+                    }
+                } else {
+                    auto expr = make_shared<SingleCompletedExpr>();
+                    expr->pos_info = { t.file, t.line, t.column, t.length };
+                    expr->sub_expr = expr_list.first.back();
+                    expr_list.first.back() = expr;
+                }
             }
         } else if ( t.type == TT::string_begin ) {
             auto expr = make_shared<StringLiteralExpr>();
             expr->str = parse_string( input, w_ctx );
             expr->type = a_ctx.str_type;
             expr->pos_info = { t.file, t.line, t.column, t.length };
-            expr_list.push_back( expr );
+            add_to_all_paths = expr;
         } else {
             input->get_token(); // consume
-            expr_list.push_back( make_shared<TokenExpr>( t ) );
+            add_to_all_paths = make_shared<TokenExpr>( t );
         }
 
-        // Test new token
-        bool recheck = false; // used to test if a new rule matches after one was applied
-        size_t skip_ctr = 0; // skip already parsed token
-        do {
-            recheck = false;
-            SyntaxRule *best_rule = nullptr;
-            std::vector<sptr<Expr>> best_rule_rev_deep_expr_list;
-            std::vector<sptr<StaticStatementExpr>> best_rule_stst_set;
-            size_t best_rule_cutout_ctr;
-            // Check each syntax rule
-            for ( auto &rule : a_ctx.rules ) {
-                if ( !best_rule || rule.precedence <= best_rule->precedence ) {
-                    u8 rule_length = rule.expr_list.size();
+        // Update paths with new token
+        if ( add_to_all_paths ) {
+            for ( auto &expr_list : expr_lists ) {
+                expr_list.first.push_back( add_to_all_paths );
+            }
+        }
 
-                    // Prepare backtracing
-                    std::vector<sptr<Expr>> rev_deep_expr_list;
-                    std::vector<sptr<StaticStatementExpr>> stst_set;
-                    size_t cutout_ctr = 0;
-                    for ( auto expr_itr = expr_list.rbegin();
-                          expr_itr != expr_list.rend() && rev_deep_expr_list.size() < rule_length; expr_itr++ ) {
-                        auto stst_expr = std::dynamic_pointer_cast<StaticStatementExpr>( *expr_itr );
-                        if ( stst_expr ) { // is a static statement
-                            stst_set.push_back( stst_expr );
-                        } else {
-                            auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
-                            if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
-                                 ( rule.precedence < s_expr->prec() ||
-                                   ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
-                                // Split expr
-                                s_expr->split_prepend_recursively( rev_deep_expr_list, stst_set, rule.precedence,
-                                                                   rule.ltr, rule_length );
-                            } else { // Don't split expr
-                                rev_deep_expr_list.push_back( *expr_itr );
+        // Test new token for all paths
+        size_t old_paths_count = expr_lists.size();
+        for ( size_t i = 0; i < old_paths_count; i++ ) {
+            auto *expr_list = &expr_lists[i];
+
+            // Test new token
+            bool recheck = false; // used to test if a new rule matches after one was applied
+            size_t skip_ctr = 0; // skip already parsed token
+            do {
+                recheck = false;
+                SyntaxRule *best_rule = nullptr;
+                std::vector<sptr<Expr>> best_rule_rev_deep_expr_list;
+                std::vector<sptr<StaticStatementExpr>> best_rule_stst_set;
+                size_t best_rule_cutout_ctr;
+                // Check each syntax rule
+                for ( auto &rule : a_ctx.rules ) {
+                    if ( !best_rule || rule.precedence <= best_rule->precedence ) {
+                        u8 rule_length = rule.expr_list.size();
+
+                        // Prepare backtracing
+                        std::vector<sptr<Expr>> rev_deep_expr_list;
+                        std::vector<sptr<StaticStatementExpr>> stst_set;
+                        size_t cutout_ctr = 0;
+                        for ( auto expr_itr = expr_list->first.rbegin();
+                              expr_itr != expr_list->first.rend() && rev_deep_expr_list.size() < rule_length;
+                              expr_itr++ ) {
+                            auto stst_expr = std::dynamic_pointer_cast<StaticStatementExpr>( *expr_itr );
+                            if ( stst_expr ) { // is a static statement
+                                stst_set.push_back( stst_expr );
+                            } else {
+                                auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
+                                if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
+                                     ( rule.precedence < s_expr->prec() ||
+                                       ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
+                                    // Split expr
+                                    s_expr->split_prepend_recursively( rev_deep_expr_list, stst_set, rule.precedence,
+                                                                       rule.ltr, rule_length );
+                                } else { // Don't split expr
+                                    rev_deep_expr_list.push_back( *expr_itr );
+                                }
                             }
+                            cutout_ctr++;
                         }
-                        cutout_ctr++;
-                    }
 
-                    // Check if syntax matches
-                    if ( rule.matches_reversed( rev_deep_expr_list ) ) {
-                        best_rule = &rule;
-                        best_rule_rev_deep_expr_list = rev_deep_expr_list;
-                        best_rule_stst_set = stst_set;
-                        best_rule_cutout_ctr = cutout_ctr;
+                        // Check if syntax matches
+                        if ( rule.matches_reversed( rev_deep_expr_list ) ) {
+                            best_rule = &rule;
+                            best_rule_rev_deep_expr_list = rev_deep_expr_list;
+                            best_rule_stst_set = stst_set;
+                            best_rule_cutout_ctr = cutout_ctr;
+                        }
                     }
                 }
-            }
 
-            // Apply rule
-            if ( best_rule ) {
-                expr_list.resize( expr_list.size() - best_rule_cutout_ctr );
-                expr_list.insert( expr_list.end(), best_rule_rev_deep_expr_list.rbegin(),
-                                  best_rule_rev_deep_expr_list.rend() - best_rule->expr_list.size() );
-                best_rule_rev_deep_expr_list.erase( best_rule_rev_deep_expr_list.begin() + best_rule->expr_list.size(),
-                                                    best_rule_rev_deep_expr_list.end() );
-                std::reverse( best_rule_rev_deep_expr_list.begin(), best_rule_rev_deep_expr_list.end() );
-                auto result_expr = best_rule->create( best_rule_rev_deep_expr_list, w_ctx );
-                result_expr->static_statements = best_rule_stst_set;
-                expr_list.push_back( result_expr );
+                // Apply rule
+                if ( best_rule ) {
+                    if ( best_rule->ambiguous && skip_ctr <= 0 ) { // copy the not-changed path
+                        expr_lists.push_back( *expr_list );
+                        expr_list = &expr_lists[i]; // prevent interator invalidation
+                        expr_lists.back().second.push_back( UINT32_MAX );
+                        expr_list->second.push_back( best_rule->path_precedence );
+                    } else if ( best_rule->path_precedence < expr_list->second.back() ) { // path precedence update
+                        expr_list->second.back() = best_rule->path_precedence;
+                    }
 
-                skip_ctr = 1; // 1 will always be desired even though more could technically be skipped
-                recheck = true;
-            }
-        } while ( recheck );
+                    expr_list->first.resize( expr_list->first.size() - best_rule_cutout_ctr );
+                    expr_list->first.insert( expr_list->first.end(), best_rule_rev_deep_expr_list.rbegin(),
+                                             best_rule_rev_deep_expr_list.rend() - best_rule->expr_list.size() );
+                    best_rule_rev_deep_expr_list.erase(
+                        best_rule_rev_deep_expr_list.begin() + best_rule->expr_list.size(),
+                        best_rule_rev_deep_expr_list.end() );
+                    std::reverse( best_rule_rev_deep_expr_list.begin(), best_rule_rev_deep_expr_list.end() );
+                    auto result_expr = best_rule->create( best_rule_rev_deep_expr_list, w_ctx );
+                    result_expr->static_statements = best_rule_stst_set;
+                    expr_list->first.push_back( result_expr );
+
+                    skip_ctr = 1; // 1 will always be desired even though more could technically be skipped
+                    recheck = true;
+                }
+            } while ( recheck );
+        }
     }
+
+    // Select the best path
+    auto *best_list = &expr_lists.front();
+    for ( auto &list : expr_lists ) {
+        bool better = true, equal = true;
+        for ( int i = 0; better && i < list.second.size(); i++ ) { // assuming all precedence lists have the same length
+            if ( list.second[i] > best_list->second[i] )
+                better = false;
+            if ( list.second[i] != best_list->second[i] )
+                equal = false;
+        }
+        if ( better && !equal )
+            best_list = &list; // found a better path
+    }
+    auto &expr_list = best_list->first;
 
     // Create block
     if ( end_token == TT::eof ) {

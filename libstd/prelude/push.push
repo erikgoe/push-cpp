@@ -130,8 +130,8 @@ define_mci_rule( STATIC_STATEMENT, 1, rtl, double_list, "$", completed -> body )
 define_mci_rule( ANNOTATION, 5, rtl, triple_list, "#", symbol -> name, expr -> body ); // compiler annotation
 define_mci_rule( MACRO, 1, rtl, triple_list, symbol -> name, "!", expr -> body ); // macro
 define_mci_rule( UNSAFE_BLOCK, 1, rtl, double_list, "unsafe", completed -> body ); // unsafe block
-define_mci_rule( DEFINE_TEMPLATE, 4, ltr, quadruple_list, symbol -> name, "<" -> lop, comma_list -> attributes, ">" -> rop ); // multiple template arguments are surrounded by angular brackets and separated by commas
-define_mci_rule( DEFINE_TEMPLATE, 4, ltr, quadruple_list, symbol -> name, "<" -> lop, expr -> attributes, ">" -> rop ); // single template arguments are surrounded by angular brackets
+//define_mci_rule( DEFINE_TEMPLATE, 4, ltr, quadruple_list, symbol -> name, "<" -> lop, comma_list -> attributes, ">" -> rop ); // multiple template arguments are surrounded by angular brackets and separated by commas
+define_mci_rule( DEFINE_TEMPLATE, 19 -> 1, ltr, quadruple_list, symbol -> name, "<" -> lop, expr -> attributes, ">" -> rop ); // single template arguments are surrounded by angular brackets
 
 // OOP constructs
 define_mci_rule( STRUCT_DEFINITION, 1, rtl, triple_list, "struct", symbol -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
@@ -201,7 +201,7 @@ define_mci_rule( NEW_OPERATOR, std::op::bit_shift_right, 10, ltr, triple_list, e
 
 define_mci_rule( NEW_OPERATOR, std::op::iterate_collection, 11, ltr, triple_list, expr -> lvalue, "in" -> op, expr -> rvalue ); // iteration over a collection
 
-define_mci_rule( NEW_OPERATOR, std::op::smaller, 12, ltr, triple_list, expr -> lvalue, "<" -> op, expr -> rvalue ); // regular compare
+define_mci_rule( NEW_OPERATOR, std::op::smaller, AMBIGUOUS, 12 -> 2, ltr, triple_list, expr -> lvalue, "<" -> op, expr -> rvalue ); // regular compare
 define_mci_rule( NEW_OPERATOR, std::op::smaller_or_eql, 12, ltr, triple_list, expr -> lvalue, "<=" -> op, expr -> rvalue ); // regular compare (with or equal)
 define_mci_rule( NEW_OPERATOR, std::op::bigger, 12, ltr, triple_list, expr -> lvalue, ">" -> op, expr -> rvalue ); // inverse compare
 define_mci_rule( NEW_OPERATOR, std::op::bigger_or_eql, 12, ltr, triple_list, expr -> lvalue, ">=" -> op, expr -> rvalue ); // inverse compare (with or equal)

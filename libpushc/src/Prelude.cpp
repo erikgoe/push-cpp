@@ -260,9 +260,21 @@ bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size, 
 // Parses a simple operator definition and adds keywords or operators to the prelude configuration. Returns true if was
 // successful.
 bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker &w_ctx ) {
+    Token token;
+
+    // Ambiguity
+    if ( input->preview_token().content == "AMBIGUOUS" ) {
+        input->get_token(); // consume
+        output.ambiguous = true;
+        CONSUME_COMMA( token );
+    }
+
     // Precedence
     output.precedence = parse_number( input, w_ctx );
-    Token token;
+    if ( input->preview_token().content == "->" ) {
+        input->get_token(); // consume
+        output.path_precedence = parse_number( input, w_ctx );
+    }
     CONSUME_COMMA( token );
 
     // Alignment

@@ -19,6 +19,8 @@
 struct SyntaxRule {
     u32 precedence = 0; // precedence of this syntax matching
     bool ltr = true; // associativity
+    bool ambiguous = false; // whether this symtax has an ambiguous interpregation
+    u32 path_precedence = UINT32_MAX; // precedence-update to this path (if not UINT32_MAX)
     std::vector<sptr<Expr>> expr_list; // list which has to be matched against
 
     // Checks if a reversed expression list matches this syntax rule

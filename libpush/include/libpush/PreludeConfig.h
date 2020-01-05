@@ -42,8 +42,10 @@ using Syntax = std::list<std::pair<String, String>>;
 
 // Defines syntax rules for any operator (binary or unary)
 struct Operator {
-    f32 precedence = 0; // how operators are combined
+    u32 precedence = 0; // how operators are combined
     bool ltr = true; // left to right or right to left
+    bool ambiguous = false; // whether this operator has an ambiguous interpregation
+    u32 path_precedence = UINT32_MAX; // precedence-update to this path (if not UINT32_MAX)
     Syntax syntax; // left type -> name pair
 };
 
