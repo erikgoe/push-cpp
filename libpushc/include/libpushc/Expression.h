@@ -329,6 +329,9 @@ public:
     // Returns the precedence of this Expression binding. Lower values bind stronger
     virtual u32 prec() { return precedence; }
 
+    // Updates the precedence of this expression (avoid this)
+    void update_precedence( u32 prec ) { precedence = prec; }
+
     virtual bool matches( sptr<Expr> other ) override {
         return std::dynamic_pointer_cast<SeparableExpr>( other ) != nullptr;
     }
@@ -1052,13 +1055,10 @@ public:
 
     TypeId get_type() override { return 0; }
 
-    bool matches( sptr<Expr> other ) override {
-        return std::dynamic_pointer_cast<MacroExpr>( other ) != nullptr;
-    }
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MacroExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        return "MACRO(" + name->get_debug_repr() + "! " + body->get_debug_repr() + ")" +
-               get_additional_debug_data();
+        return "MACRO(" + name->get_debug_repr() + "! " + body->get_debug_repr() + ")" + get_additional_debug_data();
     }
 };
 

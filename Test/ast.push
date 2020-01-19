@@ -1,7 +1,8 @@
 #prelude(push)
 
-f(g<a>(c))
+f(g<a>(c));
 
-/*fn<A, B> {
+fn<A, B>();
+/* {
     a+fn(a+b, c);
 }*/

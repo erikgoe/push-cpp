@@ -171,7 +171,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
     std::vector<std::pair<std::vector<sptr<Expr>>, std::vector<u32>>>
         expr_lists; // the paths with their expression lists and precedence lists
     expr_lists.push_back(
-        std::make_pair( std::vector<sptr<Expr>>(), std::vector<u32>{ UINT16_MAX } ) ); // add a starting path
+        std::make_pair( std::vector<sptr<Expr>>(), std::vector<u32>{ UINT32_MAX } ) ); // add a starting path
 
     // Iterate through all tokens in this scope
     while ( true ) {
@@ -329,14 +329,16 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 }
 
                 // Apply rule
-                if ( best_rule ) {
-                    if ( best_rule->ambiguous && skip_ctr <= 0 ) { // copy the not-changed path
+                if ( best_rule && ( !best_rule->ambiguous || skip_ctr <= 0 ) ) {
+                    bool update_precedence_to_path = false;
+                    if ( best_rule->ambiguous ) { // copy the not-changed path
                         expr_lists.push_back( *expr_list );
                         expr_list = &expr_lists[i]; // prevent interator invalidation
                         expr_lists.back().second.push_back( UINT32_MAX );
                         expr_list->second.push_back( best_rule->path_precedence );
                     } else if ( best_rule->path_precedence < expr_list->second.back() ) { // path precedence update
                         expr_list->second.back() = best_rule->path_precedence;
+                        update_precedence_to_path = true;
                     }
 
                     expr_list->first.resize( expr_list->first.size() - best_rule_cutout_ctr );
@@ -349,6 +351,11 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                     auto result_expr = best_rule->create( best_rule_rev_deep_expr_list, w_ctx );
                     result_expr->static_statements = best_rule_stst_set;
                     expr_list->first.push_back( result_expr );
+
+                    if ( auto &&result_expr_separable = std::dynamic_pointer_cast<SeparableExpr>( result_expr );
+                         result_expr && update_precedence_to_path ) { // path precedence overwrites normal precedence
+                        result_expr_separable->update_precedence( best_rule->path_precedence );
+                    }
 
                     skip_ctr = 1; // 1 will always be desired even though more could technically be skipped
                     recheck = true;
