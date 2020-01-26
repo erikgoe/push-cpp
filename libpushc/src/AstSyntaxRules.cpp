@@ -387,6 +387,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
     }
 
     // Sort rules after precedence
-    std::stable_sort( a_ctx.rules.begin(), a_ctx.rules.end(),
-                      []( auto &l, auto &r ) { return l.precedence > r.precedence; } );
+    std::stable_sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto &l, auto &r ) {
+        return l.prec_bias > r.prec_bias || ( l.prec_bias == r.prec_bias && l.precedence > r.precedence );
+    } );
 }

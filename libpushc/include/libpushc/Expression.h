@@ -159,7 +159,7 @@ public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TupleExpr>( other ) != nullptr; }
 
     String get_debug_repr() override {
-        String str = "TUPLE ( ";
+        String str = "TUPLE( ";
         for ( auto &s : sub_expr )
             str += s->get_debug_repr() + ", ";
         return str + ")" + get_additional_debug_data();

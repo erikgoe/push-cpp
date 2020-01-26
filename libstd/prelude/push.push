@@ -178,8 +178,8 @@ define_mci_rule( ARRAY_ACCESS, 1, ltr, double_list, expr -> value, array_spec ->
 // NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple)
 define_mci_rule( NEW_OPERATOR, std::op::log_not, 2, rtl, double_list, "!" -> op, expr -> rvalue ); // define the logical not operator
 define_mci_rule( NEW_OPERATOR, std::op::invert, 2, rtl, double_list, "~" -> op, expr -> rvalue ); // define the not/invert operator
-define_mci_rule( NEW_OPERATOR, std::op::negate, 2, rtl, double_list, "-" -> op, expr -> rvalue ); // define the negation operator
-define_mci_rule( NEW_OPERATOR, std::op::positive, 2, rtl, double_list, "+" -> op, expr -> rvalue ); // define the positive operator (only for symmetry with the negation operator)
+define_mci_rule( NEW_OPERATOR, std::op::negate, 2 BIAS 11, rtl, double_list, "-" -> op, expr -> rvalue ); // define the negation operator
+define_mci_rule( NEW_OPERATOR, std::op::positive, 2 BIAS 11, rtl, double_list, "+" -> op, expr -> rvalue ); // define the positive operator (only for symmetry with the negation operator)
 define_mci_rule( NEW_OPERATOR, std::op::increment_prefix, 2, rtl, double_list, "++" -> op, expr -> rvalue ); // define the prefix increment operator
 define_mci_rule( NEW_OPERATOR, std::op::decrement_prefix, 2, rtl, double_list, "--" -> op, expr -> rvalue ); // define the prefix decrement operator
 define_mci_rule( NEW_OPERATOR, std::op::increment_postfix, 3, ltr, double_list, expr -> lvalue, "++" -> op ); // define the postfix increment operator
@@ -228,7 +228,7 @@ define_mci_rule( NEW_OPERATOR, std::op::implication, 17, rtl, triple_list, expr 
 
 define_mci_rule( COMMA_OPERATOR, 18, rtl, triple_list, expr -> lvalue, "," -> op, expr -> rvalue ); // the comma-linking operator
 define_mci_rule( COMMA_OPERATOR, 18, rtl, double_list, expr -> lvalue, "," -> op ); // the comma-linking operator with no following expression
-define_mci_rule( REFERENCE_TYPE, 2, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
+define_mci_rule( REFERENCE_TYPE, 2 BIAS 11, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
 define_mci_rule( TYPE_OF, 2, rtl, double_list, "type_of" -> op, expr -> type ); // type_of operator
 //define_mci_rule( STRUCT_TO_TUPLE, 2, ltr, double_list, expr -> type, "as_tuple" -> op ); // as_tuple operator
 define_mci_rule( OPERATION_TYPE, 4, ltr, triple_list, expr -> value, ":" -> op, expr -> type ); // type defining operator

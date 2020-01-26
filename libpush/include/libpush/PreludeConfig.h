@@ -40,13 +40,15 @@ struct StringRule {
 // Represents any list with type -> name pairs or just keywords.
 using Syntax = std::list<std::pair<String, String>>;
 
+constexpr u32 NO_BIAS_VALUE = 0;
+
 // Defines syntax rules for any operator (binary or unary)
 struct Operator {
     u32 precedence = 0; // how operators are combined
     bool ltr = true; // left to right or right to left
     bool ambiguous = false; // whether this operator has an ambiguous interpregation
     u32 path_precedence = UINT32_MAX; // precedence-update to this path (if not UINT32_MAX)
-    u32 prec_bias = 10; // optional value to prefer one syntax over another despite the precedence
+    u32 prec_bias = NO_BIAS_VALUE; // optional value to prefer one syntax over another despite the precedence
     Syntax syntax; // left type -> name pair
 };
 

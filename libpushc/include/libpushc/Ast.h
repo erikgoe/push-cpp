@@ -21,7 +21,7 @@ struct SyntaxRule {
     bool ltr = true; // associativity
     bool ambiguous = false; // whether this symtax has an ambiguous interpregation
     u32 path_precedence = UINT32_MAX; // precedence-update to this path (if not UINT32_MAX)
-    u32 prec_bias = 10; // optional value to prefer one syntax over another despite the precedence
+    u32 prec_bias = NO_BIAS_VALUE; // optional value to prefer one syntax over another despite the precedence
     std::vector<sptr<Expr>> expr_list; // list which has to be matched against
 
     // Checks if a reversed expression list matches this syntax rule
