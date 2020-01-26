@@ -290,7 +290,9 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 size_t best_rule_cutout_ctr;
                 // Check each syntax rule
                 for ( auto &rule : a_ctx.rules ) {
-                    if ( !best_rule || rule.precedence <= best_rule->precedence ) {
+                    if ( !best_rule ||
+                         ( rule.prec_bias == best_rule->prec_bias && rule.precedence <= best_rule->precedence ) ||
+                         rule.prec_bias < best_rule->prec_bias ) {
                         u8 rule_length = rule.expr_list.size();
 
                         // Prepare backtracing

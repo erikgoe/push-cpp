@@ -46,6 +46,7 @@ struct Operator {
     bool ltr = true; // left to right or right to left
     bool ambiguous = false; // whether this operator has an ambiguous interpregation
     u32 path_precedence = UINT32_MAX; // precedence-update to this path (if not UINT32_MAX)
+    u32 prec_bias = 10; // optional value to prefer one syntax over another despite the precedence
     Syntax syntax; // left type -> name pair
 };
 

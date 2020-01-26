@@ -275,6 +275,10 @@ bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInp
         input->get_token(); // consume
         output.path_precedence = parse_number( input, w_ctx );
     }
+    if ( input->preview_token().content == "BIAS" ) {
+        input->get_token(); // consume
+        output.prec_bias = parse_number( input, w_ctx );
+    }
     CONSUME_COMMA( token );
 
     // Alignment

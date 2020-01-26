@@ -65,6 +65,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         rule.ltr = op.ltr;
         rule.ambiguous = op.ambiguous;
         rule.path_precedence = op.path_precedence;
+        rule.prec_bias = op.prec_bias;
     };
 
     // Special statements

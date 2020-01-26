@@ -190,10 +190,10 @@ define_mci_rule( NEW_OPERATOR, std::op::cast_into, 4, ltr, triple_list, expr -> 
 define_mci_rule( NEW_OPERATOR, std::op::multiplication, 5, ltr, triple_list, expr -> lvalue, "*" -> op, expr -> rvalue ); // basic multiplication operator
 define_mci_rule( NEW_OPERATOR, std::op::division, 5, ltr, triple_list, expr -> lvalue, "/" -> op, expr -> rvalue ); // basic division operator
 define_mci_rule( NEW_OPERATOR, std::op::remain, 5, ltr, triple_list, expr -> lvalue, "%" -> op, expr -> rvalue ); // basic remaining operator
-define_mci_rule( NEW_OPERATOR, std::op::addition, 6, ltr, triple_list, expr -> lvalue, "+" -> op, expr -> rvalue ); // basic addition operator
-define_mci_rule( NEW_OPERATOR, std::op::subtraction, 6, ltr, triple_list, expr -> lvalue, "-" -> op, expr -> rvalue ); // basic subtraction operator
+define_mci_rule( NEW_OPERATOR, std::op::addition, 6 BIAS 9, ltr, triple_list, expr -> lvalue, "+" -> op, expr -> rvalue ); // basic addition operator
+define_mci_rule( NEW_OPERATOR, std::op::subtraction, 6 BIAS 9, ltr, triple_list, expr -> lvalue, "-" -> op, expr -> rvalue ); // basic subtraction operator
 
-define_mci_rule( NEW_OPERATOR, std::op::bit_and, 7, ltr, triple_list, expr -> lvalue, "&" -> op, expr -> rvalue ); // basic bit "and" operator
+define_mci_rule( NEW_OPERATOR, std::op::bit_and, 7 BIAS 9, ltr, triple_list, expr -> lvalue, "&" -> op, expr -> rvalue ); // basic bit "and" operator
 define_mci_rule( NEW_OPERATOR, std::op::bit_xor, 8, ltr, triple_list, expr -> lvalue, "\'" -> op, expr -> rvalue ); // basic bit xor operator
 define_mci_rule( NEW_OPERATOR, std::op::bit_or, 9, ltr, triple_list, expr -> lvalue, "|" -> op, expr -> rvalue ); // basic bit or operator
 define_mci_rule( NEW_OPERATOR, std::op::bit_shift_left, 10, ltr, triple_list, expr -> lvalue, "<<" -> op, expr -> rvalue ); // basic left bit shift operator
