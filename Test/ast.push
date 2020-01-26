@@ -1,5 +1,11 @@
 #prelude(push)
 
+a..b;
+a..;
+..b;
+a..=b;
+..=b;
+
 f(g<a>(c));
 
 fn<A, B> {

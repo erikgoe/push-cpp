@@ -232,11 +232,11 @@ define_mci_rule( REFERENCE_TYPE, 2 BIAS 11, rtl, double_list, "&" -> op, expr ->
 define_mci_rule( TYPE_OF, 2, rtl, double_list, "type_of" -> op, expr -> type ); // type_of operator
 //define_mci_rule( STRUCT_TO_TUPLE, 2, ltr, double_list, expr -> type, "as_tuple" -> op ); // as_tuple operator
 define_mci_rule( OPERATION_TYPE, 4, ltr, triple_list, expr -> value, ":" -> op, expr -> type ); // type defining operator
-define_mci_rule( RANGE_DEFINITION, EXCLUDING, 10, rtl, triple_list, expr -> lvalue, ".." -> op, expr -> rvalue ); // range operator for 0..5
+define_mci_rule( RANGE_DEFINITION, EXCLUDING, 10 BIAS 9, rtl, triple_list, expr -> lvalue, ".." -> op, expr -> rvalue ); // range operator for 0..5
 define_mci_rule( RANGE_DEFINITION, FROM_EXCLUDING, 10, rtl, double_list, expr -> lvalue, ".." -> op ); // range operator 5..
-define_mci_rule( RANGE_DEFINITION, TO_EXCLUDING, 10, rtl, double_list, ".." -> op, expr -> rvalue ); // range operator for ..5
-define_mci_rule( RANGE_DEFINITION, INCLUDING, 10, rtl, triple_list, expr -> lvalue, "..=" -> op, expr -> rvalue ); // range operator for 0..=5
-define_mci_rule( RANGE_DEFINITION, TO_INCLUDING, 10, rtl, double_list, "..=" -> op, expr -> rvalue ); // range operator for ..=5
+define_mci_rule( RANGE_DEFINITION, TO_EXCLUDING, 10 BIAS 11, rtl, double_list, ".." -> op, expr -> rvalue ); // range operator for ..5
+define_mci_rule( RANGE_DEFINITION, INCLUDING, 10 BIAS 9, rtl, triple_list, expr -> lvalue, "..=" -> op, expr -> rvalue ); // range operator for 0..=5
+define_mci_rule( RANGE_DEFINITION, TO_INCLUDING, 10 BIAS 11, rtl, double_list, "..=" -> op, expr -> rvalue ); // range operator for ..=5
 
 // Primitive types
 define_mci_rule( BASE_TRAIT, INTEGER, std::num::Integer ); // Defines which trait describes the integer type
