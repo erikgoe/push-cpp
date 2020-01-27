@@ -277,10 +277,16 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         parse_rule( new_rule, lm, o.op.syntax );
         copy_syntax_properties( new_rule, o.op );
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<OperatorExpr>( std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content,
-                                              ( lm.find( "lvalue" ) == lm.end() ? nullptr : list[lm.at( "lvalue" )] ),
-                                              ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ),
-                                              o.op.precedence, list );
+            String operator_token;
+            if ( lm.find( "op" ) == lm.end() ) {
+                operator_token = std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op1" )] )->t.content +
+                                 std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op2" )] )->t.content;
+            } else {
+                operator_token = std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content;
+            }
+            return make_shared<OperatorExpr>(
+                operator_token, ( lm.find( "lvalue" ) == lm.end() ? nullptr : list[lm.at( "lvalue" )] ),
+                ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ), o.op.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }

@@ -1,3 +1,4 @@
 #prelude(push)
 
-Vec1<Vec2<a> >;
+Vec1<Vec2<a>>;
+a >> b;
