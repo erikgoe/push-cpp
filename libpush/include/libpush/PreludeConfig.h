@@ -47,7 +47,8 @@ struct Operator {
     u32 precedence = 0; // how operators are combined
     bool ltr = true; // left to right or right to left
     bool ambiguous = false; // whether this operator has an ambiguous interpregation
-    u32 path_precedence = UINT32_MAX; // precedence-update to this path (if not UINT32_MAX)
+    std::pair<u32, u32> prec_class = std::make_pair(
+        UINT32_MAX, UINT32_MAX ); // precedence-update class to a path as class-from-pair (if not UINT32_MAX)
     u32 prec_bias = NO_BIAS_VALUE; // optional value to prefer one syntax over another despite the precedence
     Syntax syntax; // left type -> name pair
 };

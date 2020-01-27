@@ -168,10 +168,11 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 // Parses a scope into the ast. Used recursively. @param last_token may be nullptr
 sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token, Token *last_token ) {
     auto &conf = w_ctx.unit_ctx()->prelude_conf;
-    std::vector<std::pair<std::vector<sptr<Expr>>, std::vector<u32>>>
-        expr_lists; // the paths with their expression lists and precedence lists
-    expr_lists.push_back(
-        std::make_pair( std::vector<sptr<Expr>>(), std::vector<u32>{ UINT32_MAX } ) ); // add a starting path
+    std::vector<std::pair<std::vector<sptr<Expr>>, std::vector<std::pair<u32, u32>>>>
+        expr_lists; // the paths with their expression lists and precedence lists as class-from-pairs
+    expr_lists.push_back( std::make_pair(
+        std::vector<sptr<Expr>>(),
+        std::vector<std::pair<u32, u32>>{ std::make_pair( UINT32_MAX, UINT32_MAX ) } ) ); // add a starting path
 
     // Iterate through all tokens in this scope
     while ( true ) {
@@ -338,11 +339,20 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                     if ( best_rule->ambiguous ) { // copy the not-changed path
                         expr_lists.push_back( *expr_list );
                         expr_list = &expr_lists[i]; // prevent interator invalidation
-                        expr_lists.back().second.push_back( UINT32_MAX );
-                        expr_list->second.push_back( best_rule->path_precedence );
-                    } else if ( best_rule->path_precedence < expr_list->second.back() ) { // path precedence update
-                        expr_list->second.back() = best_rule->path_precedence;
-                        update_precedence_to_path = true;
+                        expr_lists.back().second.push_back( std::make_pair( UINT32_MAX, best_rule->prec_class.first ) );
+                        expr_list->second.push_back(
+                            std::make_pair( best_rule->prec_class.first, best_rule->prec_class.first ) );
+                    } else {
+                        for ( auto expr_list_class_itr = expr_list->second.rbegin();
+                              expr_list_class_itr != expr_list->second.rend(); expr_list_class_itr++ ) {
+                            if ( expr_list_class_itr->second == best_rule->prec_class.second &&
+                                 expr_list_class_itr->first > best_rule->prec_class.first ) {
+                                // path precedence update, because class matches
+                                expr_list_class_itr->first = best_rule->prec_class.first;
+                                update_precedence_to_path = true;
+                                break;
+                            }
+                        }
                     }
 
                     expr_list->first.resize( expr_list->first.size() - best_rule_cutout_ctr );
@@ -358,7 +368,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
 
                     if ( auto &&result_expr_separable = std::dynamic_pointer_cast<SeparableExpr>( result_expr );
                          result_expr && update_precedence_to_path ) { // path precedence overwrites normal precedence
-                        result_expr_separable->update_precedence( best_rule->path_precedence );
+                        result_expr_separable->update_precedence( best_rule->prec_class.first );
                     }
 
                     skip_ctr = 1; // 1 will always be desired even though more could technically be skipped

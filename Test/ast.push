@@ -1,13 +1,3 @@
 #prelude(push)
 
-a..b;
-a..;
-..b;
-a..=b;
-..=b;
-
-f(g<a>(c));
-
-fn<A, B> {
-    a+fn(a+b, c);
-}
+Vec1<Vec2<a> >;

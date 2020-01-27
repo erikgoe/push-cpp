@@ -20,7 +20,8 @@ struct SyntaxRule {
     u32 precedence = 0; // precedence of this syntax matching
     bool ltr = true; // associativity
     bool ambiguous = false; // whether this symtax has an ambiguous interpregation
-    u32 path_precedence = UINT32_MAX; // precedence-update to this path (if not UINT32_MAX)
+    std::pair<u32, u32> prec_class = std::make_pair(
+        UINT32_MAX, UINT32_MAX ); // precedence-update class to a path as class-from-pair (if not UINT32_MAX)
     u32 prec_bias = NO_BIAS_VALUE; // optional value to prefer one syntax over another despite the precedence
     std::vector<sptr<Expr>> expr_list; // list which has to be matched against
 

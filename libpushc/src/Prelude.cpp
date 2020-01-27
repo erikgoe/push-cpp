@@ -271,9 +271,13 @@ bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInp
 
     // Precedence
     output.precedence = parse_number( input, w_ctx );
-    if ( input->preview_token().content == "->" ) {
+    if ( input->preview_token().content == "CLASS" ) {
         input->get_token(); // consume
-        output.path_precedence = parse_number( input, w_ctx );
+        output.prec_class.first = parse_number( input, w_ctx );
+    }
+    if ( input->preview_token().content == "FROM" ) {
+        input->get_token(); // consume
+        output.prec_class.second = parse_number( input, w_ctx );
     }
     if ( input->preview_token().content == "BIAS" ) {
         input->get_token(); // consume
