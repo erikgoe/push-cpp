@@ -276,6 +276,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
         }
 
         // Test new token for all paths
+        u32 fold_counter = 0;
         size_t old_paths_count = expr_lists.size();
         for ( size_t i = 0; i < old_paths_count; i++ ) {
             auto *expr_list = &expr_lists[i];
@@ -342,16 +343,13 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                         expr_lists.back().second.push_back( std::make_pair( UINT32_MAX, best_rule->prec_class.first ) );
                         expr_list->second.push_back(
                             std::make_pair( best_rule->prec_class.first, best_rule->prec_class.first ) );
-                    } else {
-                        for ( auto expr_list_class_itr = expr_list->second.rbegin();
-                              expr_list_class_itr != expr_list->second.rend(); expr_list_class_itr++ ) {
-                            if ( expr_list_class_itr->second == best_rule->prec_class.second &&
-                                 expr_list_class_itr->first > best_rule->prec_class.first ) {
-                                // path precedence update, because class matches
-                                expr_list_class_itr->first = best_rule->prec_class.first;
-                                update_precedence_to_path = true;
-                                break;
-                            }
+                    } else if ( old_paths_count > 1 ) {
+                        if ( expr_list->second.back().second == best_rule->prec_class.second &&
+                             expr_list->second.back().first == UINT32_MAX ) {
+                            // path precedence update, because class matches
+                            expr_list->second.back().first = best_rule->prec_class.first;
+                            update_precedence_to_path = true;
+                            fold_counter++;
                         }
                     }
 
@@ -375,6 +373,27 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                     recheck = true;
                 }
             } while ( recheck );
+        }
+
+        // Do path folding for optimization
+        if ( fold_counter > 0 ) {
+            size_t half_path_count = expr_lists.size() / 2;
+            if ( fold_counter != half_path_count ) {
+                LOG_ERR( "Path folding requested with " + to_string( fold_counter ) + " of " +
+                         to_string( expr_lists.size() ) + " paths." );
+            } else {
+                for ( size_t i = 0; i < half_path_count; i++ ) {
+                    if ( expr_lists[i].second.back().first > expr_lists[i + half_path_count].second.back().first ) {
+                        // take the second path
+                        expr_lists[i] = expr_lists[i + half_path_count];
+                    }
+                    // otherwise take the first path implicitly
+
+                    // Shrink the path length
+                    expr_lists[i].second.pop_back();
+                }
+                expr_lists.resize( half_path_count );
+            }
         }
     }
 

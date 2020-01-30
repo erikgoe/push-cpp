@@ -131,7 +131,7 @@ define_mci_rule( ANNOTATION, 5, rtl, triple_list, "#", symbol -> name, expr -> b
 define_mci_rule( MACRO, 1, rtl, triple_list, symbol -> name, "!", expr -> body ); // macro
 define_mci_rule( UNSAFE_BLOCK, 1, rtl, double_list, "unsafe", completed -> body ); // unsafe block
 //define_mci_rule( DEFINE_TEMPLATE, 4, ltr, quadruple_list, symbol -> name, "<" -> lop, comma_list -> attributes, ">" -> rop ); // multiple template arguments are surrounded by angular brackets and separated by commas
-define_mci_rule( DEFINE_TEMPLATE, 19 CLASS 3 FROM 4, ltr, quadruple_list, symbol -> name, "<", expr -> attributes, ">" ); // single template arguments are surrounded by angular brackets
+define_mci_rule( DEFINE_TEMPLATE, 19 CLASS 3 FROM 4, ltr, quadruple_list, expr -> name, "<", expr -> attributes, ">" ); // single template arguments are surrounded by angular brackets
 
 // OOP constructs
 define_mci_rule( STRUCT_DEFINITION, 1, rtl, triple_list, "struct", symbol -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
