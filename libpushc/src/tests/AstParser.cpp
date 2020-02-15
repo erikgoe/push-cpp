@@ -62,13 +62,14 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
     auto g_ctx = make_shared<GlobalCtx>();
     auto w_ctx = g_ctx->setup( 1 );
 
-    std::map<String, String> data = { { "a+b;", "GLOBAL {\n SC OP(SYM() + SYM());\n  }" },
-                                      { "-a;", "GLOBAL {\n SC OP(- SYM());\n  }" } };
+    std::map<String, String> data = { { "a+b;", "GLOBAL { SC OP(SYM() + SYM());  }" },
+                                      { "-a;", "GLOBAL { SC OP(- SYM());  }" } };
 
     std::regex symbol_regex( "SYM\\([0-9]*\\)" );
     for ( auto &d : data ) {
         String raw = w_ctx->do_query( test_parser, d.first )->jobs.back()->to<sptr<Expr>>()->get_debug_repr();
         String result = std::regex_replace( raw, symbol_regex, "SYM()" );
+        result.replace_all( "\n", "" );
         CHECK( result == d.second );
     }
 }
