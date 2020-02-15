@@ -20,7 +20,7 @@ class FileInput : public StreamInput {
 public:
     FileInput( sptr<String> file, sptr<Worker> w_ctx )
             : StreamInput( make_shared<std::basic_ifstream<char>>(), file, w_ctx ) {
-        stream->open( *file, std::ios_base::binary );
+        std::dynamic_pointer_cast<std::basic_ifstream<char>>( stream )->open( *file, std::ios_base::binary );
     }
 
     sptr<SourceInput> open_new_file( sptr<String> file, sptr<Worker> w_ctx ) {

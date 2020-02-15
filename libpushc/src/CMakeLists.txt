@@ -32,3 +32,8 @@ if(BUILD_COTIRE_PROJ)
     set_target_properties(${LIB_NAME} PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../include/${LIB_NAME}/stdafx.h")
     cotire(${LIB_NAME})
 endif()
+
+# add tests
+if(TEST_WITH_CATCH)
+    add_subdirectory(tests)
+endif()

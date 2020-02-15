@@ -19,7 +19,7 @@
 #include "libpush/Worker.inl"
 #include "libpush/Message.inl"
 
-StreamInput::StreamInput( sptr<std::basic_ifstream<char>> stream, sptr<String> file, sptr<Worker> w_ctx )
+StreamInput::StreamInput( sptr<std::basic_istream<char>> stream, sptr<String> file, sptr<Worker> w_ctx )
         : SourceInput( w_ctx, file ) {
     this->stream = stream;
     level_stack.push( std::make_pair( "", TokenLevel::normal ) );

@@ -18,7 +18,7 @@
 // Provides token input from any stream
 class StreamInput : public SourceInput {
 protected:
-    sptr<std::basic_ifstream<char>> stream;
+    sptr<std::basic_istream<char>> stream;
 
 private:
     bool checked_bom = false; // already checked for BOM
@@ -39,7 +39,7 @@ private:
 
 public:
     // Create a fileinput from a stream. @param file must be the name of the file from which the stream was open
-    StreamInput( sptr<std::basic_ifstream<char>> stream, sptr<String> file, sptr<Worker> w_ctx );
+    StreamInput( sptr<std::basic_istream<char>> stream, sptr<String> file, sptr<Worker> w_ctx );
     virtual ~StreamInput() {}
 
     Token get_token();
