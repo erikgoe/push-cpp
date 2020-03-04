@@ -11,64 +11,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* This file is an example implementation of the prelude for a 32 bit platform.
+/* This file is an example implementation of the prelude.
  */
 
 /* Rules
  * MCI functions are only valid in prelude files or in prelude-included std-lib files,
  * MCI functions (names):
  * - define_mci_rule: very basic rules, which define the language syntax.
- * - create_mci_logic: used in methods to define e. g. very low-level operations like integer addition.
+ * - create_mci_instruction: used in methods to define e. g. very low-level operations like integer addition.
  * - define_mci_optimization: take in a push-lambda which contain optimizations on the AST and an optimization execution level to be used conditionally
- * Syntax:
- *     MCI syntax is independent from the prelude
+ * define_mci_rule syntax:
+ *     Is independent from the loaded prelude
  *     MCI functions always start with the name, then the parameters in parenthesis and end with a semicolon.
  *     The parameters of MCI rules always depend on their MCI, which is the first parameter.
  *     The parameters are separated by commas, sub parameters by spaces.
  *     MCI parameters may not be empty.
  *     Strings and characters are always escaped and written in double quotes.
- *     If a string is expected for e. g. a keyword, you can either write it in double quotes or use a predefined name in most cases. You can also use the "or" keyword to define multiple matching strings.
+ *     If a string is expected for e. g. a keyword, you can either write it in double quotes or use a predefined name in most cases.
  *     The "->" syntax is often used to define which token/AST has which meaning in the syntax rule. The names are defines by the MCI instruction and the specified layout type.
- * Multiple definitions for one MCI are allowed.
+ *     Syntax syntax: [AMBIGUOUS,] precedence [CLASS x FROM y BIAS z], alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple, using the "token -> name" syntax)
+ *     Operator syntax: global symbol (full symbol name; parameters are applied based on layout type), syntax
+ * Multiple definitions of one MCI are allowed.
  * Include other prelude files with "#prelude(<file>)" and std-library files with "#include(<file>)". This is only possible in a prelude file.
- * Only a std-library file included this way is able to use the global "create_mci_logic()" function. TODO define example for primitive type operators
- * 
- */
-
-/* Operator precedence table
- *  1. function call, template, array-, scope-, member access
- *  2. !(not), ~(bit not), -(unary), +(unary), &(ref), type_of, as_tuple, ++(prefix), --(prefix); all right to left
- *  3. ++(postfix), --(postfix)
- *  4. as(cast), :(type definitions)
- *  5. *, /, %
- *  6. +, -
- *  7. &
- *  8. '(bit xor)
- *  9. |
- * 10. <<, >>
- * 10.5 ..(range)
- * 11. in(iterator, collection)
- * 12. <, <=, >, >=
- * 13. ==, !=
- * 14. &&
- * 15. ||
- * 16. =, +=, -=, *=, /=, %=, &=, '=, |=, <<=, >>=, :=; all right to left
- * 17. =>(pair)
- * 18. ,(comma)
- */
-
-/* TODO list
- * dynamic blocks
- * lambdas
- * check precedence for other operations like if/for/struct and update the precedence in the code
- * any, int, float as compound types/traits
- * tuples (with parenthesis syntax)
- * module, crate syntax
- * static statements, compilerhandler
- * with-keyword
- * repeat keyword: like continue but without increment
- * is-of-type operator with a lower precedence than e. g. & operator
- *     also the & operator impl for Types may combine them in manner to be used in trait bounds
+ * Only a std-library file included this way is able to use the global "create_mci_instruction()" function.
  * 
  */
 
@@ -174,7 +139,6 @@ define_mci_rule( MEMBER_ACCESS, 6, ltr, triple_list, expr -> base, "." -> op, ex
 define_mci_rule( ARRAY_ACCESS, 6, ltr, double_list, expr -> value, array_spec -> index ); // array access with a type or variable.
 
 // Operators
-// NEW_OPERATOR parameters: global function (full symbol name; parameters are applied based on layout type), precedence, alignment(ltr or rtl), syntax type (double_list, etc.), syntax parameters (normally multiple)
 define_mci_rule( NEW_OPERATOR, std::op::log_not, 10, rtl, double_list, "!" -> op, expr -> rvalue ); // define the logical not operator
 define_mci_rule( NEW_OPERATOR, std::op::invert, 10, rtl, double_list, "~" -> op, expr -> rvalue ); // define the not/invert operator
 define_mci_rule( NEW_OPERATOR, std::op::negate, 10 BIAS 11, rtl, double_list, "-" -> op, expr -> rvalue ); // define the negation operator
