@@ -1,8 +1,3 @@
 #prelude(push)
 
-Vec1<Vec2<a>>();
-Vec<Vec<Vec<Vec<Vec<a>, b>>>>();
-Vec<Vec<Vec<Vec<Vec<a>, b>>>>();
-a >> b;
-
-Vec1<Vec2<a+b>>();
+(a, b, c, d, 5, (4%2));
