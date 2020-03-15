@@ -74,15 +74,24 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         { "let v = val = 6 + 5 * 3 + 2 + 1",
           "GLOBAL { BINDING(OP(SYM() = OP(SYM() = OP(OP(OP(BLOB_LITERAL() + OP(BLOB_LITERAL() * BLOB_LITERAL())) + "
           "BLOB_LITERAL()) + BLOB_LITERAL())))) }" },
-        //{ "let v = val = 6 + 5 * (3 + 2) + 1", "GLOBAL {  }" },
-        //{ "let val = 42 + 5 * (3 + 2) + true", "GLOBAL {  }" },
+        { "let v = val = 6 + 5 * (3 + 2) + 1",
+          "GLOBAL { BINDING(OP(SYM() = OP(SYM() = OP(OP(BLOB_LITERAL() + OP(BLOB_LITERAL() * TERM( OP(BLOB_LITERAL() + "
+          "BLOB_LITERAL()) ))) + BLOB_LITERAL())))) }" },
+        { "let val = 42 + 5 * (3 + 2) + true",
+          "GLOBAL { BINDING(OP(SYM() = OP(OP(BLOB_LITERAL() + OP(BLOB_LITERAL() * TERM( OP(BLOB_LITERAL() + "
+          "BLOB_LITERAL()) ))) + BLOB_LITERAL()))) }" },
         { "-5;", "GLOBAL { SC OP(- BLOB_LITERAL()); }" },
-        //{ "let val = 42 + 5 * (3 + 2) + \" this is a string \";", "GLOBAL {  }" },
+        { "let val = 42 + 5 * (3 + 2) + \" this is a string \";",
+          "GLOBAL { SC BINDING(OP(SYM() = OP(OP(BLOB_LITERAL() + OP(BLOB_LITERAL() * TERM( OP(BLOB_LITERAL() + "
+          "BLOB_LITERAL()) ))) + STR \"this is a string \"))); }" },
         //{ "x = 0  + '3';", "GLOBAL {  }" },
         { "5.4", "GLOBAL { OP(BLOB_LITERAL() . BLOB_LITERAL()) }" },
-        //{ "(a, b, c, d, 5, (4%2));", "GLOBAL {  }" },
-        //{ "function (a, b) { \n//let val = 42 + 5 * (3 + 2) + \"this is a string\";\n (a, b, c, d, 5, (4%2)); } ",
-        //  "GLOBAL {  }" },
+        { "(a, b, c, d, 5, (4%2));",
+          "GLOBAL { SC TUPLE( SYM(), SYM(), SYM(), SYM(), BLOB_LITERAL(), TERM( OP(BLOB_LITERAL() % BLOB_LITERAL()) ), "
+          "); }" },
+        { "function (a, b) { \n//let val = 42 + 5 * (3 + 2) + \"this is a string\";\n (a, b, c, d, 5, (4%2)); } ",
+          "GLOBAL { FUNC(0 TUPLE( SYM(), SYM(), ) SYM() BLOCK { SC TUPLE( SYM(), SYM(), SYM(), SYM(), BLOB_LITERAL(), "
+          "TERM( OP(BLOB_LITERAL() % BLOB_LITERAL()) ), ); }) }" },
         { "function(c, d);", "GLOBAL { SC FN_CALL(0 TUPLE( SYM(), SYM(), ) SYM()); }" },
         { "if true { let val = 4; }",
           "GLOBAL { IF(BLOB_LITERAL() THEN BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); } ) }" },
@@ -90,29 +99,35 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         //  "GLOBAL {  }" },
         { "do { function(c, d); } until true;",
           "GLOBAL { SC POST_LOOP(FALSE: BLOB_LITERAL() DO BLOCK { SC FN_CALL(0 TUPLE( SYM(), SYM(), ) SYM()); } ); }" },
-        //{ "function { let var[4] = [0,1,2,3]; var[2] } ", "GLOBAL {  }" },
+        { "function { let var[4] = [0,1,2,3]; var[2] } ",
+          "GLOBAL { FUNC(0 SYM() BLOCK { SC BINDING(OP(ARR_ACC SYM()[BLOB_LITERAL()] = ARRAY[ COMMA( BLOB_LITERAL(), "
+          "BLOB_LITERAL(), BLOB_LITERAL(), BLOB_LITERAL(), ) ])); ARR_ACC SYM()[BLOB_LITERAL()] }) }" },
         //{ "function { if true { let val = 4; } else { let val = 3; } if true  let val = 4; if false let val = 6 else "
         //  "let val = 5; let var = (if true 4 else 5); if true let v = 3 else let v = 2; }",
         //  "GLOBAL {  }" },
-        //{ "let a:struct = { name = \"john\", age=21 }; } // Global struct\n struct A { val1:int, val2:float } ",
+        //{ "let a:struct = { name = \"john\", age=21 }; \n // Global struct\n struct A { val1:int, val2:float } ",
         //  "GLOBAL {  }" },
         //{ "trait Addable { } struct A { } impl A { } impl Addable for A { }", "GLOBAL {  }" },
         //{ "fn { (a,b,c,d); match a 1=>x, 2=>y, 3=>z; }", "GLOBAL {  }" },
         { "let a = { a, b, c };", "GLOBAL { SC BINDING(OP(SYM() = SET { SYM(), SYM(), SYM(), })); }" },
         { "fn (s) { }", "GLOBAL { FUNC(0 TERM( SYM() ) SYM() BLOCK { }) }" },
-        //{ "s.b; A::B; ::C;", "GLOBAL { SC MEMBER(SYM().SYM()); FUNC(0 SYM() SC SCOPE(<global>::SYM());) SC
-        // SCOPE(<global>::SYM()); }" },
+        //{ "s.b; A::B; ::C;", "GLOBAL { SC MEMBER(SYM().SYM()); SC SCOPE(SYM()::SYM()); SC SCOPE(<global>::SYM()); }"
+        //},
         { "fn (s) { if true let a = 2; else let a = 3; if true { let a = 2 } else { let a = 3 } }",
           "GLOBAL { FUNC(0 TERM( SYM() ) SYM() BLOCK { IF(BLOB_LITERAL() THEN SC BINDING(OP(SYM() = BLOB_LITERAL())); "
           "ELSE SC BINDING(OP(SYM() = BLOB_LITERAL())); ) IF(BLOB_LITERAL() THEN BLOCK { BINDING(OP(SYM() = "
           "BLOB_LITERAL())) } ELSE BLOCK { BINDING(OP(SYM() = BLOB_LITERAL())) } ) }) }" },
-        //{ "let a:&int = type_of s; let a:struct = 4;", "GLOBAL {  }" },
+        { "let a:&int = type_of s; let a:struct = 4;",
+          "GLOBAL { SC BINDING(OP(TYPED(SYM():REF(SYM())) = TYPE_OF(SYM()))); SC BINDING(OP(TYPED(SYM():STRUCT "
+          "<anonymous> <undefined>) = BLOB_LITERAL())); }" },
         { "mod modulename;", "GLOBAL { SC MODULE(SYM()); }" },
         { "let result = 40 ${val != 0} / val;",
           "GLOBAL { SC BINDING(OP(SYM() = OP(BLOB_LITERAL() / SYM())$(STST BLOCK { OP(SYM() != BLOB_LITERAL()) }, "
           "))); }" },
         //{ "scope::fn { let val = a.b; A::S.func().member++; } ", "GLOBAL {  }" },
-        //{ "fn<T:type> { let val:T = 3; fn<int>();}", "GLOBAL {  }" },
+        { "fn<T:type> { let val:T = 3; fn<int>();}",
+          "GLOBAL { FUNC(0 TEMPLATE SYM()<TYPED(SYM():SYM())> BLOCK { SC BINDING(OP(TYPED(SYM():SYM()) = "
+          "BLOB_LITERAL())); SC FN_CALL(0 UNIT() TEMPLATE SYM()<SYM()>); }) }" },
         //{ "fn { unsafe { C::printf(\"hello world\n\");} } ", "GLOBAL {  }" },
         { "decl fn1(arg:int); // implicitly public\n pub fn2(arg:int);",
           "GLOBAL { SC DECL(FN_CALL(0 TERM( TYPED(SYM():SYM()) ) SYM())); SC PUBLIC(FN_CALL(0 TERM( TYPED(SYM():SYM()) "
@@ -141,7 +156,7 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
           "SYM())>>); }" }
     };
 
-    std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9]*:[0-9]*\\)" );
+    std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*:[0-9]*\\)" );
     for ( auto &d : data ) {
         String str = w_ctx->do_query( test_parser, d.first )->jobs.back()->to<sptr<Expr>>()->get_debug_repr();
         str = std::regex_replace( str, symbol_regex, "SYM()" );

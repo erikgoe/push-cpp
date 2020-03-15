@@ -60,7 +60,7 @@ public:
 };
 
 // Used internally to handle a single token as expr. Must be resolved to other expressions
-class TokenExpr : public OperandExpr {
+class TokenExpr : public Expr {
 public:
     Token t;
 
