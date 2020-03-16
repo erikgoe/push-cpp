@@ -43,8 +43,6 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<BasicBlobLiteralExpr>() );
         } else if ( expr.first == "array_spec" ) {
             sr.expr_list.push_back( make_shared<ArraySpecifierExpr>() );
-        } else if ( expr.first == "function_signature" ) {
-            sr.expr_list.push_back( make_shared<FuncCallExpr>() );
         } else {
             // Keyword or operator
             sr.expr_list.push_back( make_shared<TokenExpr>(

@@ -92,13 +92,13 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         { "function (a, b) { \n//let val = 42 + 5 * (3 + 2) + \"this is a string\";\n (a, b, c, d, 5, (4%2)); } ",
           "GLOBAL { FUNC(0 TUPLE( SYM(), SYM(), ) SYM() BLOCK { SC TUPLE( SYM(), SYM(), SYM(), SYM(), BLOB_LITERAL(), "
           "TERM( OP(BLOB_LITERAL() % BLOB_LITERAL()) ), ); }) }" },
-        { "function(c, d);", "GLOBAL { SC FN_CALL(0 TUPLE( SYM(), SYM(), ) SYM()); }" },
+        { "function(c, d);", "GLOBAL { SC FUNC_HEAD(TUPLE( SYM(), SYM(), ) SYM()); }" },
         { "if true { let val = 4; }",
           "GLOBAL { IF(BLOB_LITERAL() THEN BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); } ) }" },
         //{ "function { if true let val = 4; if false let val = 6 else let val = 5; let var = (if true 4 else 5); }",
         //  "GLOBAL {  }" },
         { "do { function(c, d); } until true;",
-          "GLOBAL { SC POST_LOOP(FALSE: BLOB_LITERAL() DO BLOCK { SC FN_CALL(0 TUPLE( SYM(), SYM(), ) SYM()); } ); }" },
+          "GLOBAL { SC POST_LOOP(FALSE: BLOB_LITERAL() DO BLOCK { SC FUNC_HEAD(TUPLE( SYM(), SYM(), ) SYM()); } ); }" },
         { "function { let var[4] = [0,1,2,3]; var[2] } ",
           "GLOBAL { FUNC(0 SYM() BLOCK { SC BINDING(OP(ARR_ACC SYM()[BLOB_LITERAL()] = ARRAY[ COMMA( BLOB_LITERAL(), "
           "BLOB_LITERAL(), BLOB_LITERAL(), BLOB_LITERAL(), ) ])); ARR_ACC SYM()[BLOB_LITERAL()] }) }" },
@@ -111,8 +111,9 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         //{ "fn { (a,b,c,d); match a 1=>x, 2=>y, 3=>z; }", "GLOBAL {  }" },
         { "let a = { a, b, c };", "GLOBAL { SC BINDING(OP(SYM() = SET { SYM(), SYM(), SYM(), })); }" },
         { "fn (s) { }", "GLOBAL { FUNC(0 TERM( SYM() ) SYM() BLOCK { }) }" },
-        //{ "s.b; A::B; ::C;", "GLOBAL { SC MEMBER(SYM().SYM()); SC SCOPE(SYM()::SYM()); SC SCOPE(<global>::SYM()); }"
-        //},
+        { "s.b; A::B; ::C;", "GLOBAL { SC MEMBER(SYM().SYM()); SC SCOPE(SYM()::SYM()); SC SCOPE(<global>::SYM()); }" },
+        { "A::B::C; ::A::B;",
+          "GLOBAL { SC SCOPE(SCOPE(SYM()::SYM())::SYM()); SC SCOPE(<global>::SCOPE(SYM()::SYM())); }" },
         { "fn (s) { if true let a = 2; else let a = 3; if true { let a = 2 } else { let a = 3 } }",
           "GLOBAL { FUNC(0 TERM( SYM() ) SYM() BLOCK { IF(BLOB_LITERAL() THEN SC BINDING(OP(SYM() = BLOB_LITERAL())); "
           "ELSE SC BINDING(OP(SYM() = BLOB_LITERAL())); ) IF(BLOB_LITERAL() THEN BLOCK { BINDING(OP(SYM() = "
@@ -121,26 +122,36 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
           "GLOBAL { SC BINDING(OP(TYPED(SYM():REF(SYM())) = TYPE_OF(SYM()))); SC BINDING(OP(TYPED(SYM():STRUCT "
           "<anonymous> <undefined>) = BLOB_LITERAL())); }" },
         { "mod modulename;", "GLOBAL { SC MODULE(SYM()); }" },
+        { "mod crate::base::module;", "GLOBAL { SC MODULE(SCOPE(SCOPE(SYM()::SYM())::SYM())); }" },
+        { "mod ::base::module;", "GLOBAL { SC MODULE(SCOPE(<global>::SCOPE(SYM()::SYM()))); }" },
         { "let result = 40 ${val != 0} / val;",
           "GLOBAL { SC BINDING(OP(SYM() = OP(BLOB_LITERAL() / SYM())$(STST BLOCK { OP(SYM() != BLOB_LITERAL()) }, "
           "))); }" },
-        //{ "scope::fn { let val = a.b; A::S.func().member++; } ", "GLOBAL {  }" },
+        { "scope::fn { let val = a.b; A::S.func().member++; } ",
+          "GLOBAL { FUNC(0 SCOPE(SYM()::SYM()) BLOCK { SC BINDING(OP(SYM() = MEMBER(SYM().SYM()))); SC "
+          "OP(MEMBER(FUNC_HEAD(UNIT() MEMBER(SCOPE(SYM()::SYM()).SYM())).SYM()) ++); }) }" },
         { "fn<T:type> { let val:T = 3; fn<int>();}",
           "GLOBAL { FUNC(0 TEMPLATE SYM()<TYPED(SYM():SYM())> BLOCK { SC BINDING(OP(TYPED(SYM():SYM()) = "
-          "BLOB_LITERAL())); SC FN_CALL(0 UNIT() TEMPLATE SYM()<SYM()>); }) }" },
-        //{ "fn { unsafe { C::printf(\"hello world\n\");} } ", "GLOBAL {  }" },
+          "BLOB_LITERAL())); SC FUNC_HEAD(UNIT() TEMPLATE SYM()<SYM()>); }) }" },
+        { "fn { unsafe { C::printf(\"hello world\n\");} } ",
+          "GLOBAL { FUNC(0 SYM() BLOCK { UNSAFE BLOCK { SC FUNC_HEAD(TERM( STR \"hello world\" ) SCOPE(SYM()::SYM())); "
+          "} }) }" },
         { "decl fn1(arg:int); // implicitly public\n pub fn2(arg:int);",
-          "GLOBAL { SC DECL(FN_CALL(0 TERM( TYPED(SYM():SYM()) ) SYM())); SC PUBLIC(FN_CALL(0 TERM( TYPED(SYM():SYM()) "
+          "GLOBAL { SC DECL(FUNC_HEAD(TERM( TYPED(SYM():SYM()) ) SYM())); SC PUBLIC(FUNC_HEAD(TERM( TYPED(SYM():SYM()) "
           ") SYM())); }" },
-        //{ "scope::B::fn(a) { a.fn();}fn2 {}fn3 (a:int, b:int) -> int { [&]() { a++ } arr[2];}", "GLOBAL {  }" },
+        { "scope::B::fn(a) { a.fn();}fn2 {}fn3 (a:int, b:int) -> int { [&]() { a++ } arr[2];}",
+          "GLOBAL { FUNC(0 TERM( SYM() ) SCOPE(SCOPE(SYM()::SYM())::SYM()) BLOCK { SC FUNC_HEAD(UNIT() "
+          "MEMBER(SYM().SYM())); }) FUNC(0 SYM() BLOCK { }) FUNC(0 TUPLE( TYPED(SYM():SYM()), TYPED(SYM():SYM()), ) "
+          "SYM() -> SYM() BLOCK { FUNC(0 UNIT() ARRAY[ TOKEN 14 \"&\" ] BLOCK { OP(SYM() ++) }) SC ARR_ACC "
+          "SYM()[BLOB_LITERAL()]; }) }" },
         //{ "#not_inline fn { println!(\"Hello World\"); } ", "GLOBAL {  }" },
         { "f(g<a>(c)); fn<A, B>() { a+fn(a+b, c); }",
-          "GLOBAL { SC FN_CALL(0 TERM( FN_CALL(0 TERM( SYM() ) TEMPLATE SYM()<SYM()>) ) SYM()); FUNC(0 UNIT() TEMPLATE "
-          "SYM()<COMMA( SYM(), SYM(), )> BLOCK { SC OP(SYM() + FN_CALL(0 TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
+          "GLOBAL { SC FUNC_HEAD(TERM( FUNC_HEAD(TERM( SYM() ) TEMPLATE SYM()<SYM()>) ) SYM()); FUNC(0 UNIT() TEMPLATE "
+          "SYM()<COMMA( SYM(), SYM(), )> BLOCK { SC OP(SYM() + FUNC_HEAD(TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
           "}) }" },
         { "f(g<a>(c)); fn<A, B> { a+fn(a+b, c); }",
-          "GLOBAL { SC FN_CALL(0 TERM( FN_CALL(0 TERM( SYM() ) TEMPLATE SYM()<SYM()>) ) SYM()); FUNC(0 TEMPLATE "
-          "SYM()<COMMA( SYM(), SYM(), )> BLOCK { SC OP(SYM() + FN_CALL(0 TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
+          "GLOBAL { SC FUNC_HEAD(TERM( FUNC_HEAD(TERM( SYM() ) TEMPLATE SYM()<SYM()>) ) SYM()); FUNC(0 TEMPLATE "
+          "SYM()<COMMA( SYM(), SYM(), )> BLOCK { SC OP(SYM() + FUNC_HEAD(TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
           "}) }" },
         { "a..b; a..; ..b; a..=b; ..=b; ",
           "GLOBAL { SC RANGE EXCLUDE SYM()..SYM(); SC RANGE EXCLUDE_FROM SYM(); SC RANGE EXCLUDE_TO SYM(); SC RANGE "
@@ -149,10 +160,10 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         { "Vec1<Vec2<a>>; a >> b;", "GLOBAL { SC TEMPLATE SYM()<TEMPLATE SYM()<SYM()>>; SC OP(SYM() >> SYM()); }" },
         { "Vec1<Vec2<a>>(); Vec<Vec<Vec<Vec<Vec<a>, b>>>>(); Vec<Vec<Vec<Vec<Vec<a>, b>>>>(); a >> b; "
           "Vec1<Vec2<a+b>>(); ",
-          "GLOBAL { SC FN_CALL(0 UNIT() TEMPLATE SYM()<TEMPLATE SYM()<SYM()>>); SC FN_CALL(0 UNIT() TEMPLATE "
+          "GLOBAL { SC FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<SYM()>>); SC FUNC_HEAD(UNIT() TEMPLATE "
           "SYM()<TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<COMMA( TEMPLATE SYM()<SYM()>, SYM(), )>>>>); SC "
-          "FN_CALL(0 UNIT() TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<COMMA( TEMPLATE SYM()<SYM()>, "
-          "SYM(), )>>>>); SC OP(SYM() >> SYM()); SC FN_CALL(0 UNIT() TEMPLATE SYM()<TEMPLATE SYM()<OP(SYM() + "
+          "FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<COMMA( TEMPLATE SYM()<SYM()>, "
+          "SYM(), )>>>>); SC OP(SYM() >> SYM()); SC FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<OP(SYM() + "
           "SYM())>>); }" }
     };
 

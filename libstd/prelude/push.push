@@ -86,8 +86,8 @@ define_mci_rule( NEW_OPERATOR, std::literal::float, 2, ltr, triple_list, integer
 define_mci_rule( ALIAS_EXPRESSION, 31, rtl, double_list, "use", expr -> expression ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
 define_mci_rule( LET_STATEMENT, 31, rtl, double_list, "let", expr -> expression ); // let keyword which starts a new variable binding
 define_mci_rule( MODULE_SPECIFIER, 5, rtl, double_list, "mod", symbol -> name ); // module specification ("mod" keyword)
-define_mci_rule( DECLARATION, 28, rtl, double_list, "decl", function_signature -> symbol ); // declaration of a symbol
-define_mci_rule( PUBLIC_ATTRIBUTE, 28, rtl, double_list, "pub", function_signature -> symbol ); // specification of a public function
+define_mci_rule( DECLARATION, 28, rtl, double_list, "decl", fn_head -> symbol ); // declaration of a symbol
+define_mci_rule( PUBLIC_ATTRIBUTE, 28, rtl, double_list, "pub", fn_head -> symbol ); // specification of a public function
 define_mci_rule( PUBLIC_ATTRIBUTE, 28, rtl, double_list, "pub", competed -> symbol ); // specification of a public symbol other than a function
 
 // Special specifiers
@@ -130,11 +130,9 @@ define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 7, rtl, quadruple_l
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 7, rtl, double_list, fn_head -> head, completed -> body ); // function without an explicit return type
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 7, rtl, quadruple_list, fn_head -> head, "->", expr -> return, completed -> body ); // function with an explicit return type
 
-define_mci_rule( FUNCTION_CALL, 7, rtl, single_list, fn_head -> head ); // function call
-
 // Appending operations
 define_mci_rule( SCOPE_ACCESS, 4, ltr, triple_list, symbol -> base, "::" -> op, symbol -> name ); // scope access is a symbol extension
-define_mci_rule( SCOPE_ACCESS, 4, ltr, double_list, "::" -> op, symbol -> name ); // global scope access
+define_mci_rule( SCOPE_ACCESS, 5, ltr, double_list, "::" -> op, symbol -> name ); // global scope access
 define_mci_rule( MEMBER_ACCESS, 6, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of an object
 define_mci_rule( ARRAY_ACCESS, 6, ltr, double_list, expr -> value, array_spec -> index ); // array access with a type or variable.
 
