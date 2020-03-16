@@ -72,6 +72,7 @@ define_mci_rule( NEW_LEVEL, STRING, sw, double_quotes double_quotes, prefix "w",
 define_mci_rule( NEW_LEVEL, NORMAL, n, overlay b ln lr bd lnd lrd c sb s sb sw sr srw ); // normal code (root)
 //define_mci_rule( NEW_LEVEL, NORMAL, v, "\\(" ")" ); // value extraction in strings
 
+
 // Special basic literals
 //define_mci_rule( NEW_OPERATOR, std::literal::bin_integer, 1, ltr, double_list, "0b", integer -> rvalue ); // binary radix
 //define_mci_rule( NEW_OPERATOR, std::literal::oct_integer, 1, ltr, double_list, "0o", integer -> rvalue ); // octal radix
@@ -82,38 +83,16 @@ define_mci_rule( NEW_OPERATOR, std::literal::float, 2, ltr, triple_list, integer
 //define_mci_rule( NEW_OPERATOR, std::literal::float_exp_neg, 2, ltr, sextuple_list, integer -> lvalue, "." -> op, integer -> rvalue, "e", "-", integer -> expo ); // float with negative exponent
 //define_mci_rule( NEW_OPERATOR, std::literal::float_exp_neg, 2, ltr, sextuple_list, integer -> lvalue, "." -> op, integer -> rvalue, "E", "-", integer -> expo ); // float with negative exponent
 
-// Special statements
-define_mci_rule( ALIAS_EXPRESSION, 32, rtl, double_list, "use", expr -> expression ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
-define_mci_rule( LET_STATEMENT, 32, rtl, double_list, "let", expr -> expression ); // let keyword which starts a new variable binding
+// Scope access
+define_mci_rule( SCOPE_ACCESS, 4, ltr, triple_list, symbol -> base, "::" -> op, symbol -> name ); // scope access is a symbol extension
+define_mci_rule( SCOPE_ACCESS, 5, ltr, double_list, "::" -> op, symbol -> name ); // global scope access
+
+// Module specifier
 define_mci_rule( MODULE_SPECIFIER, 6, rtl, double_list, "mod", symbol -> name ); // module specification ("mod" keyword)
-define_mci_rule( DECLARATION, 29, rtl, double_list, "decl", fn_head -> symbol ); // declaration of a symbol
-define_mci_rule( PUBLIC_ATTRIBUTE, 29, rtl, double_list, "pub", fn_head -> symbol ); // specification of a public function
-define_mci_rule( PUBLIC_ATTRIBUTE, 29, rtl, double_list, "pub", competed -> symbol ); // specification of a public symbol other than a function
 
-// Special specifiers
-define_mci_rule( STATIC_STATEMENT, 10, rtl, double_list, "$", completed -> body ); // static statement
-define_mci_rule( ANNOTATION, 34, rtl, triple_list, "#", symbol -> name, expr -> body ); // compiler annotation
-define_mci_rule( MACRO, 8, rtl, triple_list, symbol -> name, "!", expr -> body ); // macro
-define_mci_rule( UNSAFE_BLOCK, 9, rtl, double_list, "unsafe", completed -> body ); // unsafe block
-define_mci_rule( DEFINE_TEMPLATE, 35 CLASS 3 FROM 4, ltr, quadruple_list, expr -> name, "<", expr -> attributes, ">" ); // single template arguments are surrounded by angular brackets
-
-// OOP constructs
-define_mci_rule( STRUCT_DEFINITION, 31, rtl, triple_list, "struct", symbol -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
-define_mci_rule( STRUCT_DEFINITION, 31, rtl, single_list, "struct" ); // anonymous struct
-define_mci_rule( TRAIT_DEFINITION, 31, rtl, triple_list, "trait", symbol -> name, completed -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
-define_mci_rule( IMPL_DEFINITION, 31, rtl, triple_list, "impl", symbol -> type, completed -> body ); // impl-blocks which defines methods for a struct independent of a trait
-define_mci_rule( IMPL_DEFINITION, 31, rtl, quintuple_list, "impl", symbol -> trait, "for", symbol -> type, completed -> body ); // impl-blocks which defines a trait for a struct
-
-// Control flow
-define_mci_rule( IF_EXPRESSION, 33, rtl, triple_list, "if", expr -> condition, completed -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
-define_mci_rule( IF_ELSE_EXPRESSION, 33, rtl, quintuple_list, "if", expr -> condition, completed -> exec0, "else", completed -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and an alternative executable block
-define_mci_rule( PRE_CONDITION_LOOP, TRUE, 33, rtl, triple_list, "while", expr -> condition, completed -> exec ); // regular while loop
-define_mci_rule( PRE_CONDITION_LOOP, FALSE, 33, rtl, triple_list, "until", expr -> condition, completed -> exec ); // regular while loop with negated condition
-define_mci_rule( POST_CONDITION_LOOP, TRUE, 33, rtl, quadruple_list, "do", completed -> exec, "while", expr -> condition ); // regular do-while loop
-define_mci_rule( POST_CONDITION_LOOP, FALSE, 33, rtl, quadruple_list, "do", completed -> exec, "until", expr -> condition ); // regular do-while loop with negated condition
-define_mci_rule( INFINITE_LOOP, 33, rtl, double_list, "loop", completed -> exec ); // infinite loop
-define_mci_rule( ITR_LOOP_EXPRESSION, 33, rtl, triple_list, "for", expr -> iterator, completed -> exec ); // for loop over an iterator
-define_mci_rule( MATCH_EXPRESSION, 33, rtl, triple_list, "match", expr -> selector, completed -> cases ); // match keyword which matches an expression
+// Member and array access
+define_mci_rule( MEMBER_ACCESS, 7, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of an object
+define_mci_rule( ARRAY_ACCESS, 7, ltr, double_list, expr -> value, array_spec -> index ); // array access with a type or variable.
 
 // Functions
 define_mci_rule( FUNCTION_HEAD, 7, ltr, double_list, expr -> symbol, unit -> parameters ); // function head without parameters
@@ -130,11 +109,10 @@ define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, quadruple_l
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, double_list, fn_head -> head, completed -> body ); // function without an explicit return type
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, quadruple_list, fn_head -> head, "->", expr -> return, completed -> body ); // function with an explicit return type
 
-// Appending operations
-define_mci_rule( SCOPE_ACCESS, 4, ltr, triple_list, symbol -> base, "::" -> op, symbol -> name ); // scope access is a symbol extension
-define_mci_rule( SCOPE_ACCESS, 5, ltr, double_list, "::" -> op, symbol -> name ); // global scope access
-define_mci_rule( MEMBER_ACCESS, 7, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of an object
-define_mci_rule( ARRAY_ACCESS, 7, ltr, double_list, expr -> value, array_spec -> index ); // array access with a type or variable.
+// Special specifiers
+define_mci_rule( MACRO, 8, rtl, triple_list, symbol -> name, "!", expr -> body ); // macro
+define_mci_rule( UNSAFE_BLOCK, 9, rtl, double_list, "unsafe", completed -> body ); // unsafe block
+define_mci_rule( STATIC_STATEMENT, 10, rtl, double_list, "$", completed -> body ); // static statement
 
 // Operators
 define_mci_rule( NEW_OPERATOR, std::op::log_not, 11, rtl, double_list, "!" -> op, expr -> rvalue ); // define the logical not operator
@@ -143,8 +121,11 @@ define_mci_rule( NEW_OPERATOR, std::op::negate, 11 BIAS 11, rtl, double_list, "-
 define_mci_rule( NEW_OPERATOR, std::op::positive, 11 BIAS 11, rtl, double_list, "+" -> op, expr -> rvalue ); // define the positive operator (only for symmetry with the negation operator)
 define_mci_rule( NEW_OPERATOR, std::op::increment_prefix, 11, rtl, double_list, "++" -> op, expr -> rvalue ); // define the prefix increment operator
 define_mci_rule( NEW_OPERATOR, std::op::decrement_prefix, 11, rtl, double_list, "--" -> op, expr -> rvalue ); // define the prefix decrement operator
+define_mci_rule( REFERENCE_TYPE, 11, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
 define_mci_rule( NEW_OPERATOR, std::op::increment_postfix, 12, ltr, double_list, expr -> lvalue, "++" -> op ); // define the postfix increment operator
 define_mci_rule( NEW_OPERATOR, std::op::decrement_postfix, 12, ltr, double_list, expr -> lvalue, "--" -> op ); // define the postfix decrement operator
+define_mci_rule( OPERATION_TYPE, 13, ltr, triple_list, expr -> value, ":" -> op, expr -> type ); // type defining operator
+define_mci_rule( TYPE_OF, 14, rtl, double_list, "type_of" -> op, expr -> type ); // type_of operator
 define_mci_rule( NEW_OPERATOR, std::op::cast_from, 14, ltr, triple_list, expr -> lvalue, "as" -> op, expr -> rvalue ); // define the From cast with the as keyword
 define_mci_rule( NEW_OPERATOR, std::op::cast_into, 14, ltr, triple_list, expr -> lvalue, "as" -> op, expr -> rvalue ); // define the Into cast with the as keyword
 
@@ -159,6 +140,12 @@ define_mci_rule( NEW_OPERATOR, std::op::bit_xor, 18, ltr, triple_list, expr -> l
 define_mci_rule( NEW_OPERATOR, std::op::bit_or, 19, ltr, triple_list, expr -> lvalue, "|" -> op, expr -> rvalue ); // basic bit or operator
 define_mci_rule( NEW_OPERATOR, std::op::bit_shift_left, 20, ltr, triple_list, expr -> lvalue, "<<" -> op, expr -> rvalue ); // basic left bit shift operator
 define_mci_rule( NEW_OPERATOR, std::op::bit_shift_right, 20, ltr, quadruple_list, expr -> lvalue, ">" -> op1, ">" -> op2, expr -> rvalue ); // basic right bit shift operator
+
+define_mci_rule( RANGE_DEFINITION, EXCLUDING, 21 BIAS 9, rtl, triple_list, expr -> lvalue, ".." -> op, expr -> rvalue ); // range operator for 0..5
+define_mci_rule( RANGE_DEFINITION, FROM_EXCLUDING, 21, rtl, double_list, expr -> lvalue, ".." -> op ); // range operator 5..
+define_mci_rule( RANGE_DEFINITION, TO_EXCLUDING, 21 BIAS 11, rtl, double_list, ".." -> op, expr -> rvalue ); // range operator for ..5
+define_mci_rule( RANGE_DEFINITION, INCLUDING, 21 BIAS 9, rtl, triple_list, expr -> lvalue, "..=" -> op, expr -> rvalue ); // range operator for 0..=5
+define_mci_rule( RANGE_DEFINITION, TO_INCLUDING, 21 BIAS 11, rtl, double_list, "..=" -> op, expr -> rvalue ); // range operator for ..=5
 
 define_mci_rule( NEW_OPERATOR, std::op::iterate_collection, 22, ltr, triple_list, expr -> lvalue, "in" -> op, expr -> rvalue ); // iteration over a collection
 
@@ -187,16 +174,43 @@ define_mci_rule( NEW_OPERATOR, std::op::default_assign, 27, rtl, triple_list, ex
 
 define_mci_rule( NEW_OPERATOR, std::op::implication, 28, rtl, triple_list, expr -> lvalue, "=>" -> op, expr -> rvalue ); // pair two variables in an implication
 
+// Special prefixes
+define_mci_rule( DECLARATION, 29, rtl, double_list, "decl", fn_head -> symbol ); // declaration of a symbol
+define_mci_rule( PUBLIC_ATTRIBUTE, 29, rtl, double_list, "pub", fn_head -> symbol ); // specification of a public function
+define_mci_rule( PUBLIC_ATTRIBUTE, 29, rtl, double_list, "pub", competed -> symbol ); // specification of a public symbol other than a function
+
+// Comma linking operator
 define_mci_rule( COMMA_OPERATOR, 30, rtl, triple_list, expr -> lvalue, "," -> op, expr -> rvalue ); // the comma-linking operator
 define_mci_rule( COMMA_OPERATOR, 30, rtl, double_list, expr -> lvalue, "," -> op ); // the comma-linking operator with no following expression
-define_mci_rule( REFERENCE_TYPE, 11, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
-define_mci_rule( TYPE_OF, 14, rtl, double_list, "type_of" -> op, expr -> type ); // type_of operator
-define_mci_rule( OPERATION_TYPE, 13, ltr, triple_list, expr -> value, ":" -> op, expr -> type ); // type defining operator
-define_mci_rule( RANGE_DEFINITION, EXCLUDING, 21 BIAS 9, rtl, triple_list, expr -> lvalue, ".." -> op, expr -> rvalue ); // range operator for 0..5
-define_mci_rule( RANGE_DEFINITION, FROM_EXCLUDING, 21, rtl, double_list, expr -> lvalue, ".." -> op ); // range operator 5..
-define_mci_rule( RANGE_DEFINITION, TO_EXCLUDING, 21 BIAS 11, rtl, double_list, ".." -> op, expr -> rvalue ); // range operator for ..5
-define_mci_rule( RANGE_DEFINITION, INCLUDING, 21 BIAS 9, rtl, triple_list, expr -> lvalue, "..=" -> op, expr -> rvalue ); // range operator for 0..=5
-define_mci_rule( RANGE_DEFINITION, TO_INCLUDING, 21 BIAS 11, rtl, double_list, "..=" -> op, expr -> rvalue ); // range operator for ..=5
+
+// OOP constructs
+define_mci_rule( STRUCT_DEFINITION, 31, rtl, triple_list, "struct", symbol -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
+define_mci_rule( STRUCT_DEFINITION, 31, rtl, single_list, "struct" ); // anonymous struct
+define_mci_rule( TRAIT_DEFINITION, 31, rtl, triple_list, "trait", symbol -> name, completed -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
+define_mci_rule( IMPL_DEFINITION, 31, rtl, triple_list, "impl", symbol -> type, completed -> body ); // impl-blocks which defines methods for a struct independent of a trait
+define_mci_rule( IMPL_DEFINITION, 31, rtl, quintuple_list, "impl", symbol -> trait, "for", symbol -> type, completed -> body ); // impl-blocks which defines a trait for a struct
+
+// Special assignments
+define_mci_rule( ALIAS_EXPRESSION, 32, rtl, double_list, "use", expr -> expression ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
+define_mci_rule( LET_STATEMENT, 32, rtl, double_list, "let", expr -> expression ); // let keyword which starts a new variable binding
+
+// Control flow
+define_mci_rule( IF_EXPRESSION, 33, rtl, triple_list, "if", expr -> condition, completed -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
+define_mci_rule( IF_ELSE_EXPRESSION, 33, rtl, quintuple_list, "if", expr -> condition, completed -> exec0, "else", completed -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and an alternative executable block
+define_mci_rule( PRE_CONDITION_LOOP, TRUE, 33, rtl, triple_list, "while", expr -> condition, completed -> exec ); // regular while loop
+define_mci_rule( PRE_CONDITION_LOOP, FALSE, 33, rtl, triple_list, "until", expr -> condition, completed -> exec ); // regular while loop with negated condition
+define_mci_rule( POST_CONDITION_LOOP, TRUE, 33, rtl, quadruple_list, "do", completed -> exec, "while", expr -> condition ); // regular do-while loop
+define_mci_rule( POST_CONDITION_LOOP, FALSE, 33, rtl, quadruple_list, "do", completed -> exec, "until", expr -> condition ); // regular do-while loop with negated condition
+define_mci_rule( INFINITE_LOOP, 33, rtl, double_list, "loop", completed -> exec ); // infinite loop
+define_mci_rule( ITR_LOOP_EXPRESSION, 33, rtl, triple_list, "for", expr -> iterator, completed -> exec ); // for loop over an iterator
+define_mci_rule( MATCH_EXPRESSION, 33, rtl, triple_list, "match", expr -> selector, completed -> cases ); // match keyword which matches an expression
+
+// Annotations
+define_mci_rule( ANNOTATION, 34, rtl, triple_list, "#", symbol -> name, expr -> body ); // compiler annotation
+
+// Templates
+define_mci_rule( DEFINE_TEMPLATE, 35 CLASS 3 FROM 4, ltr, quadruple_list, expr -> name, "<", expr -> attributes, ">" ); // single template arguments are surrounded by angular brackets
+
 
 // Primitive types
 define_mci_rule( BASE_TRAIT, INTEGER, std::num::Integer ); // Defines which trait describes the integer type
