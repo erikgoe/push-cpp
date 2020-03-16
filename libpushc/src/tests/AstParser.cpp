@@ -108,9 +108,12 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
           "= BLOB_LITERAL())); ) SC BINDING(OP(SYM() = TERM( IF(BLOB_LITERAL() THEN SC BLOB_LITERAL(); ELSE SC "
           "BLOB_LITERAL(); ) ))); IF(BLOB_LITERAL() THEN SC BINDING(OP(SYM() = BLOB_LITERAL())); ELSE SC "
           "BINDING(OP(SYM() = BLOB_LITERAL())); ) }) }" },
-        //{ "let a:struct = { name = \"john\", age=21 }; \n // Global struct\n struct A { val1:int, val2:float } ",
-        //  "GLOBAL {  }" },
-        //{ "trait Addable { } struct A { } impl A { } impl Addable for A { }", "GLOBAL {  }" },
+        { "let a:struct = { name = \"john\", age=21 }; \n // Global struct\n struct A { val1:int, val2:float } ",
+          "GLOBAL { SC BINDING(OP(TYPED(SYM():STRUCT <anonymous> <undefined>) = SET { OP(SYM() = STR \"john\"), "
+          "OP(SYM() = BLOB_LITERAL()), })); STRUCT SYM() SET { TYPED(SYM():SYM()), TYPED(SYM():SYM()), } }" },
+        { "trait Addable { } struct A { } impl A { } impl Addable for A { }",
+          "GLOBAL { TRAIT SYM() BLOCK { } STRUCT SYM() BLOCK { } IMPL SYM() BLOCK { } IMPL SYM() FOR SYM() BLOCK { } "
+          "}" },
         //{ "fn { (a,b,c,d); match a 1=>x, 2=>y, 3=>z; }", "GLOBAL {  }" },
         { "let a = { a, b, c };", "GLOBAL { SC BINDING(OP(SYM() = SET { SYM(), SYM(), SYM(), })); }" },
         { "fn (s) { }", "GLOBAL { FUNC(0 TERM( SYM() ) SYM() BLOCK { }) }" },

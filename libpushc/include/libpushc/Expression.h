@@ -399,13 +399,13 @@ public:
 
 // Specifies a new funcion
 class FuncExpr : public SeparableExpr, public CompletedExpr {
+public:
     TypeId type; // Every funcion has its own type
     sptr<Expr> parameters;
     sptr<Expr> return_type;
     sptr<Expr> symbol;
     sptr<CompletedExpr> body;
 
-public:
     FuncExpr() {}
     FuncExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, sptr<Expr> return_type, sptr<CompletedExpr> block,
               u32 precedence, std::vector<sptr<Expr>> &original_list ) {
