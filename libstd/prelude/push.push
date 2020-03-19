@@ -206,7 +206,7 @@ define_mci_rule( ITR_LOOP_EXPRESSION, 33 BIAS 9, rtl, triple_list, "for", expr -
 define_mci_rule( MATCH_EXPRESSION, 33 BIAS 9, rtl, triple_list, "match", expr -> selector, completed -> cases ); // match keyword which matches an expression
 
 // Annotations
-define_mci_rule( ANNOTATION, 34, rtl, triple_list, "#", symbol -> name, expr -> body ); // compiler annotation
+define_mci_rule( ANNOTATION, 34 BIAS 9, rtl, triple_list, "#", symbol -> name, expr -> body ); // compiler annotation
 
 // Templates
 define_mci_rule( DEFINE_TEMPLATE, 35 CLASS 3 FROM 4, ltr, quadruple_list, expr -> name, "<", expr -> attributes, ">" ); // single template arguments are surrounded by angular brackets

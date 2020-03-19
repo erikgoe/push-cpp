@@ -153,7 +153,10 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
           "MEMBER(SYM().SYM())); }) FUNC(0 SYM() BLOCK { }) FUNC(0 TUPLE( TYPED(SYM():SYM()), TYPED(SYM():SYM()), ) "
           "SYM() -> SYM() BLOCK { FUNC(0 UNIT() ARRAY[ TOKEN 14 \"&\" ] BLOCK { OP(SYM() ++) }) SC ARR_ACC "
           "SYM()[BLOB_LITERAL()]; }) }" },
-        //{ "#not_inline fn { println!(\"Hello World\"); } ", "GLOBAL {  }" },
+        { "#not_inline fn { println!(\"Hello World\"); } ",
+          "GLOBAL { ANNOTATE(SYM() for FUNC(0 SYM() BLOCK { SC MACRO(SYM()! TERM( STR \"Hello World\" )); })) }" },
+        { "#not_inline #other_annotation fn {  } ",
+          "GLOBAL { ANNOTATE(SYM() for ANNOTATE(SYM() for FUNC(0 SYM() BLOCK { }))) }" },
         { "f(g<a>(c)); fn<A, B>() { a+fn(a+b, c); }",
           "GLOBAL { SC FUNC_HEAD(TERM( FUNC_HEAD(TERM( SYM() ) TEMPLATE SYM()<SYM()>) ) SYM()); FUNC(0 UNIT() TEMPLATE "
           "SYM()<COMMA( SYM(), SYM(), )> BLOCK { SC OP(SYM() + FUNC_HEAD(TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
