@@ -184,11 +184,11 @@ define_mci_rule( COMMA_OPERATOR, 30, rtl, triple_list, expr -> lvalue, "," -> op
 define_mci_rule( COMMA_OPERATOR, 30, rtl, double_list, expr -> lvalue, "," -> op ); // the comma-linking operator with no following expression
 
 // OOP constructs
-define_mci_rule( STRUCT_DEFINITION, 31, rtl, triple_list, "struct", symbol -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
+define_mci_rule( STRUCT_DEFINITION, 31 BIAS 9, rtl, triple_list, "struct", symbol -> name, completed -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
 define_mci_rule( STRUCT_DEFINITION, 31, rtl, single_list, "struct" ); // anonymous struct
-define_mci_rule( TRAIT_DEFINITION, 31, rtl, triple_list, "trait", symbol -> name, completed -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
-define_mci_rule( IMPL_DEFINITION, 31, rtl, triple_list, "impl", symbol -> type, completed -> body ); // impl-blocks which defines methods for a struct independent of a trait
-define_mci_rule( IMPL_DEFINITION, 31, rtl, quintuple_list, "impl", symbol -> trait, "for", symbol -> type, completed -> body ); // impl-blocks which defines a trait for a struct
+define_mci_rule( TRAIT_DEFINITION, 31 BIAS 9, rtl, triple_list, "trait", symbol -> name, completed -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
+define_mci_rule( IMPL_DEFINITION, 31 BIAS 9, rtl, triple_list, "impl", symbol -> type, completed -> body ); // impl-blocks which defines methods for a struct independent of a trait
+define_mci_rule( IMPL_DEFINITION, 31 BIAS 9, rtl, quintuple_list, "impl", symbol -> trait, "for", symbol -> type, completed -> body ); // impl-blocks which defines a trait for a struct
 
 // Special assignments
 define_mci_rule( ALIAS_EXPRESSION, 32, rtl, double_list, "use", expr -> expression ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
