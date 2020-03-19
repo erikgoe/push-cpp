@@ -84,7 +84,6 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         { "let val = 42 + 5 * (3 + 2) + \" this is a string \";",
           "GLOBAL { SC BINDING(OP(SYM() = OP(OP(BLOB_LITERAL() + OP(BLOB_LITERAL() * TERM( OP(BLOB_LITERAL() + "
           "BLOB_LITERAL()) ))) + STR \"this is a string \"))); }" },
-        //{ "x = 0  + '3';", "GLOBAL {  }" },
         { "5.4", "GLOBAL { OP(BLOB_LITERAL() . BLOB_LITERAL()) }" },
         { "(a, b, c, d, 5, (4%2));",
           "GLOBAL { SC TUPLE( SYM(), SYM(), SYM(), SYM(), BLOB_LITERAL(), TERM( OP(BLOB_LITERAL() % BLOB_LITERAL()) ), "

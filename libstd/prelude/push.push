@@ -60,8 +60,6 @@ define_mci_rule( NEW_LEVEL, COMMENT_LINE, lnd, "///" "\n" );
 define_mci_rule( NEW_LEVEL, COMMENT_LINE, lrd, "///" "\r" );
 
 // String rules
-//define_mci_rule( NEW_LEVEL, STRING, c, quote quote ); // simple character
-//define_mci_rule( NEW_LEVEL, STRING, cb, quote quote, prefix "b" ); // byte character
 define_mci_rule( NEW_LEVEL, STRING, s, double_quotes double_quotes, overlay v ); // simple string
 define_mci_rule( NEW_LEVEL, STRING, sb, "\"\"\"" "\"\"\"", overlay v ); // string block
 define_mci_rule( NEW_LEVEL, STRING, sw, double_quotes double_quotes, prefix "w", overlay v ); // wide string
