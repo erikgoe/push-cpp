@@ -95,8 +95,7 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         { "function(c, d);", "GLOBAL { SC FUNC_HEAD(TUPLE( SYM(), SYM(), ) SYM()); }" },
         { "if true { let val = 4; }",
           "GLOBAL { IF(BLOB_LITERAL() THEN BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); } ) }" },
-        { "if var { let val = 4; }",
-          "GLOBAL { IF(SYM() THEN BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); } ) }" },
+        { "if var { let val = 4; }", "GLOBAL { IF(SYM() THEN BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); } ) }" },
         { "do { function(c, d); } until true;",
           "GLOBAL { SC POST_LOOP(FALSE: BLOB_LITERAL() DO BLOCK { SC FUNC_HEAD(TUPLE( SYM(), SYM(), ) SYM()); } ); }" },
         { "function { let var[4] = [0,1,2,3]; var[2] } ",
@@ -116,7 +115,9 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         { "trait Addable { } struct A { } impl A { } impl Addable for A { }",
           "GLOBAL { TRAIT SYM() BLOCK { } STRUCT SYM() BLOCK { } IMPL SYM() BLOCK { } IMPL SYM() FOR SYM() BLOCK { } "
           "}" },
-        //{ "fn { (a,b,c,d); match a 1=>x, 2=>y, 3=>z; }", "GLOBAL {  }" },
+        { "fn { (a,b,c,d); match a 1=>x, 2=>y, 3=>z; }",
+          "GLOBAL { FUNC(0 SYM() BLOCK { SC TUPLE( SYM(), SYM(), SYM(), SYM(), ); MATCH(SYM() WITH SC COMMA( "
+          "OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), ); ) }) }" },
         { "let a = { a, b, c };", "GLOBAL { SC BINDING(OP(SYM() = SET { SYM(), SYM(), SYM(), })); }" },
         { "fn (s) { }", "GLOBAL { FUNC(0 TERM( SYM() ) SYM() BLOCK { }) }" },
         { "s.b; A::B; ::C;", "GLOBAL { SC MEMBER(SYM().SYM()); SC SCOPE(SYM()::SYM()); SC SCOPE(<global>::SYM()); }" },
