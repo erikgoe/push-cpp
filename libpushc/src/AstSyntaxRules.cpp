@@ -31,8 +31,6 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( make_shared<CompletedExpr>() );
         } else if ( expr.first == "fn_head" ) {
             sr.expr_list.push_back( make_shared<FuncHeadExpr>() );
-        } else if ( expr.first == "fn_def" ) {
-            sr.expr_list.push_back( make_shared<FuncExpr>() );
         } else if ( expr.first == "comma_list" ) {
             sr.expr_list.push_back( make_shared<CommaExpr>() );
         } else if ( expr.first == "unit" ) {
@@ -91,12 +89,11 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         parse_rule( new_rule, lm, sb.syntax );
         copy_syntax_properties( new_rule, sb );
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            if ( lm.find( "body" ) != lm.end() ) {
-                sptr<FuncExpr> body = std::dynamic_pointer_cast<FuncExpr>( list[lm.at( "body" )] );
-                return make_shared<StructExpr>( body->symbol, body->body, new_rule.precedence, list );
-            } else {
-                return make_shared<StructExpr>( nullptr, nullptr, new_rule.precedence, list );
-            }
+            return make_shared<StructExpr>(
+                ( lm.find( "name" ) != lm.end() ? list[lm.at( "name" )] : nullptr ),
+                ( lm.find( "body" ) != lm.end() ? std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] )
+                                                : nullptr ),
+                new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }
@@ -104,8 +101,9 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         parse_rule( new_rule, lm, sb.syntax );
         copy_syntax_properties( new_rule, sb );
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            sptr<FuncExpr> body = std::dynamic_pointer_cast<FuncExpr>( list[lm.at( "body" )] );
-            return make_shared<TraitExpr>( body->symbol, body->body, new_rule.precedence, list );
+            return make_shared<TraitExpr>( list[lm.at( "name" )],
+                                           std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
+                                           new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }
@@ -113,10 +111,9 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         parse_rule( new_rule, lm, sb.syntax );
         copy_syntax_properties( new_rule, sb );
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            sptr<FuncExpr> body = std::dynamic_pointer_cast<FuncExpr>( list[lm.at( "body" )] );
-            return make_shared<ImplExpr>( body->symbol,
-                                          ( lm.find( "trait" ) != lm.end() ? list[lm.at( "trait" )] : nullptr ),
-                                          body->body, new_rule.precedence, list );
+            return make_shared<ImplExpr>(
+                list[lm.at( "type" )], ( lm.find( "trait" ) != lm.end() ? list[lm.at( "trait" )] : nullptr ),
+                std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
         };
         a_ctx.rules.push_back( new_rule );
     }
