@@ -104,7 +104,7 @@ define_mci_rule( FUNCTION_HEAD, 7, rtl, double_list, array_spec -> symbol, tuple
 
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, double_list, array_spec -> symbol, completed -> body ); // lambda without an explicit return type nor parameters
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, quadruple_list, array_spec -> symbol, "->", expr -> return, completed -> body ); // lambda with an explicit return type, but no parameters
-define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, double_list, symbol -> symbol, completed -> body ); // function without an explicit return type nor parameters
+define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8 BIAS 11, rtl, double_list, symbol -> symbol, completed -> body ); // function without an explicit return type nor parameters
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, quadruple_list, symbol -> symbol, "->", expr -> return, completed -> body ); // function with an explicit return type, but no parameters
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, double_list, fn_head -> head, completed -> body ); // function without an explicit return type
 define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, quadruple_list, fn_head -> head, "->", expr -> return, completed -> body ); // function with an explicit return type
@@ -186,24 +186,24 @@ define_mci_rule( COMMA_OPERATOR, 30, rtl, double_list, expr -> lvalue, "," -> op
 // OOP constructs
 define_mci_rule( STRUCT_DEFINITION, 31, rtl, double_list, "struct", fn_def -> body ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
 define_mci_rule( STRUCT_DEFINITION, 31, rtl, single_list, "struct" ); // anonymous struct
-define_mci_rule( TRAIT_DEFINITION, 31, rtl, double_list, "trait",fn_def -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
-define_mci_rule( IMPL_DEFINITION, 31, rtl, double_list, "impl", fn_def -> body ); // impl-blocks which defines methods for a struct independent of a trait
-define_mci_rule( IMPL_DEFINITION, 31, rtl, quadruple_list, "impl", symbol -> trait, "for", fn_def -> body ); // impl-blocks which defines a trait for a struct
+define_mci_rule( TRAIT_DEFINITION, 31, rtl, double_list, "trait", fn_def -> body ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
+define_mci_rule( IMPL_DEFINITION, 31 BIAS 9, rtl, double_list, "impl", fn_def -> body ); // impl-blocks which defines methods for a struct independent of a trait
+define_mci_rule( IMPL_DEFINITION, 31 BIAS 9, rtl, quadruple_list, "impl", symbol -> trait, "for", fn_def -> body ); // impl-blocks which defines a trait for a struct
 
 // Special assignments
 define_mci_rule( ALIAS_EXPRESSION, 32, rtl, double_list, "use", expr -> expression ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.
 define_mci_rule( LET_STATEMENT, 32, rtl, double_list, "let", expr -> expression ); // let keyword which starts a new variable binding
 
 // Control flow
-define_mci_rule( IF_EXPRESSION, 33, rtl, triple_list, "if", expr -> condition, completed -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
-define_mci_rule( IF_ELSE_EXPRESSION, 33, rtl, quintuple_list, "if", expr -> condition, completed -> exec0, "else", completed -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and an alternative executable block
-define_mci_rule( PRE_CONDITION_LOOP, TRUE, 33, rtl, triple_list, "while", expr -> condition, completed -> exec ); // regular while loop
-define_mci_rule( PRE_CONDITION_LOOP, FALSE, 33, rtl, triple_list, "until", expr -> condition, completed -> exec ); // regular while loop with negated condition
-define_mci_rule( POST_CONDITION_LOOP, TRUE, 33, rtl, quadruple_list, "do", completed -> exec, "while", expr -> condition ); // regular do-while loop
-define_mci_rule( POST_CONDITION_LOOP, FALSE, 33, rtl, quadruple_list, "do", completed -> exec, "until", expr -> condition ); // regular do-while loop with negated condition
-define_mci_rule( INFINITE_LOOP, 33, rtl, double_list, "loop", completed -> exec ); // infinite loop
-define_mci_rule( ITR_LOOP_EXPRESSION, 33, rtl, triple_list, "for", expr -> iterator, completed -> exec ); // for loop over an iterator
-define_mci_rule( MATCH_EXPRESSION, 33, rtl, triple_list, "match", expr -> selector, completed -> cases ); // match keyword which matches an expression
+define_mci_rule( IF_EXPRESSION, 33 BIAS 9, rtl, triple_list, "if", expr -> condition, completed -> exec0 ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
+define_mci_rule( IF_ELSE_EXPRESSION, 33 BIAS 9, rtl, quintuple_list, "if", expr -> condition, completed -> exec0, "else", completed -> exec1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and an alternative executable block
+define_mci_rule( PRE_CONDITION_LOOP, TRUE, 33 BIAS 9, rtl, triple_list, "while", expr -> condition, completed -> exec ); // regular while loop
+define_mci_rule( PRE_CONDITION_LOOP, FALSE, 33 BIAS 9, rtl, triple_list, "until", expr -> condition, completed -> exec ); // regular while loop with negated condition
+define_mci_rule( POST_CONDITION_LOOP, TRUE, 33 BIAS 9, rtl, quadruple_list, "do", completed -> exec, "while", expr -> condition ); // regular do-while loop
+define_mci_rule( POST_CONDITION_LOOP, FALSE, 33 BIAS 9, rtl, quadruple_list, "do", completed -> exec, "until", expr -> condition ); // regular do-while loop with negated condition
+define_mci_rule( INFINITE_LOOP, 33 BIAS 9, rtl, double_list, "loop", completed -> exec ); // infinite loop
+define_mci_rule( ITR_LOOP_EXPRESSION, 33 BIAS 9, rtl, triple_list, "for", expr -> iterator, completed -> exec ); // for loop over an iterator
+define_mci_rule( MATCH_EXPRESSION, 33 BIAS 9, rtl, triple_list, "match", expr -> selector, completed -> cases ); // match keyword which matches an expression
 
 // Annotations
 define_mci_rule( ANNOTATION, 34, rtl, triple_list, "#", symbol -> name, expr -> body ); // compiler annotation

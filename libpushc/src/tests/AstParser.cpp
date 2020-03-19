@@ -95,6 +95,8 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         { "function(c, d);", "GLOBAL { SC FUNC_HEAD(TUPLE( SYM(), SYM(), ) SYM()); }" },
         { "if true { let val = 4; }",
           "GLOBAL { IF(BLOB_LITERAL() THEN BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); } ) }" },
+        { "if var { let val = 4; }",
+          "GLOBAL { IF(SYM() THEN BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); } ) }" },
         { "do { function(c, d); } until true;",
           "GLOBAL { SC POST_LOOP(FALSE: BLOB_LITERAL() DO BLOCK { SC FUNC_HEAD(TUPLE( SYM(), SYM(), ) SYM()); } ); }" },
         { "function { let var[4] = [0,1,2,3]; var[2] } ",

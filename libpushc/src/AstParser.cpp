@@ -293,7 +293,8 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 // Check each syntax rule
                 for ( auto &rule : a_ctx.rules ) {
                     bool use_bias =
-                        ( best_rule ? ( rule.prec_bias != NO_BIAS_VALUE && best_rule->prec_bias != NO_BIAS_VALUE )
+                        ( best_rule ? ( rule.prec_bias != NO_BIAS_VALUE && best_rule->prec_bias != NO_BIAS_VALUE &&
+                                        rule.prec_bias != best_rule->prec_bias )
                                     : false ); // helper variable
                     if ( !best_rule || ( !use_bias && rule.precedence <= best_rule->precedence ) ||
                          ( use_bias && rule.prec_bias < best_rule->prec_bias ) ) {
