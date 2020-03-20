@@ -3,25 +3,26 @@ PUSHlang (Performant, Universal, Safe and High level language) is a modern progr
 The language is highly inspired by Rust but does not intend to be compatible in any way. I created this project to play around with programming language design. I wanted to build a language that works just the way I wish to and maybe other folks like this way too.
 This repository contains the compiler implementation in c++ but for now also (indirectly) the language specification. Pushc is (will be) a cross-compiler, so this repo is only needed to bootstrap the language.
 
-WIP: The project is currently in a very early development stage. Everything may break frequently.
-
-## Push?
-This is the current development name and thus the language may be renamed some day.
+**WIP: The project is currently in a very early development stage. Everything may break frequently and the compiler is not ready to be used.**
 
 ## Current roadmap
 - [x] Basic dataflow management
 - [x] Input/Lexer
 - [x] Prelude loading
-- [ ] Ast parser
+- [x] Syntax parser
+- [ ] Semantic checks
 - [ ] Symbol management
 - [ ] Type management
 - [ ] Ownership & mutability management
-- [ ] Mir generation
+- [ ] Static statement checks
+- [ ] MIR generation
 - [ ] LLVM backend
+- [ ] Macros
 - [ ] C-api/-abi
 - [ ] Std-lib
+- [ ] Project management
 
-## Dependencies
+## Dependencies (all optional)
 * cotire: https://github.com/sakra/cotire (optional)
     * Used for precompiled headers
     * Clone the repo and refer to the "CMake/cotire.cmake" file with the "-DCOTIRE_PATH" cmake parameter
@@ -48,18 +49,19 @@ NOTE: Windows is not regularly tested any more, but may still work with some cod
 Compile the .sln file.
 
 ## Usage
-Currently when you start *pushc* only the AST is generated and printed. 
+Currently, when you start *pushc* only the AST is generated and printed. 
 
-After a successful build you can try it out by typing:
+After a successful build you can try it out by typing the following in the repo root directory:
 
     build/pushc/src/pushc Test/ast.push
-in the repo root directory. Or get help with:
+
+Or get help with:
 
     build/pushc/src/pushc --help
 
 ## Tests
 Most of the test cases only check the basic functionality, which is required for the functions/modules to be usable.
 
-If you want to run the tests, build the project with Catch (so "-DTEST_WITH_CATCH" must be set to true) and run the executable (either build/libpush/src/tests/Debug/libpush_test.exe or build/libpush/src/tests/libpush_test) from your shell. 
+If you want to run the tests, build the project with Catch (so "-DTEST_WITH_CATCH" must be set to true) and run the test executable of the module from your shell(e. g. for "libpush" either build/libpush/src/tests/Debug/libpush_test.exe or build/libpush/src/tests/libpush_test). 
 
-Its designated that the test will print some warnings and errors. Just make sure the "All tests passed (x assertions in y test cases)" gets printed at the end.
+Its designated that the tests may print some warnings and errors. Just make sure the "All tests passed (x assertions in y test cases)" is printed at the end.
