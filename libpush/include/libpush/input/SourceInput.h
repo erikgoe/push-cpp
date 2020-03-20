@@ -23,6 +23,9 @@ struct PosInfo {
     size_t length = 0;
 };
 
+/// Merge two position information objects into one
+PosInfo merge_pos_infos( const PosInfo &left, const PosInfo &right );
+
 // Where in the code a token is
 enum class TokenLevel {
     normal, // in no special area

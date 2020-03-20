@@ -141,8 +141,8 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
         { "fn<T:type> { let val:T = 3; fn<int>();}",
           "GLOBAL { FUNC(0 TEMPLATE SYM()<TYPED(SYM():SYM())> BLOCK { SC BINDING(OP(TYPED(SYM():SYM()) = "
           "BLOB_LITERAL())); SC FUNC_HEAD(UNIT() TEMPLATE SYM()<SYM()>); }) }" },
-        { "fn { unsafe { C::printf(\"hello world\n\");} } ",
-          "GLOBAL { FUNC(0 SYM() BLOCK { UNSAFE BLOCK { SC FUNC_HEAD(TERM( STR \"hello world\" ) SCOPE(SYM()::SYM())); "
+        { "fn { unsafe { C::printf(\"hello world\\n\");} } ",
+          "GLOBAL { FUNC(0 SYM() BLOCK { UNSAFE BLOCK { SC FUNC_HEAD(TERM( STR \"hello world\\n\" ) SCOPE(SYM()::SYM())); "
           "} }) }" },
         { "decl fn1(arg:int); // implicitly public\n pub fn2(arg:int);",
           "GLOBAL { SC DECL(FUNC_HEAD(TERM( TYPED(SYM():SYM()) ) SYM())); SC PUBLIC(FUNC_HEAD(TERM( TYPED(SYM():SYM()) "

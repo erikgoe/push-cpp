@@ -93,6 +93,10 @@ public:
             str += s->get_debug_repr() + "\n ";
         return str + " }" + get_additional_debug_data();
     }
+
+    PosInfo get_position_info() override {
+        return merge_pos_infos( sub_expr.front()->get_position_info(), sub_expr.back()->get_position_info() );
+    }
 };
 
 // A block or semicolon-terminated expression
@@ -113,6 +117,10 @@ public:
     }
 
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";" + get_additional_debug_data(); }
+    
+    PosInfo get_position_info() override {
+        return merge_pos_infos( sub_expr->get_position_info(), pos_info );
+    }
 };
 
 // A block with multiple expressions
@@ -336,7 +344,9 @@ public:
         return std::dynamic_pointer_cast<SeparableExpr>( other ) != nullptr;
     }
 
-    PosInfo get_position_info() override { return original_list.front()->get_position_info(); }
+    PosInfo get_position_info() override {
+        return merge_pos_infos( original_list.front()->get_position_info(), original_list.back()->get_position_info() );
+    }
 };
 
 // Combines one ore multiple expressions with commas
@@ -391,9 +401,10 @@ public:
     TypeId get_type() override { return 0; }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncHeadExpr>( other ) != nullptr; }
+    
     String get_debug_repr() override {
-        return "FUNC_HEAD(" + ( parameters ? parameters->get_debug_repr() + " " : "" ) + symbol->get_debug_repr() + ")" +
-               get_additional_debug_data();
+        return "FUNC_HEAD(" + ( parameters ? parameters->get_debug_repr() + " " : "" ) + symbol->get_debug_repr() +
+               ")" + get_additional_debug_data();
     }
 };
 

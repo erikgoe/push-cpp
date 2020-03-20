@@ -19,6 +19,17 @@
 #include "libpush/Worker.inl"
 #include "libpush/Message.inl"
 
+PosInfo merge_pos_infos( const PosInfo &left, const PosInfo &right ) {
+    if ( left.file != right.file )
+        LOG_ERR( "Failed to merge PosInfo, because of two different files" );
+    if ( left.line != right.line )
+        LOG_WARN( "Error messages over multiple lines are not implemented now" );
+    size_t left_end = left.column + left.length;
+    size_t right_end = right.column + right.length;
+    return PosInfo{ left.file, left.line, std::min<size_t>( left.column, right.column ),
+                    static_cast<size_t>( std::max( left_end, right_end ) - std::min( left.column, right.column ) ) };
+}
+
 TokenConfig TokenConfig::get_prelude_cfg() {
     TokenConfig cfg;
     cfg.stat_divider.push_back( ";" );
