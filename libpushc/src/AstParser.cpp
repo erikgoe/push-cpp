@@ -74,41 +74,85 @@ sptr<std::vector<String>> split_symbol_chain( const String &chained, String sepa
     return ret;
 }
 
-// Creates a new symbol from a global name
-SymbolId create_new_absolute_symbol( AstCtx &a_ctx, const sptr<std::vector<String>> &name ) {
-    SymbolId sym_id = a_ctx.next_symbol.id++;
-    auto &sm = a_ctx.ast.symbol_map;
-    if ( sm.size() <= sym_id )
-        sm.resize( sym_id + 1 );
-    sm[sym_id].id = sym_id;
-    sm[sym_id].name_chain = *name;
+// Searches for a sub-symbol by name and returns its id. Returns 0 if no such sub-symbol exits
+SymbolId find_sub_symbol_by_name( CrateCtx &c_ctx, const String &name, SymbolId parent ) {
+    for ( auto &sub_id : c_ctx.symbol_graph[parent].sub_nodes )
+        if ( c_ctx.symbol_graph[sub_id].name == name )
+            return sub_id;
+    return 0;
+}
+// Searches for a sub-symbol by name chain and returns its id. Returns 0 if no such sub-symbol exits
+SymbolId find_sub_symbol_by_name_chain( CrateCtx &c_ctx, sptr<std::vector<String>> name_chain,
+                                        SymbolId parent = ROOT_SYMBOL ) {
+    SymbolId curr_symbol = parent;
+    for ( auto &symbol : *name_chain ) {
+        curr_symbol = find_sub_symbol_by_name( c_ctx, symbol, curr_symbol );
+        if ( curr_symbol == 0 )
+            return 0;
+    }
+    return curr_symbol;
+}
+// Returns the full symbol path for a symbol
+String get_full_symbol_name( CrateCtx &c_ctx, SymbolId symbol ) {
+    if ( symbol == 0 )
+        return "";
+    String symbol_str = c_ctx.symbol_graph[symbol].name;
+    SymbolId curr_symbol_id = c_ctx.symbol_graph[symbol].parent;
+    while ( curr_symbol_id > ROOT_SYMBOL ) {
+        symbol_str = c_ctx.symbol_graph[curr_symbol_id].name + "::" + symbol_str;
+        curr_symbol_id = c_ctx.symbol_graph[curr_symbol_id].parent;
+    }
+    return symbol_str;
+}
+// Creates a new symbol from a global name. @param name may not contain scope operators
+SymbolId create_new_global_symbol( CrateCtx &c_ctx, const String &name ) {
+    if ( find_sub_symbol_by_name( c_ctx, name, ROOT_SYMBOL ) ) {
+        LOG_ERR( "Attempted to create a existing global symbol '" + name + "'" );
+    }
+    SymbolId sym_id = c_ctx.symbol_graph.size();
+    c_ctx.symbol_graph.emplace_back();
+    c_ctx.symbol_graph[sym_id].name = name;
     return sym_id;
 }
-// Creates a new symbol from a local name
-SymbolId create_new_relative_symbol( AstCtx &a_ctx, const String &name ) {
-    auto tmp_name = make_shared<std::vector<String>>();
-    tmp_name->push_back( name );
-    return create_new_absolute_symbol( a_ctx, tmp_name );
+// Creates a new symbol from a local name. @param name may not contain scope operators
+SymbolId create_new_relative_symbol( CrateCtx &c_ctx, const String &name, SymbolId parent_symbol ) {
+    if ( find_sub_symbol_by_name( c_ctx, name, parent_symbol ) ) {
+        LOG_ERR( "Attempted to create a existing local symbol '" + name + "' to parent '" + to_string( parent_symbol ) +
+                 "'" );
+    }
+    SymbolId sym_id = c_ctx.symbol_graph.size();
+    c_ctx.symbol_graph.emplace_back();
+    c_ctx.symbol_graph[sym_id].parent = parent_symbol;
+    c_ctx.symbol_graph[parent_symbol].sub_nodes.push_back( sym_id );
+    c_ctx.symbol_graph[sym_id].name = name;
+    return sym_id;
 }
-// Creates a new type from a global name
-TypeId create_new_absolute_type( AstCtx &a_ctx, const sptr<std::vector<String>> &name, TypeMemSize size ) {
-    SymbolId sym_id = create_new_absolute_symbol( a_ctx, name );
-    TypeId type_id = a_ctx.next_type++;
-    auto &tm = a_ctx.ast.type_map;
-    if ( tm.size() <= type_id )
-        tm.resize( type_id + 1 );
-    tm[type_id].id = type_id;
-    tm[type_id].symbol = sym_id;
-    tm[type_id].mem_size = size;
-
-    a_ctx.type_id_map[*name] = type_id;
+// Creates a new symbol from a local name. @param name may not contain scope operators
+SymbolId create_new_local_symbol( CrateCtx &c_ctx, const String &name ) {
+    return create_new_relative_symbol( c_ctx, name, c_ctx.current_scope );
+}
+// Creates a new global symbol from a symbol chain. Existing symbols are skipped
+SymbolId create_new_global_symbol_from_name_chain( CrateCtx &c_ctx, const sptr<std::vector<String>> symbol_chain ) {
+    SymbolId curr_symbol = ROOT_SYMBOL; // starting with the global root
+    for ( auto &symbol : *symbol_chain ) {
+        SymbolId sub_symbol = find_sub_symbol_by_name( c_ctx, symbol, curr_symbol );
+        if ( sub_symbol != 0 ) {
+            curr_symbol = sub_symbol;
+        } else { // create new symbol
+            curr_symbol = create_new_relative_symbol( c_ctx, symbol, curr_symbol );
+        }
+    }
+    return curr_symbol;
+}
+// Creates a new type from a existing symbol
+TypeId create_new_type( CrateCtx &c_ctx, SymbolId from_symbol ) {
+    if ( c_ctx.symbol_graph[from_symbol].type != 0 )
+        LOG_ERR( "Attempted to create a type on a symbol which already has a type" );
+    SymbolId type_id = c_ctx.type_table.size();
+    c_ctx.type_table.emplace_back();
+    c_ctx.type_table[type_id].symbol = from_symbol;
+    c_ctx.symbol_graph[from_symbol].type = type_id;
     return type_id;
-}
-// Creates a new type from a local name
-TypeId create_new_relative_type( AstCtx &a_ctx, const String &name, TypeMemSize size ) {
-    auto tmp_name = make_shared<std::vector<String>>();
-    tmp_name->push_back( name );
-    return create_new_absolute_type( a_ctx, tmp_name, size );
 }
 
 // Checks if a prelude is defined and loads the proper prelude.
@@ -166,7 +210,7 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 }
 
 // Parses a scope into the ast. Used recursively. @param last_token may be nullptr
-sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, TT end_token, Token *last_token ) {
+sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, TT end_token, Token *last_token ) {
     auto &conf = w_ctx.unit_ctx()->prelude_conf;
     std::vector<std::pair<std::vector<sptr<Expr>>, std::vector<std::pair<u32, u32>>>>
         expr_lists; // the paths with their expression lists and precedence lists as class-from-pairs
@@ -193,21 +237,21 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
             }
             break;
         } else if ( t.type == TT::block_begin || t.type == TT::term_begin || t.type == TT::array_begin ) {
-            // TODO change a_ctx.next_symbol.name_chain to proceed into the new scope
+            // TODO change c_ctx.next_symbol.name_chain to proceed into the new scope
             input->get_token(); // consume
             add_to_all_paths = parse_scope(
-                input, w_ctx, a_ctx,
+                input, w_ctx, c_ctx,
                 ( t.type == TT::block_begin ? TT::block_end : t.type == TT::term_begin ? TT::term_end : TT::array_end ),
                 &t );
         } else if ( t.type == TT::identifier ) {
             input->get_token(); // consume
-            if ( a_ctx.literals_map.find( t.content ) != a_ctx.literals_map.end() ) {
+            if ( c_ctx.literals_map.find( t.content ) != c_ctx.literals_map.end() ) {
                 // Found a special literal keyword
-                auto literal = a_ctx.literals_map[t.content];
+                auto literal = c_ctx.literals_map[t.content];
                 auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
                 expr->type = literal.first;
 
-                u8 size = a_ctx.ast.type_map[literal.first].mem_size;
+                u8 size = c_ctx.type_table[literal.first].additional_mem_size;
                 expr->load_from_number( literal.second, size );
 
                 expr->pos_info = { t.file, t.line, t.column, t.length };
@@ -216,24 +260,13 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
             } else {
                 // Normal identifier/symbol
                 auto expr = make_shared<AtomicSymbolExpr>();
-
-                // Create a new symbol TODO maybe extract into own function
-                expr->symbol = a_ctx.next_symbol.id++;
-                auto &sm = a_ctx.ast.symbol_map;
-                if ( sm.size() <= expr->symbol )
-                    sm.resize( expr->symbol + 1 );
-                sm[expr->symbol].id = expr->symbol;
-                sm[expr->symbol].name_chain = a_ctx.next_symbol.name_chain;
-                sm[expr->symbol].name_chain.push_back( t.content );
-
                 expr->pos_info = { t.file, t.line, t.column, t.length };
-
                 add_to_all_paths = expr;
             }
         } else if ( t.type == TT::number ) {
             input->get_token(); // consume
             auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
-            expr->type = a_ctx.int_type;
+            expr->type = c_ctx.int_type;
 
             Number val = stoull( t.content );
             expr->load_from_number( val, sizeof( Number ) );
@@ -259,7 +292,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
         } else if ( t.type == TT::string_begin ) {
             auto expr = make_shared<StringLiteralExpr>();
             expr->str = parse_string( input, w_ctx );
-            expr->type = a_ctx.str_type;
+            expr->type = c_ctx.str_type;
             expr->pos_info = { t.file, t.line, t.column, t.length };
             add_to_all_paths = expr;
         } else {
@@ -290,7 +323,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
                 std::vector<sptr<StaticStatementExpr>> best_rule_stst_set;
                 size_t best_rule_cutout_ctr;
                 // Check each syntax rule
-                for ( auto &rule : a_ctx.rules ) {
+                for ( auto &rule : c_ctx.rules ) {
                     bool use_bias =
                         ( best_rule ? ( rule.prec_bias != NO_BIAS_VALUE && best_rule->prec_bias != NO_BIAS_VALUE &&
                                         rule.prec_bias != best_rule->prec_bias )
@@ -471,22 +504,29 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, 
     }
 }
 
-void load_base_types( AstCtx &a_ctx, PreludeConfig &cfg ) {
+void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg ) {
     // Most basic types/traits
-    a_ctx.int_type =
-        create_new_absolute_type( a_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ), 0 );
-    a_ctx.str_type =
-        create_new_absolute_type( a_ctx, split_symbol_chain( cfg.string_trait, cfg.scope_access_operator ), 0 );
+    SymbolId new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ) );
+    c_ctx.int_type = create_new_type( c_ctx, new_symbol );
+
+    new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, split_symbol_chain( cfg.string_trait, cfg.scope_access_operator ) );
+    c_ctx.str_type = create_new_type( c_ctx, new_symbol );
 
     // Memblob types
     for ( auto &mbt : cfg.memblob_types ) {
-        create_new_absolute_type( a_ctx, split_symbol_chain( mbt.first, cfg.scope_access_operator ), mbt.second );
+        new_symbol = create_new_global_symbol_from_name_chain(
+            c_ctx, split_symbol_chain( mbt.first, cfg.scope_access_operator ) );
+        TypeId new_type = create_new_type( c_ctx, new_symbol );
+        c_ctx.type_table[new_type].additional_mem_size = mbt.second;
     }
 
     // Literals
     for ( auto &lit : cfg.literals ) {
-        TypeId type = a_ctx.type_id_map[*split_symbol_chain( lit.second.first, cfg.scope_access_operator )];
-        a_ctx.literals_map[lit.first] = std::make_pair( type, lit.second.second );
+        SymbolId type_symbol =
+            find_sub_symbol_by_name_chain( c_ctx, split_symbol_chain( lit.second.first, cfg.scope_access_operator ) );
+        c_ctx.literals_map[lit.first] = std::make_pair( type_symbol, lit.second.second );
     }
 }
 
@@ -504,38 +544,25 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         select_prelude( *input, w_ctx );
 
         // Create a new AST context
-        AstCtx a_ctx;
-        a_ctx.next_symbol.id = 1;
-        load_base_types( a_ctx, w_ctx.unit_ctx()->prelude_conf );
-        load_syntax_rules( w_ctx, a_ctx );
+        CrateCtx c_ctx;
+        load_base_types( c_ctx, w_ctx.unit_ctx()->prelude_conf );
+        load_syntax_rules( w_ctx, c_ctx );
 
         // parse global scope
-        a_ctx.ast.block = parse_scope( input, w_ctx, a_ctx, TT::eof, nullptr );
+        c_ctx.ast = parse_scope( input, w_ctx, c_ctx, TT::eof, nullptr );
 
         // DEBUG print AST
         log( "AST ----------" );
-        log( " " + a_ctx.ast.block->get_debug_repr() );
-        log( "TYPES --------" );
-        for ( auto &t : a_ctx.ast.type_map ) {
-            if ( t.id != 0 ) {
-                auto s = a_ctx.ast.symbol_map[t.symbol];
-                String sym_name;
-                for ( auto &c : s.name_chain ) {
-                    sym_name += "::" + c;
-                }
-                log( " id " + to_string( t.id ) + " size " + to_string( t.mem_size ) + " - sym " +
-                     to_string( t.symbol ) + " " + sym_name );
-            }
-        }
+        log( " " + c_ctx.ast->get_debug_repr() );
         log( "SYMBOLS ------" );
-        for ( auto &s : a_ctx.ast.symbol_map ) {
-            if ( s.id != 0 ) {
-                String name;
-                for ( auto &c : s.name_chain ) {
-                    name += "::" + c;
-                }
-                log( " " + to_string( s.id ) + " - " + name );
-            }
+        for ( size_t i = 0; i < c_ctx.symbol_graph.size(); i++ ) {
+            log( " " + to_string( i ) + " - " + get_full_symbol_name( c_ctx, i ) );
+        }
+        log( "TYPES --------" );
+        for ( size_t i = 0; i < c_ctx.symbol_graph.size(); i++ ) {
+            auto type = c_ctx.type_table[i];
+            log( " " + to_string( i ) + " add_size " + to_string( type.additional_mem_size ) + " - sym " +
+                 get_full_symbol_name( c_ctx, type.symbol ) );
         }
         log( "--------------" );
         auto duration = std::chrono::system_clock::now() - start_time;

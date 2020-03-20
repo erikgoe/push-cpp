@@ -22,4 +22,4 @@ void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx );
 void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx );
 
 // NOT A QUERY. Translates the prelude syntax rules into ast syntax rules
-void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx );
+void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx );

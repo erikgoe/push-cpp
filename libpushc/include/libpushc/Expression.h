@@ -20,12 +20,16 @@ using TypeId = u32;
 
 // Identifies a symbol
 using SymbolId = u32;
+constexpr SymbolId ROOT_SYMBOL = 1; // the global root symbol
+
+// Identifies a function body
+using FunctionBodyId = u32;
 
 // Constants
 constexpr TypeId TYPE_UNIT = 1; // The initial unit type
 constexpr TypeId TYPE_NEVER = 2; // The initial never type
-constexpr TypeId TYPE_TYPE = 2; // The initial never type
-constexpr TypeId MODULE_TYPE = 2; // The initial module type
+constexpr TypeId TYPE_TYPE = 3; // The initial type type
+constexpr TypeId MODULE_TYPE = 4; // The initial module type
 constexpr TypeId LAST_FIX_TYPE = MODULE_TYPE; // The last not variable type
 
 class StaticStatementExpr;

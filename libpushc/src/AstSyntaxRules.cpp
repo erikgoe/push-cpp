@@ -52,7 +52,7 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
     }
 }
 
-void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
+void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
     auto pc = w_ctx.unit_ctx()->prelude_conf;
 
     SyntaxRule new_rule;
@@ -73,7 +73,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<SimpleBindExpr>( list[lm.at( "expression" )], new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.alias_bindings ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -81,7 +81,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<AliasBindExpr>( list[lm.at( "expression" )], new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
 
     // OOP
@@ -95,7 +95,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                                                 : nullptr ),
                 new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.trait ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -105,7 +105,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                                            std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
                                            new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.impl ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -115,7 +115,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                 list[lm.at( "type" )], ( lm.find( "trait" ) != lm.end() ? list[lm.at( "trait" )] : nullptr ),
                 std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
 
     // Control flow
@@ -125,7 +125,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<IfExpr>( list[lm.at( "condition" )], list[lm.at( "exec0" )], new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.if_else_condition ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -134,7 +134,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<IfElseExpr>( list[lm.at( "condition" )], list[lm.at( "exec0" )], list[lm.at( "exec1" )],
                                             new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.pre_loop ) {
         parse_rule( new_rule, lm, sb.first.syntax );
@@ -143,7 +143,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<PreLoopExpr>( list[lm.at( "condition" )], list[lm.at( "exec" )], sb.second,
                                              new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.post_loop ) {
         parse_rule( new_rule, lm, sb.first.syntax );
@@ -152,7 +152,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<PostLoopExpr>( list[lm.at( "condition" )], list[lm.at( "exec" )], sb.second,
                                               new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.inf_loop ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -160,7 +160,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<InfLoopExpr>( list[lm.at( "exec" )], new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.interator_loop ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -169,7 +169,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<ItrLoopExpr>( list[lm.at( "iterator" )], list[lm.at( "exec" )], new_rule.precedence,
                                              list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.matching ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -178,7 +178,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<MatchExpr>( list[lm.at( "selector" )], list[lm.at( "cases" )], new_rule.precedence,
                                            list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
 
     // Functions
@@ -191,7 +191,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                 ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ), new_rule.precedence,
                 list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &f : pc.fn_call ) {
         parse_rule( new_rule, lm, f.syntax );
@@ -200,7 +200,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             auto head = std::dynamic_pointer_cast<FuncHeadExpr>( list[lm.at( "head" )] );
             return make_shared<FuncCallExpr>( head->symbol, 0, head->parameters, new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &f : pc.fn_definitions ) {
         parse_rule( new_rule, lm, f.op.syntax );
@@ -220,7 +220,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                     std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
             }
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
 
     // Relative access
@@ -231,7 +231,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<MemberAccessExpr>( list[lm.at( "base" )], list[lm.at( "name" )], new_rule.precedence,
                                                   list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.scope_access_op ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -240,7 +240,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<ScopeAccessExpr>( ( lm.find( "base" ) != lm.end() ? list[lm.at( "base" )] : nullptr ),
                                                  list[lm.at( "name" )], new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &sb : pc.array_access_op ) {
         parse_rule( new_rule, lm, sb.syntax );
@@ -255,7 +255,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<ArrayAccessExpr>( list[lm.at( "value" )], index->sub_expr[0], new_rule.precedence,
                                                  list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
 
     // Ranges
@@ -267,7 +267,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                                            ( lm.find( "rvalue" ) != lm.end() ? list[lm.at( "rvalue" )] : nullptr ),
                                            sb.type, new_rule.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
 
     // Operators
@@ -286,7 +286,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                 operator_token, ( lm.find( "lvalue" ) == lm.end() ? nullptr : list[lm.at( "lvalue" )] ),
                 ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ), o.op.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.comma_op ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -296,7 +296,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
                                            ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ),
                                            o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.reference_op ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -304,7 +304,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<ReferenceExpr>( list[lm.at( "type" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.type_of_op ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -312,7 +312,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<TypeOfExpr>( list[lm.at( "type" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.type_op ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -320,7 +320,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<TypedExpr>( list[lm.at( "value" )], list[lm.at( "type" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
 
     // Special specifiers
@@ -330,7 +330,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<ModuleExpr>( list[lm.at( "name" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.declaration ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -338,7 +338,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<DeclarationExpr>( list[lm.at( "symbol" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.public_attr ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -346,7 +346,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<PublicAttrExpr>( list[lm.at( "symbol" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.static_statements ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -354,7 +354,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<StaticStatementExpr>( list[lm.at( "body" )] );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.compiler_annotations ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -363,7 +363,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
             return make_shared<CompilerAnnotationExpr>( list[lm.at( "name" )], list[lm.at( "body" )], o.precedence,
                                                         list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.macros ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -371,7 +371,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<MacroExpr>( list[lm.at( "name" )], list[lm.at( "body" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.unsafe ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -379,7 +379,7 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<UnsafeExpr>( list[lm.at( "body" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
     for ( auto &o : pc.templates ) {
         parse_rule( new_rule, lm, o.syntax );
@@ -387,11 +387,11 @@ void load_syntax_rules( Worker &w_ctx, AstCtx &a_ctx ) {
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
             return make_shared<TemplateExpr>( list[lm.at( "name" )], list[lm.at( "attributes" )], o.precedence, list );
         };
-        a_ctx.rules.push_back( new_rule );
+        c_ctx.rules.push_back( new_rule );
     }
 
     // Sort rules after precedence
-    std::stable_sort( a_ctx.rules.begin(), a_ctx.rules.end(), []( auto &l, auto &r ) {
+    std::stable_sort( c_ctx.rules.begin(), c_ctx.rules.end(), []( auto &l, auto &r ) {
         return l.prec_bias > r.prec_bias || ( l.prec_bias == r.prec_bias && l.precedence > r.precedence );
     } );
 }

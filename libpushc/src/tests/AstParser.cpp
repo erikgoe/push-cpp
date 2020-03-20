@@ -19,9 +19,9 @@
 #include "libpushc/Util.h"
 
 // Defined in libpushc/AstParser.cpp
-sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, AstCtx &a_ctx, Token::Type end_token,
+sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, Token::Type end_token,
                         Token *last_token );
-void load_base_types( AstCtx &a_ctx, PreludeConfig &cfg );
+void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg );
 
 // Provides token input from a string
 class StringInput : public StreamInput {
@@ -49,12 +49,11 @@ void test_parser( const String &data, JobsBuilder &jb, UnitCtx &parent_ctx ) {
             make_shared<StringInput>( make_shared<String>( "test" ), w_ctx.shared_from_this(), data );
         load_default_prelude( *input, w_ctx );
 
-        AstCtx a_ctx;
-        a_ctx.next_symbol.id = 1;
-        load_base_types( a_ctx, w_ctx.unit_ctx()->prelude_conf );
-        load_syntax_rules( w_ctx, a_ctx );
+        CrateCtx c_ctx;
+        load_base_types( c_ctx, w_ctx.unit_ctx()->prelude_conf );
+        load_syntax_rules( w_ctx, c_ctx );
 
-        return parse_scope( input, w_ctx, a_ctx, Token::Type::eof, nullptr );
+        return parse_scope( input, w_ctx, c_ctx, Token::Type::eof, nullptr );
     } );
 }
 
