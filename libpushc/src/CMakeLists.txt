@@ -11,6 +11,8 @@ add_library(${LIB_NAME}
     Linker.cpp
     MirTranslation.cpp
     Prelude.cpp
+    SymbolParser.cpp
+    SymbolUtil.cpp
     Util.cpp
 )
 

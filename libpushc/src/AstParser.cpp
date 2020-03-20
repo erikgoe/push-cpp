@@ -16,6 +16,8 @@
 #include "libpushc/Prelude.h"
 #include "libpushc/Expression.h"
 #include "libpushc/Util.h"
+#include "libpushc/SymbolParser.h"
+#include "libpushc/SymbolUtil.h"
 
 using TT = Token::Type;
 
@@ -57,102 +59,6 @@ String extract_string( SourceInput &input, Worker &w_ctx ) {
     content += t.leading_ws;
 
     return content;
-}
-
-// Splits a symbol string into a chain of strings
-sptr<std::vector<String>> split_symbol_chain( const String &chained, String separator ) {
-    auto ret = make_shared<std::vector<String>>();
-    size_t pos = 0;
-    size_t prev_pos = pos;
-    while ( pos != String::npos ) {
-        pos = chained.find( separator, pos );
-        ret->push_back( chained.slice( prev_pos, pos - prev_pos ) );
-        if ( pos != String::npos )
-            pos += separator.size();
-        prev_pos = pos;
-    }
-    return ret;
-}
-
-// Searches for a sub-symbol by name and returns its id. Returns 0 if no such sub-symbol exits
-SymbolId find_sub_symbol_by_name( CrateCtx &c_ctx, const String &name, SymbolId parent ) {
-    for ( auto &sub_id : c_ctx.symbol_graph[parent].sub_nodes )
-        if ( c_ctx.symbol_graph[sub_id].name == name )
-            return sub_id;
-    return 0;
-}
-// Searches for a sub-symbol by name chain and returns its id. Returns 0 if no such sub-symbol exits
-SymbolId find_sub_symbol_by_name_chain( CrateCtx &c_ctx, sptr<std::vector<String>> name_chain,
-                                        SymbolId parent = ROOT_SYMBOL ) {
-    SymbolId curr_symbol = parent;
-    for ( auto &symbol : *name_chain ) {
-        curr_symbol = find_sub_symbol_by_name( c_ctx, symbol, curr_symbol );
-        if ( curr_symbol == 0 )
-            return 0;
-    }
-    return curr_symbol;
-}
-// Returns the full symbol path for a symbol
-String get_full_symbol_name( CrateCtx &c_ctx, SymbolId symbol ) {
-    if ( symbol == 0 )
-        return "";
-    String symbol_str = c_ctx.symbol_graph[symbol].name;
-    SymbolId curr_symbol_id = c_ctx.symbol_graph[symbol].parent;
-    while ( curr_symbol_id > ROOT_SYMBOL ) {
-        symbol_str = c_ctx.symbol_graph[curr_symbol_id].name + "::" + symbol_str;
-        curr_symbol_id = c_ctx.symbol_graph[curr_symbol_id].parent;
-    }
-    return symbol_str;
-}
-// Creates a new symbol from a global name. @param name may not contain scope operators
-SymbolId create_new_global_symbol( CrateCtx &c_ctx, const String &name ) {
-    if ( find_sub_symbol_by_name( c_ctx, name, ROOT_SYMBOL ) ) {
-        LOG_ERR( "Attempted to create a existing global symbol '" + name + "'" );
-    }
-    SymbolId sym_id = c_ctx.symbol_graph.size();
-    c_ctx.symbol_graph.emplace_back();
-    c_ctx.symbol_graph[sym_id].name = name;
-    return sym_id;
-}
-// Creates a new symbol from a local name. @param name may not contain scope operators
-SymbolId create_new_relative_symbol( CrateCtx &c_ctx, const String &name, SymbolId parent_symbol ) {
-    if ( find_sub_symbol_by_name( c_ctx, name, parent_symbol ) ) {
-        LOG_ERR( "Attempted to create a existing local symbol '" + name + "' to parent '" + to_string( parent_symbol ) +
-                 "'" );
-    }
-    SymbolId sym_id = c_ctx.symbol_graph.size();
-    c_ctx.symbol_graph.emplace_back();
-    c_ctx.symbol_graph[sym_id].parent = parent_symbol;
-    c_ctx.symbol_graph[parent_symbol].sub_nodes.push_back( sym_id );
-    c_ctx.symbol_graph[sym_id].name = name;
-    return sym_id;
-}
-// Creates a new symbol from a local name. @param name may not contain scope operators
-SymbolId create_new_local_symbol( CrateCtx &c_ctx, const String &name ) {
-    return create_new_relative_symbol( c_ctx, name, c_ctx.current_scope );
-}
-// Creates a new global symbol from a symbol chain. Existing symbols are skipped
-SymbolId create_new_global_symbol_from_name_chain( CrateCtx &c_ctx, const sptr<std::vector<String>> symbol_chain ) {
-    SymbolId curr_symbol = ROOT_SYMBOL; // starting with the global root
-    for ( auto &symbol : *symbol_chain ) {
-        SymbolId sub_symbol = find_sub_symbol_by_name( c_ctx, symbol, curr_symbol );
-        if ( sub_symbol != 0 ) {
-            curr_symbol = sub_symbol;
-        } else { // create new symbol
-            curr_symbol = create_new_relative_symbol( c_ctx, symbol, curr_symbol );
-        }
-    }
-    return curr_symbol;
-}
-// Creates a new type from a existing symbol
-TypeId create_new_type( CrateCtx &c_ctx, SymbolId from_symbol ) {
-    if ( c_ctx.symbol_graph[from_symbol].type != 0 )
-        LOG_ERR( "Attempted to create a type on a symbol which already has a type" );
-    SymbolId type_id = c_ctx.type_table.size();
-    c_ctx.type_table.emplace_back();
-    c_ctx.type_table[type_id].symbol = from_symbol;
-    c_ctx.symbol_graph[from_symbol].type = type_id;
-    return type_id;
 }
 
 // Checks if a prelude is defined and loads the proper prelude.
@@ -543,26 +449,27 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
         select_prelude( *input, w_ctx );
 
-        // Create a new AST context
-        CrateCtx c_ctx;
-        load_base_types( c_ctx, w_ctx.unit_ctx()->prelude_conf );
-        load_syntax_rules( w_ctx, c_ctx );
+        // Create a new crate context
+        sptr<CrateCtx> c_ctx = make_shared<CrateCtx>();
+        load_base_types( *c_ctx, w_ctx.unit_ctx()->prelude_conf );
+        load_syntax_rules( w_ctx, *c_ctx );
 
         // parse global scope
-        c_ctx.ast = parse_scope( input, w_ctx, c_ctx, TT::eof, nullptr );
+        c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, TT::eof, nullptr );
+        w_ctx.do_query( parse_symbols, c_ctx );
 
         // DEBUG print AST
         log( "AST ----------" );
-        log( " " + c_ctx.ast->get_debug_repr() );
+        log( " " + c_ctx->ast->get_debug_repr() );
         log( "SYMBOLS ------" );
-        for ( size_t i = 0; i < c_ctx.symbol_graph.size(); i++ ) {
-            log( " " + to_string( i ) + " - " + get_full_symbol_name( c_ctx, i ) );
+        for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
+            log( " " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, i ) );
         }
         log( "TYPES --------" );
-        for ( size_t i = 0; i < c_ctx.symbol_graph.size(); i++ ) {
-            auto type = c_ctx.type_table[i];
+        for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
+            auto type = c_ctx->type_table[i];
             log( " " + to_string( i ) + " add_size " + to_string( type.additional_mem_size ) + " - sym " +
-                 get_full_symbol_name( c_ctx, type.symbol ) );
+                 get_full_symbol_name( *c_ctx, type.symbol ) );
         }
         log( "--------------" );
         auto duration = std::chrono::system_clock::now() - start_time;
