@@ -18,5 +18,18 @@ bool visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr ) {
             return false;
         expr.symbol_discovery( c_ctx );
     }
-    return true;
+
+    bool result = true;
+    for ( auto &ss : expr.static_statements ) {
+        if(!ss->visit( c_ctx, vpt ))
+            result = false;
+    }
+    return result;
+}
+
+template <typename T>
+void pre_visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr ) {
+    if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
+        expr.pre_symbol_discovery( c_ctx );
+    }
 }
