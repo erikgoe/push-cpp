@@ -48,6 +48,7 @@ public:
     // Checks if matches the expression
     virtual bool matches( sptr<Expr> other ) { return std::dynamic_pointer_cast<Expr>( other ) != nullptr; }
 
+    // Returns a string representation of this ast node for debugging purposes
     virtual String get_debug_repr() { return "EXPR"; }
 
     // Returns additional information like static statements

@@ -462,11 +462,11 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         log( "AST ----------" );
         log( " " + c_ctx->ast->get_debug_repr() );
         log( "SYMBOLS ------" );
-        for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
+        for ( size_t i = 1; i < c_ctx->symbol_graph.size(); i++ ) {
             log( " " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, i ) );
         }
         log( "TYPES --------" );
-        for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
+        for ( size_t i = 1; i < c_ctx->symbol_graph.size(); i++ ) {
             auto type = c_ctx->type_table[i];
             log( " " + to_string( i ) + " add_size " + to_string( type.additional_mem_size ) + " - sym " +
                  get_full_symbol_name( *c_ctx, type.symbol ) );

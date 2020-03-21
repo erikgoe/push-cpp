@@ -15,30 +15,30 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/Expression.h"
 
-/// Checks if a token list matches a specific expression and translates it
+// Checks if a token list matches a specific expression and translates it
 struct SyntaxRule {
-    u32 precedence = 0; /// precedence of this syntax matching
-    bool ltr = true; /// associativity
-    bool ambiguous = false; /// whether this symtax has an ambiguous interpregation
+    u32 precedence = 0; // precedence of this syntax matching
+    bool ltr = true; // associativity
+    bool ambiguous = false; // whether this symtax has an ambiguous interpregation
     std::pair<u32, u32> prec_class = std::make_pair(
-        UINT32_MAX, UINT32_MAX ); /// precedence-update class to a path as class-from-pair (if not UINT32_MAX)
-    u32 prec_bias = NO_BIAS_VALUE; /// optional value to prefer one syntax over another despite the precedence
-    std::vector<sptr<Expr>> expr_list; /// list which has to be matched against
+        UINT32_MAX, UINT32_MAX ); // precedence-update class to a path as class-from-pair (if not UINT32_MAX)
+    u32 prec_bias = NO_BIAS_VALUE; // optional value to prefer one syntax over another despite the precedence
+    std::vector<sptr<Expr>> expr_list; // list which has to be matched against
 
-    /// Checks if a reversed expression list matches this syntax rule
+    // Checks if a reversed expression list matches this syntax rule
     bool matches_reversed( std::vector<sptr<Expr>> &rev_list );
 
-    /// Create a new expression according to this rule.
+    // Create a new expression according to this rule.
     std::function<sptr<Expr>( std::vector<sptr<Expr>> &, Worker &w_ctx )> create;
 };
 
-/// Maps syntax item labels to their position in a syntax
+// Maps syntax item labels to their position in a syntax
 using LabelMap = std::map<String, size_t>;
 
-using TypeMemSize = u64; /// stores size of a type in bytes
+using TypeMemSize = u64; // stores size of a type in bytes
 
 
-/// A node in the Symbol graph, representing a symbol
+// A node in the Symbol graph, representing a symbol
 struct SymbolGraphNode {
     SymbolId parent = 0;
     std::vector<SymbolId> sub_nodes;
@@ -47,35 +47,34 @@ struct SymbolGraphNode {
     bool pub = false;
 };
 
-/// A entry in the type table, representing a type
+// A entry in the type table, representing a type
 struct TypeTableEntry {
     SymbolId symbol = 0;
-    TypeMemSize additional_mem_size = 0; /// additional blob of memory bytes (e. g. for primitive types)
-    std::vector<SymbolGraphNode> members; /// list of members of this type (not pointers)
-    std::vector<TypeId> subtypes; /// basically traits
+    TypeMemSize additional_mem_size = 0; // additional blob of memory bytes (e. g. for primitive types)
+    std::vector<SymbolGraphNode> members; // list of members of this type (not pointers)
+    std::vector<TypeId> subtypes; // basically traits
     FunctionBodyId function_body = 0;
 };
 
-/// Represents the content of a function
+// Represents the content of a function
 struct FunctionBody {
     TypeId type = 0;
 };
 
 
-/// Contains context while building the crate
+// Contains context while building the crate
 struct CrateCtx {
-    sptr<Expr> ast; /// the current Abstract Syntax Tree
-    std::vector<SymbolGraphNode> symbol_graph; /// contains all graph nodes, idx 0 is the global root node
-    std::vector<TypeTableEntry> type_table; /// contains all types
-    std::vector<FunctionBody> functions; /// contains all function implementations (MIR)
+    sptr<Expr> ast; // the current Abstract Syntax Tree
+    std::vector<SymbolGraphNode> symbol_graph; // contains all graph nodes, idx 0 is the global root node
+    std::vector<TypeTableEntry> type_table; // contains all types
+    std::vector<FunctionBody> functions; // contains all function implementations (MIR)
 
-    TypeId unit_type = TYPE_UNIT;
-    TypeId int_type = 0; /// type of the integer trait
-    TypeId str_type = 0; /// type of the string trait
+    TypeId int_type = 0; // type of the integer trait
+    TypeId str_type = 0; // type of the string trait
 
-    SymbolId current_scope = 1; /// new symbols are created on top of this one
+    SymbolId current_scope = 1; // new symbols are created on top of this one
 
-    std::unordered_map<String, std::pair<TypeId, u64>> literals_map; /// maps literals to their typeid and mem_value
+    std::unordered_map<String, std::pair<TypeId, u64>> literals_map; // maps literals to their typeid and mem_value
 
     std::vector<SyntaxRule> rules;
 
