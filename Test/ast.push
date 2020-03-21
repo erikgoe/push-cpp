@@ -1,3 +1,18 @@
 #prelude(push)
 
-( jklds jk + lö )
+struct A {
+    foo:u32,
+    bar:u32,
+}
+
+function (a, b) {
+    {
+        let a:A = {1,2};
+    }
+    
+    fn {
+        a+b
+    }
+
+    fn()
+}

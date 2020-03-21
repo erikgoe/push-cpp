@@ -31,7 +31,7 @@ String get_full_symbol_name( CrateCtx &c_ctx, SymbolId symbol );
 // Creates a new symbol from a global name. @param name may not contain scope operators
 SymbolId create_new_global_symbol( CrateCtx &c_ctx, const String &name );
 
-// Creates a new symbol from a local name. @param name may not contain scope operators
+// Creates a new symbol from a relative name. @param name may not contain scope operators
 SymbolId create_new_relative_symbol( CrateCtx &c_ctx, const String &name, SymbolId parent_symbol );
 
 // Creates a new symbol from a local name. @param name may not contain scope operators
@@ -40,5 +40,18 @@ SymbolId create_new_local_symbol( CrateCtx &c_ctx, const String &name );
 // Creates a new global symbol from a symbol chain. Existing symbols are skipped
 SymbolId create_new_global_symbol_from_name_chain( CrateCtx &c_ctx, const sptr<std::vector<String>> symbol_chain );
 
+// Creates a new relative symbol from a symbol chain. Existing symbols are skipped
+SymbolId create_new_relative_symbol_from_name_chain( CrateCtx &c_ctx, const sptr<std::vector<String>> symbol_chain,
+                                                     SymbolId parent_symbol );
+
+// Creates a new local symbol from a symbol chain. Existing symbols are skipped
+SymbolId create_new_local_symbol_from_name_chain( CrateCtx &c_ctx, const sptr<std::vector<String>> symbol_chain );
+
 // Creates a new type from a existing symbol
 TypeId create_new_type( CrateCtx &c_ctx, SymbolId from_symbol );
+
+// Changes the current scope symbol to be @param new_scope
+void switch_scope_to_symbol( CrateCtx &c_ctx, SymbolId new_scope );
+
+// Sets the current scope symbol to its parent scope
+void pop_scope( CrateCtx &c_ctx );

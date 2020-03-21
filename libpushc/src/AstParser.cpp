@@ -166,6 +166,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
             } else {
                 // Normal identifier/symbol
                 auto expr = make_shared<AtomicSymbolExpr>();
+                expr->symbol_name = t.content;
                 expr->pos_info = { t.file, t.line, t.column, t.length };
                 add_to_all_paths = expr;
             }

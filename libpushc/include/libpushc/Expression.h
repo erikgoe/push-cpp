@@ -44,14 +44,17 @@ enum class VisitorPassType {
 struct CrateCtx;
 class Expr;
 
-// Dispatcher for visitor passes. Returns false if the pass failed
-template <typename T>
-bool visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr );
-
 // Dispatcher for preparations for visitor passes
 template <typename T>
 void pre_visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr );
 
+// Dispatcher for visitor passes. Returns false if the pass failed
+template <typename T>
+bool visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr );
+
+// Creates a symbol chain from an expression which contains symbols or scoped symbols. Returns nullptr if @param is not
+// some sort of symbol
+sptr<std::vector<String>> get_symbol_chain_from_expr( sptr<Expr> expr );
 
 #include "Expression.inl"
 
@@ -220,6 +223,11 @@ public:
         }
         return visit_impl( c_ctx, vpt, *this ) && result;
     }
+
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
+
 
     String get_debug_repr() override {
         String str = "BLOCK {\n ";
@@ -558,7 +566,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
-        return symbol->visit( c_ctx, vpt ) && parameters->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+        return symbol->visit( c_ctx, vpt ) && ( parameters ? parameters->visit( c_ctx, vpt ) : true ) &&
+               visit_impl( c_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -594,9 +603,14 @@ public:
 
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
-        return parameters->visit( c_ctx, vpt ) && return_type->visit( c_ctx, vpt ) && symbol->visit( c_ctx, vpt ) &&
+        return ( parameters ? parameters->visit( c_ctx, vpt ) : true ) &&
+               ( return_type ? return_type->visit( c_ctx, vpt ) : true ) && symbol->visit( c_ctx, vpt ) &&
                body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
+
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
 
     String get_debug_repr() override {
         return "FUNC(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
@@ -629,7 +643,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
-        return parameters->visit( c_ctx, vpt ) && symbol->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+        return ( parameters ? parameters->visit( c_ctx, vpt ) : true ) && symbol->visit( c_ctx, vpt ) &&
+               visit_impl( c_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -660,7 +675,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
-        return lvalue->visit( c_ctx, vpt ) && rvalue->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+        return ( lvalue ? lvalue->visit( c_ctx, vpt ) : true ) && ( rvalue ? rvalue->visit( c_ctx, vpt ) : true ) &&
+               visit_impl( c_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -740,6 +756,10 @@ public:
         return cond->visit( c_ctx, vpt ) && expr_t->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
 
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
+
     String get_debug_repr() override {
         return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " )" +
                get_additional_debug_data();
@@ -770,6 +790,10 @@ public:
         return cond->visit( c_ctx, vpt ) && expr_t->visit( c_ctx, vpt ) && expr_f->visit( c_ctx, vpt ) &&
                visit_impl( c_ctx, vpt, *this );
     }
+
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
 
     String get_debug_repr() override {
         return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " ELSE " +
@@ -802,6 +826,10 @@ public:
         return cond->visit( c_ctx, vpt ) && expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
 
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
+
     String get_debug_repr() override {
         return "PRE_LOOP(" + String( evaluation ? "TRUE: " : "FALSE: " ) + cond->get_debug_repr() + " DO " +
                expr->get_debug_repr() + " )" + get_additional_debug_data();
@@ -833,6 +861,10 @@ public:
         return cond->visit( c_ctx, vpt ) && expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
 
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
+
     String get_debug_repr() override {
         return "POST_LOOP(" + String( evaluation ? "TRUE: " : "FALSE: " ) + cond->get_debug_repr() + " DO " +
                expr->get_debug_repr() + " )" + get_additional_debug_data();
@@ -859,6 +891,10 @@ public:
         pre_visit_impl( c_ctx, vpt, *this );
         return expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
+
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
 
     String get_debug_repr() override {
         return "INF_LOOP(" + expr->get_debug_repr() + " )" + get_additional_debug_data();
@@ -887,6 +923,10 @@ public:
         return itr_expr->visit( c_ctx, vpt ) && expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
 
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
+
     String get_debug_repr() override {
         return "ITR_LOOP(" + itr_expr->get_debug_repr() + " DO " + expr->get_debug_repr() + " )" +
                get_additional_debug_data();
@@ -914,6 +954,10 @@ public:
         pre_visit_impl( c_ctx, vpt, *this );
         return selector->visit( c_ctx, vpt ) && cases->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
+
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
 
     String get_debug_repr() override {
         return "MATCH(" + selector->get_debug_repr() + " WITH " + cases->get_debug_repr() + " )" +
@@ -971,7 +1015,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
-        return from->visit( c_ctx, vpt ) && to->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+        return ( from ? from->visit( c_ctx, vpt ) : true ) && ( to ? to->visit( c_ctx, vpt ) : true ) &&
+               visit_impl( c_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -1009,8 +1054,13 @@ public:
 
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
-        return name->visit( c_ctx, vpt ) && body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+        return ( name ? name->visit( c_ctx, vpt ) : true ) && ( body ? body->visit( c_ctx, vpt ) : true ) &&
+               visit_impl( c_ctx, vpt, *this );
     }
+
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
 
     String get_debug_repr() override {
         return "STRUCT " + ( name ? name->get_debug_repr() : "<anonymous>" ) + " " +
@@ -1041,6 +1091,10 @@ public:
         return name->visit( c_ctx, vpt ) && body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
 
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
+
     String get_debug_repr() override {
         return "TRAIT " + name->get_debug_repr() + " " + body->get_debug_repr() + get_additional_debug_data();
     }
@@ -1068,9 +1122,13 @@ public:
 
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
-        return struct_name->visit( c_ctx, vpt ) && trait_name->visit( c_ctx, vpt ) && body->visit( c_ctx, vpt ) &&
-               visit_impl( c_ctx, vpt, *this );
+        return struct_name->visit( c_ctx, vpt ) && ( trait_name ? trait_name->visit( c_ctx, vpt ) : true ) &&
+               body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
+
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
 
     String get_debug_repr() override {
         if ( trait_name ) {
@@ -1132,7 +1190,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
-        return base->visit( c_ctx, vpt ) && name->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+        return ( base ? base->visit( c_ctx, vpt ) : true ) && name->visit( c_ctx, vpt ) &&
+               visit_impl( c_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -1240,6 +1299,10 @@ public:
         return symbol->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
 
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
+
     String get_debug_repr() override {
         return "MODULE(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
     }
@@ -1313,6 +1376,10 @@ public:
         pre_visit_impl( c_ctx, vpt, *this );
         return body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
     }
+
+    void pre_symbol_discovery( CrateCtx &c_ctx ) override;
+
+    void symbol_discovery( CrateCtx &c_ctx ) override;
 
     String get_debug_repr() override { return "STST " + body->get_debug_repr() + get_additional_debug_data(); }
 };
