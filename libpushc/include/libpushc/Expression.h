@@ -129,7 +129,14 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        bool result = true;
+        for ( auto &e : sub_expr ) {
+            if ( !e->visit( c_ctx, vpt ) )
+                result = false;
+        }
+        return visit_impl( c_ctx, vpt, *this ) && result;
+    }
 
     String get_debug_repr() override {
         String str = "GLOBAL {\n ";
@@ -162,7 +169,9 @@ public:
         return std::dynamic_pointer_cast<SingleCompletedExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return sub_expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";" + get_additional_debug_data(); }
 
@@ -184,7 +193,14 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<BlockExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        bool result = true;
+        for ( auto &e : sub_expr ) {
+            if ( !e->visit( c_ctx, vpt ) )
+                result = false;
+        }
+        return visit_impl( c_ctx, vpt, *this ) && result;
+    }
 
     String get_debug_repr() override {
         String str = "BLOCK {\n ";
@@ -216,7 +232,14 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TupleExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        bool result = true;
+        for ( auto &e : sub_expr ) {
+            if ( !e->visit( c_ctx, vpt ) )
+                result = false;
+        }
+        return visit_impl( c_ctx, vpt, *this ) && result;
+    }
 
     String get_debug_repr() override {
         String str = "TUPLE( ";
@@ -236,7 +259,14 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SetExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        bool result = true;
+        for ( auto &e : sub_expr ) {
+            if ( !e->visit( c_ctx, vpt ) )
+                result = false;
+        }
+        return visit_impl( c_ctx, vpt, *this ) && result;
+    }
 
     String get_debug_repr() override {
         String str = "SET { ";
@@ -255,7 +285,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TermExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return sub_expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "TERM( " + sub_expr->get_debug_repr() + " )" + get_additional_debug_data();
@@ -271,7 +303,14 @@ public:
         return std::dynamic_pointer_cast<ArraySpecifierExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        bool result = true;
+        for ( auto &e : sub_expr ) {
+            if ( !e->visit( c_ctx, vpt ) )
+                result = false;
+        }
+        return visit_impl( c_ctx, vpt, *this ) && result;
+    }
 
     String get_debug_repr() override {
         String str = "ARRAY[ ";
@@ -443,7 +482,14 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<CommaExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        bool result = true;
+        for ( auto &e : exprs ) {
+            if ( !e->visit( c_ctx, vpt ) )
+                result = false;
+        }
+        return visit_impl( c_ctx, vpt, *this ) && result;
+    }
 
     String get_debug_repr() override {
         String str = "COMMA( ";
@@ -471,7 +517,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncHeadExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return symbol->visit( c_ctx, vpt ) && parameters->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "FUNC_HEAD(" + ( parameters ? parameters->get_debug_repr() + " " : "" ) + symbol->get_debug_repr() +
@@ -504,7 +552,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return parameters->visit( c_ctx, vpt ) && return_type->visit( c_ctx, vpt ) && symbol->visit( c_ctx, vpt ) &&
+               body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "FUNC(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
@@ -535,7 +586,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncCallExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return parameters->visit( c_ctx, vpt ) && symbol->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "FN_CALL(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
@@ -563,7 +616,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<OperatorExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return lvalue->visit( c_ctx, vpt ) && rvalue->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "OP(" + ( lvalue ? lvalue->get_debug_repr() + " " : "" ) + op +
@@ -587,7 +642,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SimpleBindExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -608,7 +665,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<AliasBindExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -631,7 +690,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return cond->visit( c_ctx, vpt ) && expr_t->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " )" +
@@ -658,7 +719,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfElseExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return cond->visit( c_ctx, vpt ) && expr_t->visit( c_ctx, vpt ) && expr_f->visit( c_ctx, vpt ) &&
+               visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "IF(" + cond->get_debug_repr() + " THEN " + expr_t->get_debug_repr() + " ELSE " +
@@ -686,7 +750,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PreLoopExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return cond->visit( c_ctx, vpt ) && expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "PRE_LOOP(" + String( evaluation ? "TRUE: " : "FALSE: " ) + cond->get_debug_repr() + " DO " +
@@ -714,7 +780,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PostLoopExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return cond->visit( c_ctx, vpt ) && expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "POST_LOOP(" + String( evaluation ? "TRUE: " : "FALSE: " ) + cond->get_debug_repr() + " DO " +
@@ -738,7 +806,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<InfLoopExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "INF_LOOP(" + expr->get_debug_repr() + " )" + get_additional_debug_data();
@@ -762,7 +832,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ItrLoopExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return itr_expr->visit( c_ctx, vpt ) && expr->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "ITR_LOOP(" + itr_expr->get_debug_repr() + " DO " + expr->get_debug_repr() + " )" +
@@ -787,7 +859,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MatchExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return selector->visit( c_ctx, vpt ) && cases->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "MATCH(" + selector->get_debug_repr() + " WITH " + cases->get_debug_repr() + " )" +
@@ -812,7 +886,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ArrayAccessExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return value->visit( c_ctx, vpt ) && index->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "ARR_ACC " + value->get_debug_repr() + "[" + index->get_debug_repr() + "]" + get_additional_debug_data();
@@ -840,7 +916,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<RangeExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return from->visit( c_ctx, vpt ) && to->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         String rt = range_type == RangeOperator::Type::exclude
@@ -875,7 +953,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<StructExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return name->visit( c_ctx, vpt ) && body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "STRUCT " + ( name ? name->get_debug_repr() : "<anonymous>" ) + " " +
@@ -901,7 +981,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TraitExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return name->visit( c_ctx, vpt ) && body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "TRAIT " + name->get_debug_repr() + " " + body->get_debug_repr() + get_additional_debug_data();
@@ -928,7 +1010,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ImplExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return struct_name->visit( c_ctx, vpt ) && trait_name->visit( c_ctx, vpt ) && body->visit( c_ctx, vpt ) &&
+               visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         if ( trait_name ) {
@@ -960,7 +1045,9 @@ public:
         return std::dynamic_pointer_cast<MemberAccessExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return base->visit( c_ctx, vpt ) && name->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "MEMBER(" + base->get_debug_repr() + "." + name->get_debug_repr() + ")" + get_additional_debug_data();
@@ -985,7 +1072,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ScopeAccessExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return base->visit( c_ctx, vpt ) && name->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "SCOPE(" + ( base ? base->get_debug_repr() : "<global>" ) + "::" + name->get_debug_repr() + ")" +
@@ -1009,7 +1098,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ReferenceExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return symbol->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override { return "REF(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -1031,7 +1122,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TypeOfExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return symbol->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "TYPE_OF(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1055,7 +1148,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TypedExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return symbol->visit( c_ctx, vpt ) && type->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "TYPED(" + symbol->get_debug_repr() + ":" + type->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1078,7 +1173,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ModuleExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return symbol->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "MODULE(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1101,7 +1198,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclarationExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return symbol->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override { return "DECL(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -1122,7 +1221,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PublicAttrExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return symbol->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "PUBLIC(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1143,7 +1244,9 @@ public:
         return std::dynamic_pointer_cast<StaticStatementExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override { return "STST " + body->get_debug_repr() + get_additional_debug_data(); }
 };
@@ -1168,7 +1271,9 @@ public:
         return std::dynamic_pointer_cast<CompilerAnnotationExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return name->visit( c_ctx, vpt ) && body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "ANNOTATE(" + name->get_debug_repr() + " for " + body->get_debug_repr() + ")" +
@@ -1194,7 +1299,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MacroExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return name->visit( c_ctx, vpt ) && body->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "MACRO(" + name->get_debug_repr() + "! " + body->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1216,7 +1323,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<UnsafeExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return block->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override { return "UNSAFE " + block->get_debug_repr() + get_additional_debug_data(); }
 };
@@ -1238,7 +1347,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TemplateExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override { return visit_impl( c_ctx, vpt, *this ); }
+    bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
+        return symbol->visit( c_ctx, vpt ) && attributes->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
 
     String get_debug_repr() override {
         return "TEMPLATE " + symbol->get_debug_repr() + "<" + attributes->get_debug_repr() + ">" +
