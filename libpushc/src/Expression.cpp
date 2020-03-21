@@ -15,14 +15,16 @@
 #include "libpushc/Expression.h"
 #include "libpushc/SymbolUtil.h"
 
-sptr<std::vector<String>> get_symbol_chain_from_expr( sptr<Expr> expr ) {
+sptr<std::vector<String>> get_symbol_chain_from_expr( sptr<SymbolExpr> expr ) {
     if ( auto atomic_symbol = std::dynamic_pointer_cast<AtomicSymbolExpr>( expr ); atomic_symbol ) {
         return make_shared<std::vector<String>>( 1, atomic_symbol->symbol_name );
     } else if ( auto scope_symbol = std::dynamic_pointer_cast<ScopeAccessExpr>( expr ); scope_symbol ) {
-        auto base = get_symbol_chain_from_expr( scope_symbol->base );
-        auto name = get_symbol_chain_from_expr( scope_symbol->name );
+        auto base = get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( scope_symbol->base ) );
+        auto name = get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( scope_symbol->name ) );
         base->insert( base->end(), name->begin(), name->end() );
         return base;
+    } else if ( auto template_symbol = std::dynamic_pointer_cast<TemplateExpr>( expr ); template_symbol ) {
+        return get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( template_symbol->symbol ) );
     }
     return nullptr;
 }
@@ -48,9 +50,11 @@ void BlockExpr::symbol_discovery( CrateCtx &c_ctx ) {
 }
 
 void FuncExpr::pre_symbol_discovery( CrateCtx &c_ctx ) {
-    if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) )
-        switch_scope_to_symbol(
-            c_ctx, create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol ) ) );
+    if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_symbol ) {
+        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
+        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_symbol_id( new_id );
+    }
 }
 
 void FuncExpr::symbol_discovery( CrateCtx &c_ctx ) {
@@ -114,9 +118,11 @@ void MatchExpr::symbol_discovery( CrateCtx &c_ctx ) {
 }
 
 void StructExpr::pre_symbol_discovery( CrateCtx &c_ctx ) {
-    if ( std::dynamic_pointer_cast<SymbolExpr>( name ) )
-        switch_scope_to_symbol( c_ctx,
-                                create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( name ) ) );
+    if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( name ); symbol_symbol ) {
+        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
+        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_symbol_id( new_id );
+    }
 }
 
 void StructExpr::symbol_discovery( CrateCtx &c_ctx ) {
@@ -124,9 +130,11 @@ void StructExpr::symbol_discovery( CrateCtx &c_ctx ) {
 }
 
 void TraitExpr::pre_symbol_discovery( CrateCtx &c_ctx ) {
-    if ( std::dynamic_pointer_cast<SymbolExpr>( name ) )
-        switch_scope_to_symbol( c_ctx,
-                                create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( name ) ) );
+    if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( name ); symbol_symbol ) {
+        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
+        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_symbol_id( new_id );
+    }
 }
 
 void TraitExpr::symbol_discovery( CrateCtx &c_ctx ) {
@@ -134,9 +142,11 @@ void TraitExpr::symbol_discovery( CrateCtx &c_ctx ) {
 }
 
 void ImplExpr::pre_symbol_discovery( CrateCtx &c_ctx ) {
-    if ( std::dynamic_pointer_cast<SymbolExpr>( struct_name ) )
-        switch_scope_to_symbol(
-            c_ctx, create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( struct_name ) ) );
+    if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( struct_name ); symbol_symbol ) {
+        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
+        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_symbol_id( new_id );
+    }
 }
 
 void ImplExpr::symbol_discovery( CrateCtx &c_ctx ) {
@@ -144,9 +154,11 @@ void ImplExpr::symbol_discovery( CrateCtx &c_ctx ) {
 }
 
 void ModuleExpr::pre_symbol_discovery( CrateCtx &c_ctx ) {
-    if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) )
-        switch_scope_to_symbol(
-            c_ctx, create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol ) ) );
+    if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_symbol ) {
+        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
+        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_symbol_id( new_id );
+    }
 }
 
 void ModuleExpr::symbol_discovery( CrateCtx &c_ctx ) {

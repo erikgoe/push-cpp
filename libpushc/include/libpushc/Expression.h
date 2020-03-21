@@ -42,7 +42,7 @@ enum class VisitorPassType {
 };
 
 struct CrateCtx;
-class Expr;
+class SymbolExpr;
 
 // Dispatcher for preparations for visitor passes
 template <typename T>
@@ -54,7 +54,7 @@ bool visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr );
 
 // Creates a symbol chain from an expression which contains symbols or scoped symbols. Returns nullptr if @param is not
 // some sort of symbol
-sptr<std::vector<String>> get_symbol_chain_from_expr( sptr<Expr> expr );
+sptr<std::vector<String>> get_symbol_chain_from_expr( sptr<SymbolExpr> expr );
 
 #include "Expression.inl"
 
@@ -363,6 +363,8 @@ public:
         pre_visit_impl( c_ctx, vpt, *this );
         return visit_impl( c_ctx, vpt, *this );
     }
+
+    virtual void update_symbol_id( SymbolId new_id ) { LOG_ERR( "Virtual function!" ); }
 };
 
 // A simple symbol/identifier (variable, function, etc.)
@@ -382,6 +384,8 @@ public:
         pre_visit_impl( c_ctx, vpt, *this );
         return visit_impl( c_ctx, vpt, *this );
     }
+
+    void update_symbol_id( SymbolId new_id ) override { symbol = new_id; }
 
     String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")" + get_additional_debug_data(); }
 };
@@ -1194,6 +1198,12 @@ public:
                visit_impl( c_ctx, vpt, *this );
     }
 
+    void update_symbol_id( SymbolId new_id ) override {
+        auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( name );
+        if ( name_symbol )
+            name_symbol->update_symbol_id( new_id );
+    }
+
     String get_debug_repr() override {
         return "SCOPE(" + ( base ? base->get_debug_repr() : "<global>" ) + "::" + name->get_debug_repr() + ")" +
                get_additional_debug_data();
@@ -1444,7 +1454,7 @@ public:
 };
 
 // Specify a block or function to be unsafe
-class UnsafeExpr : public SeparableExpr, public SymbolExpr {
+class UnsafeExpr : public SeparableExpr {
 public:
     sptr<Expr> block;
 
@@ -1486,6 +1496,12 @@ public:
     bool visit( CrateCtx &c_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, vpt, *this );
         return symbol->visit( c_ctx, vpt ) && attributes->visit( c_ctx, vpt ) && visit_impl( c_ctx, vpt, *this );
+    }
+
+    void update_symbol_id( SymbolId new_id ) override {
+        auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol );
+        if ( name_symbol )
+            name_symbol->update_symbol_id( new_id );
     }
 
     String get_debug_repr() override {
