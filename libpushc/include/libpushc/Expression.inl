@@ -11,10 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libpushc/stdafx.h"
-#include "libpushc/SymbolParser.h"
-#include "libpushc/SymbolUtil.h"
-
-void parse_symbols( sptr<CrateCtx> c_ctx, JobsBuilder &jb, UnitCtx &parent_ctx ) {
-    jb.add_job<void>( [c_ctx]( Worker &w_ctx ) { c_ctx->ast->visit( *c_ctx, VisitorPassType::SYMBOL_DISCOVERY ); } );
+template <typename T>
+bool visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr ) {
+    if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
+        if ( !expr.primitive_semantic_check( c_ctx ) )
+            return false;
+        expr.symbol_discovery( c_ctx );
+    }
+    return true;
 }
