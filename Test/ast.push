@@ -9,7 +9,7 @@ struct A {
     foobar:f32
 }
 
-base::function (a, b) {
+base::function (a, b) -> u32 {
     {
         let a:A = {1,2};
     }

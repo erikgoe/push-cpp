@@ -47,8 +47,8 @@ struct ConstValue {
 struct SymbolIdentifier {
     String name; // the local symbol name (empty means anonymous scope)
 
-    std::vector<std::pair<TypeId, String>> parameters; // type-name pairs of parameters
     TypeId eval_type = 0; // the type which is returned when the symbol is evaluated (return type of functions)
+    std::vector<std::pair<TypeId, String>> parameters; // type-name pairs of parameters
 
     std::vector<std::pair<TypeId, ConstValue>> template_values; // type-value pairs of template parameters
 };

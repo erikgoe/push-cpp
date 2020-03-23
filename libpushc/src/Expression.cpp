@@ -55,6 +55,15 @@ void FuncExpr::pre_symbol_discovery( CrateCtx &c_ctx ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
+        if ( return_type != 0 ) {
+            auto return_symbols = find_sub_symbol_by_identifier_chain(
+                c_ctx, get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( return_type ) ),
+                c_ctx.current_scope );
+            if ( return_symbols.size() != 1 ) {
+                // TODO error message about ambiguous or unknown return type
+            }
+            c_ctx.symbol_graph[new_id].identifier.eval_type = return_symbols.front();
+        }
     }
 }
 

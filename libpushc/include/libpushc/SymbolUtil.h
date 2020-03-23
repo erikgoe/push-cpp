@@ -19,11 +19,10 @@
 sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, String separator );
 
 // Searches for a sub-symbol by name and returns its id. Returns 0 if no such sub-symbol exits
-SymbolId find_sub_symbol_by_name( CrateCtx &c_ctx, const String &name, SymbolId parent );
+std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, const SymbolIdentifier &identifier, SymbolId parent );
 
-// Searches for a sub-symbol by name chain and returns its id. Returns 0 if no such sub-symbol exits. NOTE: This is only
-// used for external inputs like the prelude
-SymbolId find_sub_symbol_by_name_chain( CrateCtx &c_ctx, sptr<std::vector<SymbolIdentifier>> name_chain,
+// Searches for a sub-symbol by name chain and returns its id. Returns 0 if no such sub-symbol exits
+std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx, sptr<std::vector<SymbolIdentifier>> identifier_chain,
                                         SymbolId parent = ROOT_SYMBOL );
 
 // Returns only the head of a symbol

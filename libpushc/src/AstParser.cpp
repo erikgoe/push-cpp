@@ -431,8 +431,9 @@ void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg ) {
 
     // Literals
     for ( auto &lit : cfg.literals ) {
-        SymbolId type_symbol =
-            find_sub_symbol_by_name_chain( c_ctx, split_symbol_chain( lit.second.first, cfg.scope_access_operator ) );
+        SymbolId type_symbol = find_sub_symbol_by_identifier_chain(
+                                   c_ctx, split_symbol_chain( lit.second.first, cfg.scope_access_operator ) )
+                                   .front();
         c_ctx.literals_map[lit.first] = std::make_pair( type_symbol, lit.second.second );
     }
 }
@@ -464,7 +465,8 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         log( " " + c_ctx->ast->get_debug_repr() );
         log( "SYMBOLS ------" );
         for ( size_t i = 1; i < c_ctx->symbol_graph.size(); i++ ) {
-            log( " " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, i ) );
+            log( " " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, i ) + " - val " +
+                 to_string( c_ctx->symbol_graph[i].value ) );
         }
         log( "TYPES --------" );
         for ( size_t i = 1; i < c_ctx->symbol_graph.size(); i++ ) {

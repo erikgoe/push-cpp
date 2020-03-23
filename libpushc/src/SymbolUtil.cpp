@@ -28,22 +28,61 @@ sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, S
     return ret;
 }
 
-SymbolId find_sub_symbol_by_name( CrateCtx &c_ctx, const String &name, SymbolId parent ) {
-    for ( auto &sub_id : c_ctx.symbol_graph[parent].sub_nodes )
-        if ( c_ctx.symbol_graph[sub_id].identifier.name == name )
-            return sub_id;
-    return 0;
+std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, const SymbolIdentifier &identifier,
+                                                     SymbolId parent ) {
+    std::vector<SymbolId> ret;
+    for ( auto &sub_id : c_ctx.symbol_graph[parent].sub_nodes ) {
+        if ( c_ctx.symbol_graph[sub_id].identifier.name == identifier.name ) {
+            if ( identifier.eval_type == 0 ||
+                 c_ctx.symbol_graph[sub_id].identifier.eval_type == identifier.eval_type ) {
+                bool matches = true;
+
+                if ( c_ctx.symbol_graph[sub_id].identifier.parameters.size() < identifier.parameters.size() )
+                    matches = false;
+                for ( size_t i = 0; i < identifier.parameters.size() && matches; i++ ) {
+                    if ( identifier.parameters[i].first != 0 &&
+                         c_ctx.symbol_graph[sub_id].identifier.parameters[i].first != identifier.parameters[i].first )
+                        matches = false;
+                }
+
+                if ( c_ctx.symbol_graph[sub_id].identifier.template_values.size() < identifier.template_values.size() )
+                    matches = false;
+                for ( size_t i = 0; i < identifier.template_values.size() && matches; i++ ) {
+                    if ( identifier.template_values[i].first != 0 &&
+                         c_ctx.symbol_graph[sub_id].identifier.template_values[i].first !=
+                             identifier.template_values[i].first )
+                        matches = false;
+                }
+
+                if ( matches )
+                    ret.push_back( sub_id );
+            }
+        }
+    }
+    return ret;
 }
 
-SymbolId find_sub_symbol_by_name_chain( CrateCtx &c_ctx, sptr<std::vector<SymbolIdentifier>> name_chain,
-                                        SymbolId parent ) {
-    SymbolId curr_symbol = parent;
-    for ( auto &symbol : *name_chain ) {
-        curr_symbol = find_sub_symbol_by_name( c_ctx, symbol.name, curr_symbol );
-        if ( curr_symbol == 0 )
-            return 0;
+std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx,
+                                                           sptr<std::vector<SymbolIdentifier>> identifier_chain,
+                                                           SymbolId parent ) {
+    SymbolId search_scope = parent;
+    // Search in local scope first and then progress to outer scopes
+    while ( true ) {
+        std::vector<SymbolId> curr_symbols( 1, search_scope );
+        for ( size_t i = 0; i < identifier_chain->size(); i++ ) {
+            curr_symbols = find_sub_symbol_by_identifier( c_ctx, ( *identifier_chain )[i], curr_symbols.front() );
+            if ( i == identifier_chain->size() - 1 ) {
+                if ( curr_symbols.empty() && search_scope != 0 ) {
+                    // Search one scope upwards
+                    search_scope = c_ctx.symbol_graph[search_scope].parent;
+                    break;
+                }
+                return curr_symbols;
+            }
+            if ( curr_symbols.size() != 1 )
+                return std::vector<SymbolId>();
+        }
     }
-    return curr_symbol;
 }
 
 String get_local_symbol_name( CrateCtx &c_ctx, SymbolId symbol ) {
@@ -72,11 +111,10 @@ String get_local_symbol_name( CrateCtx &c_ctx, SymbolId symbol ) {
     }
 
     // parameters
-    if ( !ident.parameters.empty() ) {
-        ret += "[";
+    if ( !ident.parameters.empty() || ident.eval_type != 0 ) {
+        ret += "[" + to_string( ident.eval_type );
         for ( size_t i = 0; i < ident.parameters.size(); i++ ) {
-            ret += ident.parameters[i].second + ":" + to_string( ident.parameters[i].first ) +
-                   ( i < ident.parameters.size() - 1 ? "," : "" );
+            ret += "," + ident.parameters[i].second + ":" + to_string( ident.parameters[i].first );
         }
         ret += "]";
     }
@@ -97,7 +135,7 @@ String get_full_symbol_name( CrateCtx &c_ctx, SymbolId symbol ) {
 }
 
 SymbolId create_new_global_symbol( CrateCtx &c_ctx, const String &name ) {
-    if ( find_sub_symbol_by_name( c_ctx, name, ROOT_SYMBOL ) ) {
+    if ( !find_sub_symbol_by_identifier( c_ctx, SymbolIdentifier{ name }, ROOT_SYMBOL ).empty() ) {
         LOG_ERR( "Attempted to create an existing global symbol '" + name + "'" );
     }
     SymbolId sym_id = c_ctx.symbol_graph.size();
@@ -107,7 +145,7 @@ SymbolId create_new_global_symbol( CrateCtx &c_ctx, const String &name ) {
 }
 
 SymbolId create_new_relative_symbol( CrateCtx &c_ctx, const String &name, SymbolId parent_symbol ) {
-    if ( !name.empty() && find_sub_symbol_by_name( c_ctx, name, parent_symbol ) ) {
+    if ( !name.empty() && !find_sub_symbol_by_identifier( c_ctx, SymbolIdentifier{ name }, parent_symbol ).empty() ) {
         LOG_ERR( "Attempted to create an existing non-anonymous relative symbol '" + name + "' to parent '" +
                  to_string( parent_symbol ) + "'" );
     }
@@ -133,11 +171,13 @@ SymbolId create_new_relative_symbol_from_name_chain( CrateCtx &c_ctx,
                                                      SymbolId parent_symbol ) {
     SymbolId curr_symbol = parent_symbol;
     for ( auto &symbol : *symbol_chain ) {
-        SymbolId sub_symbol = find_sub_symbol_by_name( c_ctx, symbol.name, curr_symbol );
-        if ( sub_symbol != 0 ) {
-            curr_symbol = sub_symbol;
-        } else { // create new symbol
+        std::vector<SymbolId> sub_symbols = find_sub_symbol_by_identifier( c_ctx, symbol, curr_symbol );
+        if ( sub_symbols.size() == 1 ) {
+            curr_symbol = sub_symbols.front();
+        } else if ( sub_symbols.empty() ) { // create new symbol
             curr_symbol = create_new_relative_symbol( c_ctx, symbol.name, curr_symbol );
+        } else {
+            return 0; // TODO create error message, because symbol chain is not unique d
         }
     }
     return curr_symbol;
