@@ -32,8 +32,6 @@ constexpr TypeId TYPE_TYPE = 3; // The initial type type
 constexpr TypeId MODULE_TYPE = 4; // The initial module type
 constexpr TypeId LAST_FIX_TYPE = MODULE_TYPE; // The last not variable type
 
-class StaticStatementExpr;
-
 // Defines the type of a visitor pass
 enum class VisitorPassType {
     SYMBOL_DISCOVERY, // discover all symbols in the global declarative scope and do some primitive semantic checks
@@ -41,8 +39,10 @@ enum class VisitorPassType {
     count
 };
 
+class StaticStatementExpr;
 struct CrateCtx;
 class SymbolExpr;
+class SymbolIdentifier;
 
 // Dispatcher for preparations for visitor passes
 template <typename T>
@@ -52,9 +52,8 @@ void pre_visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr );
 template <typename T>
 bool visit_impl( CrateCtx &c_ctx, VisitorPassType vpt, T &expr );
 
-// Creates a symbol chain from an expression which contains symbols or scoped symbols. Returns nullptr if @param is not
-// some sort of symbol
-sptr<std::vector<String>> get_symbol_chain_from_expr( sptr<SymbolExpr> expr );
+// Creates a symbol chain from an expression which contains symbols or scoped symbols
+sptr<std::vector<SymbolIdentifier>> get_symbol_chain_from_expr( sptr<SymbolExpr> expr );
 
 #include "Expression.inl"
 

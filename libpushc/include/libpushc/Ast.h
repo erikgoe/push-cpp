@@ -37,23 +37,44 @@ using LabelMap = std::map<String, size_t>;
 
 using TypeMemSize = u64; // stores size of a type in bytes
 
+// Represents the value of an expression which had been evaluated at compile time
+struct ConstValue {
+    u8 *data; // the data blob of the value
+    size_t data_size; // size of the data array
+};
+
+// Identifies a local symbol (must be chained to get a full symbol identification)
+struct SymbolIdentifier {
+    String name; // the local symbol name (empty means anonymous scope)
+
+    std::vector<std::pair<TypeId, String>> parameters; // type-name pairs of parameters
+    TypeId eval_type = 0; // the type which is returned when the symbol is evaluated (return type of functions)
+
+    std::vector<std::pair<TypeId, ConstValue>> template_values; // type-value pairs of template parameters
+};
 
 // A node in the Symbol graph, representing a symbol
 struct SymbolGraphNode {
-    SymbolId parent = 0;
-    std::vector<SymbolId> sub_nodes;
-    TypeId type = 0;
-    String name;
-    bool pub = false;
+    SymbolId parent = 0; // parent of this graph node
+    std::vector<SymbolId> sub_nodes; // children of this graph node
+
+    SymbolIdentifier identifier; // identifies this symbol (may be partially defined)
+    std::vector<std::pair<TypeId, String>> template_params; // type-name pairs of template parameters
+    bool pub = false; // whether this symbol is public
+
+    TypeId value = 0; // type/value of this symbol (every function has its own type; for structs this is struct body;
+                      // for (local) variables this is 0)
 };
 
-// A entry in the type table, representing a type
+// An entry in the type table, representing a type
 struct TypeTableEntry {
     SymbolId symbol = 0;
+
     TypeMemSize additional_mem_size = 0; // additional blob of memory bytes (e. g. for primitive types)
     std::vector<SymbolGraphNode> members; // list of members of this type (not pointers)
     std::vector<TypeId> subtypes; // basically traits
-    FunctionBodyId function_body = 0;
+
+    FunctionBodyId function_body = 0; // the function body, if it's a function
 };
 
 // Represents the content of a function

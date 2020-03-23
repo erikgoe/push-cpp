@@ -5,7 +5,11 @@ struct A {
     bar:u32,
 }
 
-function (a, b) {
+struct A {
+    foobar:f32
+}
+
+base::function (a, b) {
     {
         let a:A = {1,2};
     }

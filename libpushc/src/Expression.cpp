@@ -15,16 +15,17 @@
 #include "libpushc/Expression.h"
 #include "libpushc/SymbolUtil.h"
 
-sptr<std::vector<String>> get_symbol_chain_from_expr( sptr<SymbolExpr> expr ) {
+sptr<std::vector<SymbolIdentifier>> get_symbol_chain_from_expr( sptr<SymbolExpr> expr ) {
     if ( auto atomic_symbol = std::dynamic_pointer_cast<AtomicSymbolExpr>( expr ); atomic_symbol ) {
-        return make_shared<std::vector<String>>( 1, atomic_symbol->symbol_name );
+        return make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ atomic_symbol->symbol_name } );
     } else if ( auto scope_symbol = std::dynamic_pointer_cast<ScopeAccessExpr>( expr ); scope_symbol ) {
         auto base = get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( scope_symbol->base ) );
         auto name = get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( scope_symbol->name ) );
         base->insert( base->end(), name->begin(), name->end() );
         return base;
     } else if ( auto template_symbol = std::dynamic_pointer_cast<TemplateExpr>( expr ); template_symbol ) {
-        return get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( template_symbol->symbol ) );
+        return get_symbol_chain_from_expr(
+            std::dynamic_pointer_cast<SymbolExpr>( template_symbol->symbol ) ); // TODO add template arguments
     }
     return nullptr;
 }
