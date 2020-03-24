@@ -17,6 +17,8 @@
 #include "libpush/util/FmtStr.h"
 #include "libpush/input/SourceInput.h"
 
+struct Expr;
+
 // Defines all types of messages
 enum class MessageType;
 // Existing classes of messages. If changed, edit the get_message_head_impl() macro
@@ -53,6 +55,8 @@ struct MessageInfo {
     }
     MessageInfo( const Token &t, u32 message_idx = 0, FmtStr::Color color = FmtStr::Color::Blue )
             : MessageInfo( t.file, t.line, t.line, t.column, t.length, message_idx, color ) {}
+    // This constructor in defined in libpushc/src/Expression.cpp
+    MessageInfo( const sptr<Expr> &expr, u32 message_idx = 0, FmtStr::Color color = FmtStr::Color::Blue );
     MessageInfo( const PosInfo &po, u32 message_idx = 0, FmtStr::Color color = FmtStr::Color::Blue )
             : MessageInfo( po.file, po.line, po.line, po.column, po.length, message_idx, color ) {}
 

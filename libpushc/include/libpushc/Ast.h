@@ -57,6 +57,7 @@ struct SymbolIdentifier {
 struct SymbolGraphNode {
     SymbolId parent = 0; // parent of this graph node
     std::vector<SymbolId> sub_nodes; // children of this graph node
+    std::vector<sptr<Expr>> original_expr; // Expressions which define this symbol
 
     SymbolIdentifier identifier; // identifies this symbol (may be partially defined)
     std::vector<std::pair<TypeId, String>> template_params; // type-name pairs of template parameters

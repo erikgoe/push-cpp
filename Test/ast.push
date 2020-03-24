@@ -9,7 +9,10 @@ struct A {
     foobar:f32
 }
 
-base::function (a, b) -> u32 {
+//struct X::Amb {}
+//struct Y::Amb {}
+
+base::function (a, b) -> Unknown {
     {
         let a:A = {1,2};
     }

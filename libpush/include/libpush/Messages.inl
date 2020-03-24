@@ -40,6 +40,8 @@ enum class MessageType {
     err_term_with_multiple_expr,
     err_semicolon_without_meaning,
     err_array_access_with_multiple_expr,
+    err_symbol_not_found,
+    err_symbol_is_ambiguous,
 
     warning = 5000,
 
@@ -103,6 +105,10 @@ MESSAGE_DEFINITION( MessageType::err_semicolon_without_meaning, MessageClass::Er
                     "The semicolon does not finish an expression", "remove it" );
 MESSAGE_DEFINITION( MessageType::err_array_access_with_multiple_expr, MessageClass::Error, "C",
                     "An array access may only contain one expression", "" );
+MESSAGE_DEFINITION( MessageType::err_symbol_not_found, MessageClass::Error, "C",
+                    "Symbol not found", "" );
+MESSAGE_DEFINITION( MessageType::err_symbol_is_ambiguous, MessageClass::Error, "C",
+                    "The symbol identifier does not uniquely specify a symbol", "", "Possible match defined here" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",
