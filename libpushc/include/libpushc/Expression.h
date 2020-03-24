@@ -81,7 +81,7 @@ public:
     virtual bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) = 0;
 
     // Checks very basic semantic conditions on an expr. Returns false when an error has been found
-    virtual bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
+    virtual bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
 
     // Prepares the symbol discovery for this expr
     virtual void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {}
@@ -127,7 +127,7 @@ public:
         return visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool matches( sptr<Expr> other ) override {
         auto o = std::dynamic_pointer_cast<TokenExpr>( other );
@@ -202,7 +202,7 @@ public:
         return sub_expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";" + get_additional_debug_data(); }
 
@@ -242,7 +242,7 @@ public:
         return visit_impl( c_ctx, w_ctx, vpt, *this ) && result;
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -628,7 +628,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "FUNC_HEAD(" + ( parameters ? parameters->get_debug_repr() + " " : "" ) + symbol->get_debug_repr() +
@@ -668,7 +668,7 @@ public:
                body->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -709,7 +709,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "FN_CALL(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
@@ -769,7 +769,7 @@ public:
         return expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -795,7 +795,7 @@ public:
         return expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -1027,7 +1027,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1062,7 +1062,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "ARR_ACC " + value->get_debug_repr() + "[" + index->get_debug_repr() + "]" + get_additional_debug_data();
@@ -1135,7 +1135,7 @@ public:
                ( body ? body->visit( c_ctx, w_ctx, vpt ) : true ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1171,7 +1171,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1209,7 +1209,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1428,7 +1428,7 @@ public:
         return symbol->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override { return "DECL(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -1454,7 +1454,7 @@ public:
         return symbol->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "PUBLIC(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1513,7 +1513,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "ANNOTATE(" + name->get_debug_repr() + " for " + body->get_debug_repr() + ")" +
@@ -1545,7 +1545,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "MACRO(" + name->get_debug_repr() + "! " + body->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1598,7 +1598,7 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
-    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void update_symbol_id( SymbolId new_id ) override {
         auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol );

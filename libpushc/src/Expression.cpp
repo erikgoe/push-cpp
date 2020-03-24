@@ -46,12 +46,12 @@ String Expr::get_additional_debug_data() {
     return result;
 }
 
-bool TokenExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool TokenExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     w_ctx.print_msg<MessageType::err_orphan_token>( MessageInfo( t, 0, FmtStr::Color::Red ) );
     return false;
 }
 
-bool SingleCompletedExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool SingleCompletedExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<CompletedExpr>( sub_expr ) != nullptr ) { // double semicolon
         w_ctx.print_msg<MessageType::err_semicolon_without_meaning>(
             MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ) );
@@ -60,7 +60,7 @@ bool SingleCompletedExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_c
     return true;
 }
 
-bool BlockExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool BlockExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     // Check for missing semicolons (except the last expr)
     for ( auto expr = sub_expr.begin(); expr != sub_expr.end() && expr != sub_expr.end() - 1; expr++ ) {
         if ( std::dynamic_pointer_cast<CompletedExpr>( *expr ) == nullptr ) {
@@ -81,7 +81,7 @@ void BlockExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
 }
 
-bool FuncHeadExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool FuncHeadExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
@@ -103,7 +103,7 @@ bool FuncHeadExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool FuncExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( symbol && std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
@@ -152,7 +152,7 @@ void FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
 }
 
-bool FuncCallExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool FuncCallExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
@@ -164,7 +164,7 @@ bool FuncCallExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool SimpleBindExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool SimpleBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     // TODO make "=" operator not hard coded
     auto assignment = std::dynamic_pointer_cast<OperatorExpr>( expr );
     if ( assignment == nullptr || assignment->op != "=" ) {
@@ -187,7 +187,7 @@ bool SimpleBindExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) 
     return true;
 }
 
-bool AliasBindExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     // TODO make "=" operator not hard coded
     auto assignment = std::dynamic_pointer_cast<OperatorExpr>( expr );
     if ( assignment == nullptr || assignment->op != "=" ) {
@@ -264,7 +264,7 @@ void ItrLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
 }
 
-bool MatchExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool MatchExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto cases_list = std::dynamic_pointer_cast<ListedExpr>( cases ); cases_list != nullptr ) {
         for ( auto &entry : cases_list->get_list() ) {
             // TODO make "=>" operator not hard coded
@@ -291,7 +291,7 @@ void MatchExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
 }
 
-bool ArrayAccessExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool ArrayAccessExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     // TODO maybe allow multiple parameters
     if ( !index || std::dynamic_pointer_cast<CommaExpr>( index ) != nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_only_one_parameter>( MessageInfo( index, 0, FmtStr::Color::Red ) );
@@ -300,7 +300,7 @@ bool ArrayAccessExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx )
     return true;
 }
 
-bool StructExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool StructExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( name && std::dynamic_pointer_cast<SymbolExpr>( name ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( name, 0, FmtStr::Color::Red ) );
         return false;
@@ -343,7 +343,7 @@ void StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                             c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_symbol_id()].parent );
 }
 
-bool TraitExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool TraitExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( name ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( name, 0, FmtStr::Color::Red ) );
         return false;
@@ -382,7 +382,7 @@ void TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                             c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_symbol_id()].parent );
 }
 
-bool ImplExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool ImplExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( struct_name ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( struct_name, 0, FmtStr::Color::Red ) );
         return false;
@@ -440,7 +440,7 @@ void ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
 }
 
-bool DeclarationExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool DeclarationExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<FuncHeadExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
@@ -448,7 +448,7 @@ bool DeclarationExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx )
     return true;
 }
 
-bool PublicAttrExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool PublicAttrExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<TypedExpr>( symbol ) == nullptr &&
          std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr &&
          std::dynamic_pointer_cast<FuncHeadExpr>( symbol ) == nullptr ) {
@@ -468,7 +468,7 @@ void StaticStatementExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
 }
 
-bool CompilerAnnotationExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool CompilerAnnotationExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( name ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( name, 0, FmtStr::Color::Red ) );
         return false;
@@ -476,7 +476,7 @@ bool CompilerAnnotationExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &
     return true;
 }
 
-bool MacroExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool MacroExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( name ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( name, 0, FmtStr::Color::Red ) );
         return false;
@@ -484,7 +484,7 @@ bool MacroExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool TemplateExpr::primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool TemplateExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
