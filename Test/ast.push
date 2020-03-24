@@ -9,8 +9,8 @@ struct A {
     foobar:f32
 }
 
-//struct X::Amb {}
-//struct Y::Amb {}
+struct X::Amb {}
+struct Y::Amb {}
 
 base::function (a, b) -> Unknown {
     {

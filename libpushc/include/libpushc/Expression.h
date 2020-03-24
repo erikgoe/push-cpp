@@ -363,7 +363,13 @@ public:
         return visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    // Updates the internal symbol id reference
     virtual void update_symbol_id( SymbolId new_id ) { LOG_ERR( "Virtual function!" ); }
+    // Returns the internal symbol id reference
+    virtual SymbolId get_symbol_id() {
+        LOG_ERR( "Virtual function!" );
+        return 0;
+    }
 };
 
 // A simple symbol/identifier (variable, function, etc.)
@@ -385,6 +391,7 @@ public:
     }
 
     void update_symbol_id( SymbolId new_id ) override { symbol = new_id; }
+    SymbolId get_symbol_id() override { return symbol; }
 
     String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")" + get_additional_debug_data(); }
 };
@@ -678,8 +685,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return ( lvalue ? lvalue->visit( c_ctx, w_ctx, vpt ) : true ) && ( rvalue ? rvalue->visit( c_ctx, w_ctx, vpt ) : true ) &&
-               visit_impl( c_ctx, w_ctx, vpt, *this );
+        return ( lvalue ? lvalue->visit( c_ctx, w_ctx, vpt ) : true ) &&
+               ( rvalue ? rvalue->visit( c_ctx, w_ctx, vpt ) : true ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -756,7 +763,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return cond->visit( c_ctx, w_ctx, vpt ) && expr_t->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return cond->visit( c_ctx, w_ctx, vpt ) && expr_t->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -790,8 +798,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return cond->visit( c_ctx, w_ctx, vpt ) && expr_t->visit( c_ctx, w_ctx, vpt ) && expr_f->visit( c_ctx, w_ctx, vpt ) &&
-               visit_impl( c_ctx, w_ctx, vpt, *this );
+        return cond->visit( c_ctx, w_ctx, vpt ) && expr_t->visit( c_ctx, w_ctx, vpt ) &&
+               expr_f->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -826,7 +834,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return cond->visit( c_ctx, w_ctx, vpt ) && expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return cond->visit( c_ctx, w_ctx, vpt ) && expr->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -861,7 +870,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return cond->visit( c_ctx, w_ctx, vpt ) && expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return cond->visit( c_ctx, w_ctx, vpt ) && expr->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -923,7 +933,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return itr_expr->visit( c_ctx, w_ctx, vpt ) && expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return itr_expr->visit( c_ctx, w_ctx, vpt ) && expr->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -955,7 +966,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return selector->visit( c_ctx, w_ctx, vpt ) && cases->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return selector->visit( c_ctx, w_ctx, vpt ) && cases->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -987,7 +999,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return value->visit( c_ctx, w_ctx, vpt ) && index->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return value->visit( c_ctx, w_ctx, vpt ) && index->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -1057,8 +1070,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return ( name ? name->visit( c_ctx, w_ctx, vpt ) : true ) && ( body ? body->visit( c_ctx, w_ctx, vpt ) : true ) &&
-               visit_impl( c_ctx, w_ctx, vpt, *this );
+        return ( name ? name->visit( c_ctx, w_ctx, vpt ) : true ) &&
+               ( body ? body->visit( c_ctx, w_ctx, vpt ) : true ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1091,7 +1104,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1125,8 +1139,9 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return struct_name->visit( c_ctx, w_ctx, vpt ) && ( trait_name ? trait_name->visit( c_ctx, w_ctx, vpt ) : true ) &&
-               body->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return struct_name->visit( c_ctx, w_ctx, vpt ) &&
+               ( trait_name ? trait_name->visit( c_ctx, w_ctx, vpt ) : true ) && body->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1165,7 +1180,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return base->visit( c_ctx, w_ctx, vpt ) && name->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return base->visit( c_ctx, w_ctx, vpt ) && name->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -1201,6 +1217,12 @@ public:
         auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( name );
         if ( name_symbol )
             name_symbol->update_symbol_id( new_id );
+    }
+    SymbolId get_symbol_id() override {
+        auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( name );
+        if ( name_symbol )
+            name_symbol->get_symbol_id();
+        return 0;
     }
 
     String get_debug_repr() override {
@@ -1279,7 +1301,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return symbol->visit( c_ctx, w_ctx, vpt ) && type->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return symbol->visit( c_ctx, w_ctx, vpt ) && type->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -1415,7 +1438,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -1444,7 +1468,8 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     String get_debug_repr() override {
@@ -1494,13 +1519,20 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return symbol->visit( c_ctx, w_ctx, vpt ) && attributes->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
+        return symbol->visit( c_ctx, w_ctx, vpt ) && attributes->visit( c_ctx, w_ctx, vpt ) &&
+               visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     void update_symbol_id( SymbolId new_id ) override {
         auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol );
         if ( name_symbol )
             name_symbol->update_symbol_id( new_id );
+    }
+    SymbolId get_symbol_id() override {
+        auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol );
+        if ( name_symbol )
+            name_symbol->get_symbol_id();
+        return 0;
     }
 
     String get_debug_repr() override {

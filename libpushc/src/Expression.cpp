@@ -80,7 +80,8 @@ void FuncExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 void FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
-    pop_scope( c_ctx );
+    switch_scope_to_symbol(
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
 }
 
 void IfExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -148,7 +149,8 @@ void StructExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 void StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
-    pop_scope( c_ctx );
+    switch_scope_to_symbol(
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_symbol_id()].parent );
 }
 
 void TraitExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -160,7 +162,8 @@ void TraitExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 void TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
-    pop_scope( c_ctx );
+    switch_scope_to_symbol(
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_symbol_id()].parent );
 }
 
 void ImplExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -172,7 +175,8 @@ void ImplExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 void ImplExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
-    pop_scope( c_ctx );
+    switch_scope_to_symbol(
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( struct_name )->get_symbol_id()].parent );
 }
 
 void ModuleExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -184,7 +188,8 @@ void ModuleExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 void ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
-    pop_scope( c_ctx );
+    switch_scope_to_symbol(
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
 }
 
 void StaticStatementExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
