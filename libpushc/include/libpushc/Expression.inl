@@ -20,15 +20,16 @@ void pre_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &exp
 
 template <typename T>
 bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) {
-    if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
+    if ( vpt == VisitorPassType::BASIC_SEMANTIC_CHECK ) {
         if ( !expr.primitive_semantic_check( c_ctx, w_ctx ) )
             return false;
+    } else if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
         expr.symbol_discovery( c_ctx, w_ctx );
     }
 
     bool result = true;
     for ( auto &ss : expr.static_statements ) {
-        if(!ss->visit( c_ctx, w_ctx, vpt ))
+        if ( !ss->visit( c_ctx, w_ctx, vpt ) )
             result = false;
     }
     return result;

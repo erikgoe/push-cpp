@@ -16,5 +16,11 @@
 #include "libpushc/SymbolUtil.h"
 
 void parse_symbols( sptr<CrateCtx> c_ctx, JobsBuilder &jb, UnitCtx &parent_ctx ) {
-    jb.add_job<void>( [c_ctx]( Worker &w_ctx ) { c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SYMBOL_DISCOVERY ); } );
+    jb.add_job<void>( [c_ctx]( Worker &w_ctx ) {
+        bool successful = true;
+        if ( successful )
+            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::BASIC_SEMANTIC_CHECK );
+        if ( successful )
+            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SYMBOL_DISCOVERY );
+    } );
 }

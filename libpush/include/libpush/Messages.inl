@@ -42,6 +42,16 @@ enum class MessageType {
     err_array_access_with_multiple_expr,
     err_symbol_not_found,
     err_symbol_is_ambiguous,
+    err_orphan_token,
+    err_unfinished_expr,
+    err_expected_symbol,
+    err_expected_parametes,
+    err_expected_assignment,
+    err_expected_comma_list,
+    err_expected_implication,
+    err_expected_only_one_parameter,
+    err_expected_function_head,
+    err_expected_function_definition,
 
     warning = 5000,
 
@@ -93,7 +103,8 @@ MESSAGE_DEFINITION( MessageType::err_feature_curr_not_supported, MessageClass::E
 MESSAGE_DEFINITION( MessageType::err_parse_number, MessageClass::Error, "I", "Failed to parse number literal value.",
                     "" );
 
-MESSAGE_DEFINITION( MessageType::err_unexpected_eof_after, MessageClass::Error, "C", "Unexpected end of file.", "Missing closing token to this token" );
+MESSAGE_DEFINITION( MessageType::err_unexpected_eof_after, MessageClass::Error, "C", "Unexpected end of file.",
+                    "Missing closing token to this token" );
 MESSAGE_DEFINITION( MessageType::err_malformed_prelude_command, MessageClass::Error, "C",
                     "Malformed prelude command. Expected " + GET_ARG( 0 ) + ".", "" );
 MESSAGE_DEFINITION( MessageType::err_expected_string, MessageClass::Error, "C", "Expected string.", "" );
@@ -105,10 +116,30 @@ MESSAGE_DEFINITION( MessageType::err_semicolon_without_meaning, MessageClass::Er
                     "The semicolon does not finish an expression", "remove it" );
 MESSAGE_DEFINITION( MessageType::err_array_access_with_multiple_expr, MessageClass::Error, "C",
                     "An array access may only contain one expression", "" );
-MESSAGE_DEFINITION( MessageType::err_symbol_not_found, MessageClass::Error, "C",
-                    "Symbol not found", "" );
+MESSAGE_DEFINITION( MessageType::err_symbol_not_found, MessageClass::Error, "C", "Symbol not found", "" );
 MESSAGE_DEFINITION( MessageType::err_symbol_is_ambiguous, MessageClass::Error, "C",
-                    "The symbol identifier does not uniquely specify a symbol", "", "Possible match defined here" );
+                    "The symbol identifier does not uniquely specify a symbol.", "", "Possible match defined here" );
+MESSAGE_DEFINITION( MessageType::err_orphan_token, MessageClass::Error, "C",
+                    "Orphan token found! Please check the syntax of the sourrounding operations.",
+                    "This token could not be merged into an expression" );
+MESSAGE_DEFINITION( MessageType::err_unfinished_expr, MessageClass::Error, "C",
+                    "Unfinished expression, please add a semicolon at the end", "" );
+MESSAGE_DEFINITION( MessageType::err_expected_symbol, MessageClass::Error, "C", "Expected a symbol",
+                    "replace this by a valid symbol please" );
+MESSAGE_DEFINITION( MessageType::err_expected_parametes, MessageClass::Error, "C", "Expected parameters in parenthesis",
+                    "sourround this with parenthesis please" );
+MESSAGE_DEFINITION( MessageType::err_expected_assignment, MessageClass::Error, "C", "Expected an assignment",
+                    "replace this by an assignment please" );
+MESSAGE_DEFINITION( MessageType::err_expected_comma_list, MessageClass::Error, "C",
+                    "Expected a list of comma-separated entries", "" );
+MESSAGE_DEFINITION( MessageType::err_expected_implication, MessageClass::Error, "C",
+                    "Expected an implication \"=>\" operator", "instead of this expression" );
+MESSAGE_DEFINITION( MessageType::err_expected_only_one_parameter, MessageClass::Error, "C",
+                    "Only one parameter allowed", "insert only one parameter here" );
+MESSAGE_DEFINITION( MessageType::err_expected_function_head, MessageClass::Error, "C", "Expected a function head",
+                    "instead of this expression" );
+MESSAGE_DEFINITION( MessageType::err_expected_function_definition, MessageClass::Error, "C",
+                    "Expected a function definition", "instead of this expression" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

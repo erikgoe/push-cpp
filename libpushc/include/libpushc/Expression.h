@@ -34,7 +34,8 @@ constexpr TypeId LAST_FIX_TYPE = MODULE_TYPE; // The last not variable type
 
 // Defines the type of a visitor pass
 enum class VisitorPassType {
-    SYMBOL_DISCOVERY, // discover all symbols in the global declarative scope and do some primitive semantic checks
+    BASIC_SEMANTIC_CHECK, // checks some basic semantic requirements for each expression
+    SYMBOL_DISCOVERY, // discover all symbols in the global declarative scope
 
     count
 };
@@ -126,6 +127,8 @@ public:
         return visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     bool matches( sptr<Expr> other ) override {
         auto o = std::dynamic_pointer_cast<TokenExpr>( other );
         return o != nullptr && t.content == o->t.content;
@@ -177,8 +180,14 @@ public:
     }
 };
 
+// An expression which can create some kind of list
+class ListedExpr : public virtual Expr {
+public:
+    virtual std::vector<sptr<Expr>> get_list() = 0;
+};
+
 // A semicolon-terminated expression
-class SingleCompletedExpr : public CompletedExpr {
+class SingleCompletedExpr : public CompletedExpr, public ListedExpr {
 public:
     sptr<Expr> sub_expr;
 
@@ -193,13 +202,23 @@ public:
         return sub_expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";" + get_additional_debug_data(); }
 
     PosInfo get_position_info() override { return merge_pos_infos( sub_expr->get_position_info(), pos_info ); }
+
+    std::vector<sptr<Expr>> get_list() override {
+        if ( auto sub_listed = std::dynamic_pointer_cast<ListedExpr>( sub_expr ); sub_listed != nullptr ) {
+            return sub_listed->get_list();
+        } else {
+            return std::vector<sptr<Expr>>( 1, sub_expr );
+        }
+    }
 };
 
 // A block with multiple expressions
-class BlockExpr : public OperandExpr, public CompletedExpr {
+class BlockExpr : public OperandExpr, public CompletedExpr, public ListedExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
 
@@ -223,10 +242,11 @@ public:
         return visit_impl( c_ctx, w_ctx, vpt, *this ) && result;
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
-
 
     String get_debug_repr() override {
         String str = "BLOCK {\n ";
@@ -234,10 +254,28 @@ public:
             str += s->get_debug_repr() + "\n ";
         return str + " }" + get_additional_debug_data();
     }
+
+    std::vector<sptr<Expr>> get_list() override {
+        if ( !sub_expr.empty() ) {
+            if ( auto sub_listed = std::dynamic_pointer_cast<ListedExpr>( sub_expr.back() ); sub_listed != nullptr ) {
+                return sub_listed->get_list();
+            } else {
+                return std::vector<sptr<Expr>>( 1, sub_expr.back() );
+            }
+        } else {
+            return std::vector<sptr<Expr>>();
+        }
+    }
+};
+
+// Super class for UnitExpr, TermExpr and TupleExpr
+class ParenthesisExpr : public virtual Expr {
+public:
+    virtual std::vector<sptr<Expr>> get_list() = 0;
 };
 
 // The unit type
-class UnitExpr : public OperandExpr {
+class UnitExpr : public OperandExpr, public ParenthesisExpr {
 public:
     TypeId get_type() override { return TYPE_UNIT; }
 
@@ -249,10 +287,12 @@ public:
     }
 
     String get_debug_repr() override { return "UNIT()"; }
+
+    std::vector<sptr<Expr>> get_list() override { return std::vector<sptr<Expr>>(); }
 };
 
 // A tuple with multiple elements
-class TupleExpr : public OperandExpr {
+class TupleExpr : public OperandExpr, public ParenthesisExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
     TypeId type = 0;
@@ -277,10 +317,12 @@ public:
             str += s->get_debug_repr() + ", ";
         return str + ")" + get_additional_debug_data();
     }
+
+    std::vector<sptr<Expr>> get_list() override { return sub_expr; }
 };
 
 // A set with multiple elements
-class SetExpr : public OperandExpr, public CompletedExpr {
+class SetExpr : public OperandExpr, public CompletedExpr, public ListedExpr {
 public:
     std::vector<sptr<Expr>> sub_expr;
     TypeId type = 0;
@@ -305,10 +347,12 @@ public:
             str += s->get_debug_repr() + ", ";
         return str + "}" + get_additional_debug_data();
     }
+
+    std::vector<sptr<Expr>> get_list() override { return sub_expr; }
 };
 
 // A term with a sub expressions
-class TermExpr : public OperandExpr {
+class TermExpr : public OperandExpr, public ParenthesisExpr {
 public:
     sptr<Expr> sub_expr;
 
@@ -324,6 +368,8 @@ public:
     String get_debug_repr() override {
         return "TERM( " + sub_expr->get_debug_repr() + " )" + get_additional_debug_data();
     }
+
+    std::vector<sptr<Expr>> get_list() override { return std::vector<sptr<Expr>>( 1, sub_expr ); }
 };
 
 // A array specifier with multiple expressions
@@ -512,7 +558,7 @@ public:
 };
 
 // Combines one ore multiple expressions with commas
-class CommaExpr : public SeparableExpr {
+class CommaExpr : public SeparableExpr, public ListedExpr {
 public:
     std::vector<sptr<Expr>> exprs;
 
@@ -554,6 +600,8 @@ public:
             str += s->get_debug_repr() + ", ";
         return str + ")" + get_additional_debug_data();
     }
+
+    std::vector<sptr<Expr>> get_list() override { return exprs; }
 };
 
 // The head of a function. Must be resolved into other expressions
@@ -579,6 +627,8 @@ public:
         return symbol->visit( c_ctx, w_ctx, vpt ) && ( parameters ? parameters->visit( c_ctx, w_ctx, vpt ) : true ) &&
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "FUNC_HEAD(" + ( parameters ? parameters->get_debug_repr() + " " : "" ) + symbol->get_debug_repr() +
@@ -617,6 +667,8 @@ public:
                ( return_type ? return_type->visit( c_ctx, w_ctx, vpt ) : true ) && symbol->visit( c_ctx, w_ctx, vpt ) &&
                body->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -657,6 +709,8 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     String get_debug_repr() override {
         return "FN_CALL(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
                symbol->get_debug_repr() + ")" + get_additional_debug_data();
@@ -664,11 +718,10 @@ public:
 };
 
 class OperatorExpr : public SeparableExpr {
-protected:
+public:
     sptr<Expr> lvalue, rvalue;
     String op;
 
-public:
     OperatorExpr() {}
     OperatorExpr( String op, sptr<Expr> lvalue, sptr<Expr> rvalue, u32 precedence,
                   std::vector<sptr<Expr>> &original_list ) {
@@ -716,6 +769,8 @@ public:
         return expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
 
@@ -739,6 +794,8 @@ public:
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
         return expr->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -970,6 +1027,8 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1002,6 +1061,8 @@ public:
         return value->visit( c_ctx, w_ctx, vpt ) && index->visit( c_ctx, w_ctx, vpt ) &&
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "ARR_ACC " + value->get_debug_repr() + "[" + index->get_debug_repr() + "]" + get_additional_debug_data();
@@ -1074,6 +1135,8 @@ public:
                ( body ? body->visit( c_ctx, w_ctx, vpt ) : true ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1107,6 +1170,8 @@ public:
         return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) &&
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1143,6 +1208,8 @@ public:
                ( trait_name ? trait_name->visit( c_ctx, w_ctx, vpt ) : true ) && body->visit( c_ctx, w_ctx, vpt ) &&
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1361,6 +1428,8 @@ public:
         return symbol->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     String get_debug_repr() override { return "DECL(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
 
@@ -1384,6 +1453,8 @@ public:
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
         return symbol->visit( c_ctx, w_ctx, vpt ) && visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "PUBLIC(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1442,6 +1513,8 @@ public:
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     String get_debug_repr() override {
         return "ANNOTATE(" + name->get_debug_repr() + " for " + body->get_debug_repr() + ")" +
                get_additional_debug_data();
@@ -1471,6 +1544,8 @@ public:
         return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) &&
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "MACRO(" + name->get_debug_repr() + "! " + body->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1522,6 +1597,8 @@ public:
         return symbol->visit( c_ctx, w_ctx, vpt ) && attributes->visit( c_ctx, w_ctx, vpt ) &&
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
+
+    bool primitive_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void update_symbol_id( SymbolId new_id ) override {
         auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol );

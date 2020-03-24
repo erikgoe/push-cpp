@@ -17,7 +17,7 @@
 #include "libpush/util/FmtStr.h"
 #include "libpush/input/SourceInput.h"
 
-struct Expr;
+class Expr;
 
 // Defines all types of messages
 enum class MessageType;
