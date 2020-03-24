@@ -51,6 +51,18 @@ bool TokenExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return false;
 }
 
+bool DeclExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx )  {
+    // Check for missing semicolons
+    for ( auto expr = sub_expr.begin(); expr != sub_expr.end(); expr++ ) {
+        if ( std::dynamic_pointer_cast<CompletedExpr>( *expr ) == nullptr ) {
+            w_ctx.print_msg<MessageType::err_unfinished_expr>( MessageInfo( *expr, 0, FmtStr::Color::Red ) );
+            return false;
+        }
+    }
+    return true;
+}
+
+
 bool SingleCompletedExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<CompletedExpr>( sub_expr ) != nullptr ) { // double semicolon
         w_ctx.print_msg<MessageType::err_semicolon_without_meaning>(
@@ -79,6 +91,17 @@ void BlockExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 void BlockExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+}
+
+bool ArraySpecifierExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+    // Check for missing semicolons (except the last expr)
+    for ( auto expr = sub_expr.begin(); expr != sub_expr.end() && expr != sub_expr.end() - 1; expr++ ) {
+        if ( std::dynamic_pointer_cast<CompletedExpr>( *expr ) == nullptr ) {
+            w_ctx.print_msg<MessageType::err_unfinished_expr>( MessageInfo( *expr, 0, FmtStr::Color::Red ) );
+            return false;
+        }
+    }
+    return true;
 }
 
 bool FuncHeadExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {

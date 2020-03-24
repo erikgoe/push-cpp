@@ -157,6 +157,8 @@ public:
         return visit_impl( c_ctx, w_ctx, vpt, *this ) && result;
     }
 
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     String get_debug_repr() override {
         String str = "GLOBAL {\n ";
         for ( auto &s : sub_expr )
@@ -391,6 +393,8 @@ public:
         return visit_impl( c_ctx, w_ctx, vpt, *this ) && result;
     }
 
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     String get_debug_repr() override {
         String str = "ARRAY[ ";
         for ( auto &s : sub_expr )
@@ -437,6 +441,7 @@ public:
     }
 
     void update_symbol_id( SymbolId new_id ) override { symbol = new_id; }
+
     SymbolId get_symbol_id() override { return symbol; }
 
     String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")" + get_additional_debug_data(); }
