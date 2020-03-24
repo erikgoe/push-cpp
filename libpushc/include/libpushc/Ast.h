@@ -73,7 +73,8 @@ struct TypeTableEntry {
 
     TypeMemSize additional_mem_size = 0; // additional blob of memory bytes (e. g. for primitive types)
     std::vector<SymbolGraphNode> members; // list of members of this type (not pointers)
-    std::vector<TypeId> subtypes; // basically traits
+    std::vector<TypeId> supertypes; // basically traits
+    std::vector<TypeId> subtypes; // the types which implement this trait (so this must be a trait)
 
     FunctionBodyId function_body = 0; // the function body, if it's a function
 };
