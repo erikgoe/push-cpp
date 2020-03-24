@@ -157,7 +157,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
                 auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
                 expr->type = literal.first;
 
-                u8 size = c_ctx.type_table[literal.first].additional_mem_size;
+                TypeMemSize size = c_ctx.type_table[literal.first].additional_mem_size;
                 expr->load_from_number( literal.second, size );
 
                 expr->pos_info = { t.file, t.line, t.column, t.length };
@@ -469,7 +469,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                  to_string( c_ctx->symbol_graph[i].value ) );
         }
         log( "TYPES --------" );
-        for ( size_t i = 1; i < c_ctx->symbol_graph.size(); i++ ) {
+        for ( size_t i = 1; i < c_ctx->type_table.size(); i++ ) {
             auto type = c_ctx->type_table[i];
             log( " " + to_string( i ) + " add_size " + to_string( type.additional_mem_size ) + " - sym " +
                  get_full_symbol_name( *c_ctx, type.symbol ) );
