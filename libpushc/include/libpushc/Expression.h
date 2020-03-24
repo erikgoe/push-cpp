@@ -58,7 +58,7 @@ sptr<std::vector<SymbolIdentifier>> get_symbol_chain_from_expr( sptr<SymbolExpr>
 #include "Expression.inl"
 
 // Base class for expressions in the AST
-class Expr {
+class Expr : public std::enable_shared_from_this<Expr> {
 public:
     PosInfo pos_info;
     std::vector<sptr<StaticStatementExpr>> static_statements;
