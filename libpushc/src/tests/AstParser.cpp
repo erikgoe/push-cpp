@@ -42,6 +42,7 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
     auto config = std::make_shared<PreludeConfig>();
     *config = w_ctx->do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
 
+    g_ctx->set_pref<StringSV>( PrefType::input_source, "debug" );
 
     std::vector<std::pair<String, String>> test_data = {
         { "a+b;", "GLOBAL { SC OP(SYM() + SYM()); }" },

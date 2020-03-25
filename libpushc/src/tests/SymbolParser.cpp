@@ -43,6 +43,7 @@ TEST_CASE( "Symbol parser", "[semantic_parser]" ) {
     auto config = std::make_shared<PreludeConfig>();
     *config = w_ctx->do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
 
+    g_ctx->set_pref<StringSV>( PrefType::input_source, "debug" );
 
     // Pairs of code and the expected (single) message error (or none if MessageType::count)
     std::vector<std::pair<String, MessageType>> test_data = {
@@ -55,9 +56,13 @@ TEST_CASE( "Symbol parser", "[semantic_parser]" ) {
         auto &log = w_ctx->global_ctx()->get_message_log();
 
         if ( d.second != MessageType::count ) {
+            CAPTURE( d.first );
             CHECK( log.size() == 1 );
-            CHECK( log.front().first == d.second );
+            if ( log.size() == 1 )
+                CHECK( log.front().first == d.second );
         } else {
+            CAPTURE( d.first );
+            INFO( "Log not empty, but didn't expect any messages" );
             CHECK( log.empty() );
         }
 

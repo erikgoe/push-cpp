@@ -25,7 +25,7 @@ sptr<SourceInput> get_source_input( sptr<String> file, Worker &w_ctx ) {
             w_ctx.print_msg<MessageType::ferr_file_not_found>( MessageInfo(), {}, *file );
         }
         source_input = make_shared<FileInput>( file, w_ctx.shared_from_this() );
-    } else {
+    } else if ( input_pref != "debug" ) {
         LOG_ERR( "Unknown input type pref." );
         w_ctx.print_msg<MessageType::err_unknown_source_input_pref>( MessageInfo(), {}, input_pref, *file );
     }
@@ -40,6 +40,8 @@ sptr<String> get_std_dir() {
 void get_source_lines( sptr<String> file, size_t line_begin, size_t line_end, JobsBuilder &jb, UnitCtx &ctx ) {
     jb.add_job<std::list<String>>( [&, file, line_begin, line_end]( Worker &w_ctx ) {
         auto source = get_source_input( file, w_ctx );
+        if ( !source )
+            return std::list<String>(); // lines not available
         return source->get_lines( line_begin, line_end, w_ctx );
     } );
 }
