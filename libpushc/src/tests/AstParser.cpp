@@ -124,7 +124,8 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
           "GLOBAL { FUNC(0 TEMPLATE SYM()<TYPED(SYM():SYM())> BLOCK { SC BINDING(OP(TYPED(SYM():SYM()) = "
           "BLOB_LITERAL())); SC FUNC_HEAD(UNIT() TEMPLATE SYM()<SYM()>); }) }" },
         { "fn { unsafe { C::printf(\"hello world\\n\");} } ",
-          "GLOBAL { FUNC(0 SYM() BLOCK { UNSAFE BLOCK { SC FUNC_HEAD(TERM( STR \"hello world\\n\" ) SCOPE(SYM()::SYM())); "
+          "GLOBAL { FUNC(0 SYM() BLOCK { UNSAFE BLOCK { SC FUNC_HEAD(TERM( STR \"hello world\\n\" ) "
+          "SCOPE(SYM()::SYM())); "
           "} }) }" },
         { "decl fn1(arg:int); // implicitly public\n pub fn2(arg:int);",
           "GLOBAL { SC DECL(FUNC_HEAD(TERM( TYPED(SYM():SYM()) ) SYM())); SC PUBLIC(FUNC_HEAD(TERM( TYPED(SYM():SYM()) "
@@ -134,10 +135,10 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
           "MEMBER(SYM().SYM())); }) FUNC(0 SYM() BLOCK { }) FUNC(0 TUPLE( TYPED(SYM():SYM()), TYPED(SYM():SYM()), ) "
           "SYM() -> SYM() BLOCK { FUNC(0 UNIT() ARRAY[ TOKEN 14 \"&\" ] BLOCK { OP(SYM() ++) }) SC ARR_ACC "
           "SYM()[BLOB_LITERAL()]; }) }" },
-        { "#not_inline fn { println!(\"Hello World\"); } ",
-          "GLOBAL { ANNOTATE(SYM() for FUNC(0 SYM() BLOCK { SC MACRO(SYM()! TERM( STR \"Hello World\" )); })) }" },
-        { "#not_inline #other_annotation fn {  } ",
-          "GLOBAL { ANNOTATE(SYM() for ANNOTATE(SYM() for FUNC(0 SYM() BLOCK { }))) }" },
+        { "#not_inline() fn { println!(\"Hello World\"); } ",
+          "GLOBAL { ANNOTATE(SYM() UNIT()) FUNC(0 SYM() BLOCK { SC MACRO(SYM()! TERM( STR \"Hello World\" )); }) }" },
+        { "#not_inline() #other_annotation() fn {  } ",
+          "GLOBAL { ANNOTATE(SYM() UNIT()) ANNOTATE(SYM() UNIT()) FUNC(0 SYM() BLOCK { }) }" },
         { "f(g<a>(c)); fn<A, B>() { a+fn(a+b, c); }",
           "GLOBAL { SC FUNC_HEAD(TERM( FUNC_HEAD(TERM( SYM() ) TEMPLATE SYM()<SYM()>) ) SYM()); FUNC(0 UNIT() TEMPLATE "
           "SYM()<COMMA( SYM(), SYM(), )> BLOCK { SC OP(SYM() + FUNC_HEAD(TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "

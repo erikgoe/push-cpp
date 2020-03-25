@@ -109,6 +109,7 @@ define_mci_rule( FUNCTION_DEFINITION, std::op::Function, fn, 8, rtl, quadruple_l
 
 // Special specifiers
 define_mci_rule( MACRO, 8, rtl, triple_list, symbol -> name, "!", expr -> body ); // macro
+define_mci_rule( ANNOTATION, 8, rtl, double_list, "#", fn_head -> head ); // compiler annotation
 define_mci_rule( UNSAFE_BLOCK, 9, rtl, double_list, "unsafe", completed -> body ); // unsafe block
 define_mci_rule( STATIC_STATEMENT, 10, rtl, double_list, "$", completed -> body ); // static statement
 
@@ -203,11 +204,8 @@ define_mci_rule( INFINITE_LOOP, 33 BIAS 9, rtl, double_list, "loop", completed -
 define_mci_rule( ITR_LOOP_EXPRESSION, 33 BIAS 9, rtl, triple_list, "for", expr -> iterator, completed -> exec ); // for loop over an iterator
 define_mci_rule( MATCH_EXPRESSION, 33 BIAS 9, rtl, triple_list, "match", expr -> selector, completed -> cases ); // match keyword which matches an expression
 
-// Annotations
-define_mci_rule( ANNOTATION, 34 BIAS 9, rtl, triple_list, "#", symbol -> name, expr -> body ); // compiler annotation
-
 // Templates
-define_mci_rule( DEFINE_TEMPLATE, 35 CLASS 3 FROM 4, ltr, quadruple_list, expr -> name, "<", expr -> attributes, ">" ); // single template arguments are surrounded by angular brackets
+define_mci_rule( DEFINE_TEMPLATE, 34 CLASS 3 FROM 4, ltr, quadruple_list, expr -> name, "<", expr -> attributes, ">" ); // single template arguments are surrounded by angular brackets
 
 
 // Primitive types

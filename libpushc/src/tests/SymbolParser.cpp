@@ -130,7 +130,7 @@ TEST_CASE( "Basic semantic check", "[semantic_parser]" ) {
         { "pub a:1;", MessageType::err_expected_symbol },
         { "pub 1:T;", MessageType::err_expected_symbol },
         { "pub 1;", MessageType::err_expected_symbol },
-        //{ "#annotation(param) fn(){}", MessageType::count },
+        { "#annotation(param) fn(){}", MessageType::count },
         { "macro!();", MessageType::count },
         { "macro!{};", MessageType::count },
         { "fn<T>();", MessageType::count },

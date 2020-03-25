@@ -1493,20 +1493,19 @@ public:
 };
 
 // An annotation to give special instructions to the compiler
-class CompilerAnnotationExpr : public SeparableExpr {
+class CompilerAnnotationExpr : public CompletedExpr {
 public:
-    sptr<Expr> name;
-    sptr<Expr> body;
+    sptr<Expr> symbol;
+    sptr<Expr> parameters;
 
     CompilerAnnotationExpr() {}
-    CompilerAnnotationExpr( sptr<Expr> name, sptr<Expr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
-        this->name = name;
-        this->body = body;
-        this->precedence = precedence;
-        this->original_list = original_list;
+    CompilerAnnotationExpr( sptr<Expr> symbol, sptr<Expr> parameters, u32 precedence,
+                            std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->parameters = parameters;
     }
 
-    TypeId get_type() override { return body->get_type(); }
+    TypeId get_type() override { return parameters->get_type(); }
 
     bool matches( sptr<Expr> other ) override {
         return std::dynamic_pointer_cast<CompilerAnnotationExpr>( other ) != nullptr;
@@ -1514,14 +1513,14 @@ public:
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) override {
         pre_visit_impl( c_ctx, w_ctx, vpt, *this );
-        return name->visit( c_ctx, w_ctx, vpt ) && body->visit( c_ctx, w_ctx, vpt ) &&
+        return symbol->visit( c_ctx, w_ctx, vpt ) && parameters->visit( c_ctx, w_ctx, vpt ) &&
                visit_impl( c_ctx, w_ctx, vpt, *this );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
-        return "ANNOTATE(" + name->get_debug_repr() + " for " + body->get_debug_repr() + ")" +
+        return "ANNOTATE(" + symbol->get_debug_repr() + " " + parameters->get_debug_repr() + ")" +
                get_additional_debug_data();
     }
 };

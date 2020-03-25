@@ -553,8 +553,12 @@ void StaticStatementExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 bool CompilerAnnotationExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
-    if ( std::dynamic_pointer_cast<SymbolExpr>( name ) == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( name, 0, FmtStr::Color::Red ) );
+    if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+        return false;
+    }
+    if ( std::dynamic_pointer_cast<ParenthesisExpr>( parameters ) == nullptr ) {
+        w_ctx.print_msg<MessageType::err_expected_parametes>( MessageInfo( parameters, 0, FmtStr::Color::Red ) );
         return false;
     }
     return true;
