@@ -175,7 +175,7 @@ define_mci_rule( NEW_OPERATOR, std::op::implication, 28, rtl, triple_list, expr 
 // Special prefixes
 define_mci_rule( DECLARATION, 29, rtl, double_list, "decl", fn_head -> symbol ); // declaration of a symbol
 define_mci_rule( PUBLIC_ATTRIBUTE, 29, rtl, double_list, "pub", fn_head -> symbol ); // specification of a public function
-define_mci_rule( PUBLIC_ATTRIBUTE, 29, rtl, double_list, "pub", competed -> symbol ); // specification of a public symbol other than a function
+define_mci_rule( PUBLIC_ATTRIBUTE, 29, rtl, double_list, "pub", expr -> symbol ); // specification of a public symbol other than a function
 
 // Comma linking operator
 define_mci_rule( COMMA_OPERATOR, 30, rtl, triple_list, expr -> lvalue, "," -> op, expr -> rvalue ); // the comma-linking operator

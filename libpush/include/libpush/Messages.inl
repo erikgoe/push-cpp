@@ -52,6 +52,7 @@ enum class MessageType {
     err_expected_only_one_parameter,
     err_expected_function_head,
     err_expected_function_definition,
+    err_method_not_allowed,
 
     warning = 5000,
 
@@ -140,6 +141,8 @@ MESSAGE_DEFINITION( MessageType::err_expected_function_head, MessageClass::Error
                     "instead of this expression" );
 MESSAGE_DEFINITION( MessageType::err_expected_function_definition, MessageClass::Error, "C",
                     "Expected a function definition", "instead of this expression" );
+MESSAGE_DEFINITION( MessageType::err_method_not_allowed, MessageClass::Error, "C", "Method not allowed",
+                    "Methods are not allowed in this scope, please move it into an impl block." );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

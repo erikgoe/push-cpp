@@ -51,7 +51,7 @@ bool TokenExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return false;
 }
 
-bool DeclExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx )  {
+bool DeclExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     // Check for missing semicolons
     for ( auto expr = sub_expr.begin(); expr != sub_expr.end(); expr++ ) {
         if ( std::dynamic_pointer_cast<CompletedExpr>( *expr ) == nullptr ) {
@@ -112,8 +112,18 @@ bool FuncHeadExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( parameters ) {
         if ( auto paren_expr = std::dynamic_pointer_cast<ParenthesisExpr>( parameters ); paren_expr != nullptr ) {
             for ( auto &entry : paren_expr->get_list() ) {
-                if ( std::dynamic_pointer_cast<SymbolExpr>( entry ) == nullptr &&
-                     std::dynamic_pointer_cast<TypedExpr>( entry ) == nullptr ) {
+                if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( entry ); typed != nullptr ) {
+                    if ( std::dynamic_pointer_cast<SymbolExpr>( typed->symbol ) == nullptr ) {
+                        w_ctx.print_msg<MessageType::err_expected_symbol>(
+                            MessageInfo( typed->symbol, 0, FmtStr::Color::Red ) );
+                        return false;
+                    }
+                    if ( std::dynamic_pointer_cast<SymbolExpr>( typed->type ) == nullptr ) {
+                        w_ctx.print_msg<MessageType::err_expected_symbol>(
+                            MessageInfo( typed->type, 0, FmtStr::Color::Red ) );
+                        return false;
+                    }
+                } else if ( std::dynamic_pointer_cast<SymbolExpr>( entry ) == nullptr ) {
                     w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( entry, 0, FmtStr::Color::Red ) );
                     return false;
                 }
@@ -204,7 +214,7 @@ bool SimpleBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
             return false;
         }
     } else if ( auto lvalue = std::dynamic_pointer_cast<SymbolExpr>( assignment->lvalue ); lvalue == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( lvalue, 0, FmtStr::Color::Red ) );
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( assignment->lvalue, 0, FmtStr::Color::Red ) );
         return false;
     }
     return true;
@@ -218,11 +228,11 @@ bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         return false;
     }
     if ( auto lvalue = std::dynamic_pointer_cast<SymbolExpr>( assignment->lvalue ); lvalue == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( lvalue, 0, FmtStr::Color::Red ) );
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( assignment->lvalue, 0, FmtStr::Color::Red ) );
         return false;
     }
     if ( auto lvalue = std::dynamic_pointer_cast<SymbolExpr>( assignment->rvalue ); lvalue == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( lvalue, 0, FmtStr::Color::Red ) );
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( assignment->lvalue, 0, FmtStr::Color::Red ) );
         return false;
     }
     return true;
@@ -325,23 +335,43 @@ bool ArrayAccessExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool StructExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( name && std::dynamic_pointer_cast<SymbolExpr>( name ) == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( name, 0, FmtStr::Color::Red ) );
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( name, 0, FmtStr::Color::Red ) );
         return false;
     }
     if ( body ) {
-        if ( auto cases_list = std::dynamic_pointer_cast<ListedExpr>( body ); cases_list != nullptr ) {
-            for ( auto &entry : cases_list->get_list() ) {
+        if ( auto list = std::dynamic_pointer_cast<ListedExpr>( body ); list != nullptr ) {
+            for ( auto &entry : list->get_list() ) {
                 if ( auto pub_entry = std::dynamic_pointer_cast<PublicAttrExpr>( entry ); pub_entry != nullptr ) {
-                    if ( std::dynamic_pointer_cast<TypedExpr>( pub_entry->symbol ) == nullptr &&
-                         std::dynamic_pointer_cast<SymbolExpr>( entry ) == nullptr ) {
-                        w_ctx.print_msg<MessageType::err_expected_symbol>(
+                    // PublicAttrExpr checks already whether its symbol is TypedExpr, SymbolExpr or FuncHeadExpr, but
+                    // still this is needed. If it's a TypedExpr, symbol and type entries are already checked
+                    if ( std::dynamic_pointer_cast<FuncExpr>( pub_entry->symbol ) != nullptr ||
+                         std::dynamic_pointer_cast<FuncHeadExpr>( pub_entry->symbol ) != nullptr ) {
+                        w_ctx.print_msg<MessageType::err_method_not_allowed>(
                             MessageInfo( pub_entry->symbol, 0, FmtStr::Color::Red ) );
                         return false;
                     }
-                } else if ( std::dynamic_pointer_cast<TypedExpr>( entry ) == nullptr &&
-                            std::dynamic_pointer_cast<SymbolExpr>( entry ) == nullptr ) {
-                    w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( entry, 0, FmtStr::Color::Red ) );
-                    return false;
+                } else {
+                    if ( std::dynamic_pointer_cast<FuncExpr>( entry ) != nullptr ||
+                         std::dynamic_pointer_cast<FuncHeadExpr>( entry ) != nullptr ) {
+                        w_ctx.print_msg<MessageType::err_method_not_allowed>(
+                            MessageInfo( entry, 0, FmtStr::Color::Red ) );
+                        return false;
+                    } else if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( entry ); typed != nullptr ) {
+                        if ( std::dynamic_pointer_cast<SymbolExpr>( typed->symbol ) == nullptr ) {
+                            w_ctx.print_msg<MessageType::err_expected_symbol>(
+                                MessageInfo( typed->symbol, 0, FmtStr::Color::Red ) );
+                            return false;
+                        }
+                        if ( std::dynamic_pointer_cast<SymbolExpr>( typed->type ) == nullptr ) {
+                            w_ctx.print_msg<MessageType::err_expected_symbol>(
+                                MessageInfo( typed->type, 0, FmtStr::Color::Red ) );
+                            return false;
+                        }
+                    } else if ( std::dynamic_pointer_cast<SymbolExpr>( entry ) == nullptr ) {
+                        w_ctx.print_msg<MessageType::err_expected_symbol>(
+                            MessageInfo( entry, 0, FmtStr::Color::Red ) );
+                        return false;
+                    }
                 }
             }
         } else {
@@ -368,18 +398,20 @@ void StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool TraitExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( name ) == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( name, 0, FmtStr::Color::Red ) );
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( name, 0, FmtStr::Color::Red ) );
         return false;
     }
-    if ( auto cases_list = std::dynamic_pointer_cast<ListedExpr>( body ); cases_list != nullptr ) {
-        for ( auto &entry : cases_list->get_list() ) {
+    if ( auto list = std::dynamic_pointer_cast<ListedExpr>( body ); list != nullptr ) {
+        for ( auto &entry : list->get_list() ) {
             if ( auto pub_entry = std::dynamic_pointer_cast<PublicAttrExpr>( entry ); pub_entry != nullptr ) {
-                if ( std::dynamic_pointer_cast<FuncHeadExpr>( pub_entry->symbol ) == nullptr ) {
+                if ( std::dynamic_pointer_cast<FuncHeadExpr>( pub_entry->symbol ) == nullptr &&
+                     std::dynamic_pointer_cast<FuncExpr>( pub_entry->symbol ) == nullptr ) {
                     w_ctx.print_msg<MessageType::err_expected_function_head>(
                         MessageInfo( pub_entry->symbol, 0, FmtStr::Color::Red ) );
                     return false;
                 }
-            } else if ( std::dynamic_pointer_cast<FuncHeadExpr>( entry ) == nullptr ) {
+            } else if ( std::dynamic_pointer_cast<FuncHeadExpr>( entry ) == nullptr &&
+                        std::dynamic_pointer_cast<FuncExpr>( entry ) == nullptr ) {
                 w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( entry, 0, FmtStr::Color::Red ) );
                 return false;
             }
@@ -407,15 +439,15 @@ void TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool ImplExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( struct_name ) == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( struct_name, 0, FmtStr::Color::Red ) );
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( struct_name, 0, FmtStr::Color::Red ) );
         return false;
     }
     if ( trait_name && std::dynamic_pointer_cast<SymbolExpr>( trait_name ) == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_function_head>( MessageInfo( trait_name, 0, FmtStr::Color::Red ) );
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( trait_name, 0, FmtStr::Color::Red ) );
         return false;
     }
-    if ( auto cases_list = std::dynamic_pointer_cast<ListedExpr>( body ); cases_list != nullptr ) {
-        for ( auto &entry : cases_list->get_list() ) {
+    if ( auto list = std::dynamic_pointer_cast<ListedExpr>( body ); list != nullptr ) {
+        for ( auto &entry : list->get_list() ) {
             if ( auto pub_entry = std::dynamic_pointer_cast<PublicAttrExpr>( entry ); pub_entry != nullptr ) {
                 if ( std::dynamic_pointer_cast<FuncExpr>( pub_entry->symbol ) == nullptr ) {
                     w_ctx.print_msg<MessageType::err_expected_function_definition>(
@@ -472,9 +504,18 @@ bool DeclarationExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 bool PublicAttrExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
-    if ( std::dynamic_pointer_cast<TypedExpr>( symbol ) == nullptr &&
-         std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr &&
-         std::dynamic_pointer_cast<FuncHeadExpr>( symbol ) == nullptr ) {
+    if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( symbol ); typed != nullptr ) {
+        if ( std::dynamic_pointer_cast<SymbolExpr>( typed->symbol ) == nullptr ) {
+            w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( typed->symbol, 0, FmtStr::Color::Red ) );
+            return false;
+        }
+        if ( std::dynamic_pointer_cast<SymbolExpr>( typed->type ) == nullptr ) {
+            w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( typed->type, 0, FmtStr::Color::Red ) );
+            return false;
+        }
+    } else if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr &&
+                std::dynamic_pointer_cast<FuncHeadExpr>( symbol ) == nullptr &&
+                std::dynamic_pointer_cast<FuncExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
     }
@@ -511,22 +552,6 @@ bool TemplateExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
-    }
-
-    if ( attributes ) {
-        if ( auto attributes_list = std::dynamic_pointer_cast<CommaExpr>( attributes ); attributes_list != nullptr ) {
-            for ( auto &entry : attributes_list->get_list() ) {
-                if ( std::dynamic_pointer_cast<SymbolExpr>( entry ) == nullptr &&
-                     std::dynamic_pointer_cast<TypedExpr>( entry ) == nullptr ) {
-                    w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( entry, 0, FmtStr::Color::Red ) );
-                    return false;
-                }
-            }
-        } else if ( std::dynamic_pointer_cast<SymbolExpr>( attributes ) == nullptr &&
-                    std::dynamic_pointer_cast<TypedExpr>( attributes ) == nullptr ) {
-            w_ctx.print_msg<MessageType::err_expected_comma_list>( MessageInfo( attributes, 0, FmtStr::Color::Red ) );
-            return false;
-        }
     }
     return true;
 }
