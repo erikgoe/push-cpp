@@ -67,6 +67,9 @@ class GlobalCtx : public std::enable_shared_from_this<GlobalCtx> {
     std::map<PrefType, std::unique_ptr<PrefValue>> prefs; // store all the prefs
 
 
+    std::vector<std::pair<MessageType, MessageInfo>> message_log; // stores all messages internally
+
+
     template <typename FuncT, typename... Args>
     auto query_impl( FuncT fn, sptr<Worker> w_ctx, const Args &... args ) -> decltype( auto );
 
@@ -155,12 +158,19 @@ public:
 
     // Prints a message to the user
     template <MessageType MesT, typename... Args>
-    void print_msg( sptr<Worker> w_ctx, const MessageInfo &message,
-                              const std::vector<MessageInfo> &notes, Args... head_args ) {
+    void print_msg( sptr<Worker> w_ctx, const MessageInfo &message, const std::vector<MessageInfo> &notes,
+                    Args... head_args ) {
+        message_log.push_back( std::make_pair( MesT, message ) );
         print_msg_to_stdout( get_message<MesT>( w_ctx, message, notes, head_args... ) );
         if ( MesT < MessageType::error ) // fatal error
             throw AbortCompilationError();
     }
+
+    // Returns a read-only reference to the internal message log
+    const std::vector<std::pair<MessageType, MessageInfo>> &get_message_log() { return message_log; }
+
+    // Deletes all internally stored messages
+    void clear_messages() { message_log.clear(); }
 
 
     // Returns a previously saved pref. If it was not saved, returns the default value for the preference type.

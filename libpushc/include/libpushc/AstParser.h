@@ -23,3 +23,10 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx );
 
 // NOT A QUERY. Translates the prelude syntax rules into ast syntax rules
 void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx );
+
+// NOT A QUERY. Parses a scope
+sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, Token::Type end_token,
+                        Token *last_token );
+
+// NOT A QUERY. Loads basic types like int, string, etc
+void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg );

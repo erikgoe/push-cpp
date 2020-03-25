@@ -17,33 +17,16 @@
 #include "libpushc/Prelude.h"
 #include "libpushc/Expression.h"
 #include "libpushc/Util.h"
+#include "libpushc/tests/StringInput.h"
 
-// Defined in libpushc/AstParser.cpp
-sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, Token::Type end_token,
-                        Token *last_token );
-void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg );
-
-// Provides token input from a string
-class StringInput : public StreamInput {
-public:
-    StringInput( sptr<String> file, sptr<Worker> w_ctx, const String &data )
-            : StreamInput( make_shared<std::basic_istringstream<char>>( data ), file, w_ctx ) {}
-
-    sptr<SourceInput> open_new_file( sptr<String> file, sptr<Worker> w_ctx ) {
-        return make_shared<StringInput>( file, w_ctx, "" );
-    }
-
-    static bool file_exists( const String &file ) { return false; }
-};
-
-void load_default_prelude( SourceInput &input, Worker &w_ctx ) {
+static void load_default_prelude( SourceInput &input, Worker &w_ctx ) {
     w_ctx.unit_ctx()->prelude_conf =
         w_ctx.do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
     input.configure( w_ctx.unit_ctx()->prelude_conf.token_conf );
 }
 
 
-void test_parser( const String &data, JobsBuilder &jb, UnitCtx &parent_ctx ) {
+static void test_parser( const String &data, JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<sptr<Expr>>( [data]( Worker &w_ctx ) {
         sptr<SourceInput> input =
             make_shared<StringInput>( make_shared<String>( "test" ), w_ctx.shared_from_this(), data );
@@ -57,11 +40,11 @@ void test_parser( const String &data, JobsBuilder &jb, UnitCtx &parent_ctx ) {
     } );
 }
 
-TEST_CASE( "Ast parser", "[ast_parser]" ) {
+TEST_CASE( "Ast parser", "[syntax_parser]" ) {
     auto g_ctx = make_shared<GlobalCtx>();
     auto w_ctx = g_ctx->setup( 1 );
 
-    std::vector<std::pair<String, String>> data = {
+    std::vector<std::pair<String, String>> test_data = {
         { "a+b;", "GLOBAL { SC OP(SYM() + SYM()); }" },
         { "/// Basic function without anything special\n function {let val = 5;}",
           "GLOBAL { FUNC(0 SYM() BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); }) }" },
@@ -178,7 +161,7 @@ TEST_CASE( "Ast parser", "[ast_parser]" ) {
     };
 
     std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*:[0-9]*\\)" );
-    for ( auto &d : data ) {
+    for ( auto &d : test_data ) {
         String str = w_ctx->do_query( test_parser, d.first )->jobs.back()->to<sptr<Expr>>()->get_debug_repr();
         str = std::regex_replace( str, symbol_regex, "SYM()" );
         str = std::regex_replace( str, blob_literal_regex, "BLOB_LITERAL()" );

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.6)
 # add files
 add_executable(${TEST_NAME}
     AstParser.cpp
+    SymbolParser.cpp
     Test.cpp
 )
 
