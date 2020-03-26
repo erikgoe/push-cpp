@@ -213,6 +213,8 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";" + get_additional_debug_data(); }
 
     PosInfo get_position_info() override { return merge_pos_infos( sub_expr->get_position_info(), pos_info ); }
@@ -619,6 +621,7 @@ class FuncHeadExpr : public SeparableExpr {
 public:
     sptr<Expr> symbol;
     sptr<Expr> parameters;
+    bool pub; // public keyword
 
     FuncHeadExpr() {}
     FuncHeadExpr( sptr<Expr> symbol, sptr<Expr> parameters, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
@@ -654,6 +657,7 @@ public:
     sptr<Expr> return_type;
     sptr<Expr> symbol;
     sptr<CompletedExpr> body;
+    bool pub; // public keyword
 
     FuncExpr() {}
     FuncExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, sptr<Expr> return_type, sptr<CompletedExpr> block,
@@ -1462,6 +1466,10 @@ public:
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    bool is_inner_public();
+
+    void set_inner_public( bool value = true );
 
     String get_debug_repr() override {
         return "PUBLIC(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();

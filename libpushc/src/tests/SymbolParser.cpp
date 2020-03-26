@@ -19,8 +19,9 @@
 #include "libpushc/Util.h"
 #include "libpushc/tests/StringInput.h"
 
-static void test_parser( const String &data, sptr<PreludeConfig> config, JobsBuilder &jb, UnitCtx &parent_ctx ) {
-    jb.add_job<sptr<CrateCtx>>( [data, config]( Worker &w_ctx ) {
+static void test_parser( const String &data, sptr<PreludeConfig> config, sptr<std::vector<VisitorPassType>> passes,
+                         JobsBuilder &jb, UnitCtx &parent_ctx ) {
+    jb.add_job<sptr<CrateCtx>>( [data, config, passes]( Worker &w_ctx ) {
         sptr<SourceInput> input =
             make_shared<StringInput>( make_shared<String>( "test" ), w_ctx.shared_from_this(), data );
         input->configure( config->token_conf );
@@ -31,7 +32,8 @@ static void test_parser( const String &data, sptr<PreludeConfig> config, JobsBui
         load_syntax_rules( w_ctx, *c_ctx );
 
         c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, Token::Type::eof, nullptr );
-        c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::BASIC_SEMANTIC_CHECK );
+        for ( auto &pass : *passes )
+            c_ctx->ast->visit( *c_ctx, w_ctx, pass );
         return c_ctx;
     } );
 }
@@ -45,6 +47,8 @@ TEST_CASE( "Basic semantic check", "[semantic_parser]" ) {
     *config = w_ctx->do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
 
     g_ctx->set_pref<StringSV>( PrefType::input_source, "debug" );
+    auto passes = make_shared<std::vector<VisitorPassType>>();
+    passes->push_back( VisitorPassType::BASIC_SEMANTIC_CHECK );
 
     // Pairs of code and the expected (single) message error (or none if MessageType::count)
     std::vector<std::pair<String, MessageType>> test_data = {
@@ -137,7 +141,7 @@ TEST_CASE( "Basic semantic check", "[semantic_parser]" ) {
     };
 
     for ( auto &d : test_data ) {
-        auto c_ctx = w_ctx->do_query( test_parser, d.first, config )->jobs.back()->to<sptr<CrateCtx>>();
+        auto c_ctx = w_ctx->do_query( test_parser, d.first, config, passes )->jobs.back()->to<sptr<CrateCtx>>();
         auto &log = w_ctx->global_ctx()->get_message_log();
 
         CAPTURE( c_ctx->ast->get_debug_repr() );
@@ -155,5 +159,39 @@ TEST_CASE( "Basic semantic check", "[semantic_parser]" ) {
         }
 
         w_ctx->global_ctx()->clear_messages();
+    }
+}
+
+TEST_CASE( "First transformation", "[semantic_parser]" ) {
+    auto g_ctx = make_shared<GlobalCtx>();
+    auto w_ctx = g_ctx->setup( 1 );
+
+    // Preload prelude config
+    auto config = make_shared<PreludeConfig>();
+    *config = w_ctx->do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
+
+    g_ctx->set_pref<StringSV>( PrefType::input_source, "debug" );
+    auto passes = make_shared<std::vector<VisitorPassType>>();
+    passes->push_back( VisitorPassType::FIRST_TRANSFORMATION );
+
+    // Pairs of code and the expected (single) message error (or none if MessageType::count)
+    std::vector<std::pair<String, String>> test_data = {
+        { "{}", "GLOBAL { GLOBAL { } }" },
+        { "{{}}{}", "GLOBAL { GLOBAL { GLOBAL { } } GLOBAL { } }" },
+        { "pub fn();", "GLOBAL { SC FUNC_HEAD(UNIT() SYM()); }" },
+        { "struct A { pub a, b }", "GLOBAL { STRUCT SYM() SET { SYM(), SYM(), } }" },
+        { "struct B { pub a, pub b }", "GLOBAL { STRUCT SYM() SET { SYM(), SYM(), } }" },
+        { "trait C { pub fn() }", "GLOBAL { TRAIT SYM() BLOCK { FUNC_HEAD(UNIT() SYM()) } }" },
+    };
+
+    std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*:[0-9]*\\)" );
+    for ( auto &d : test_data ) {
+        auto c_ctx = w_ctx->do_query( test_parser, d.first, config, passes )->jobs.back()->to<sptr<CrateCtx>>();
+        String str = c_ctx->ast->get_debug_repr();
+        str = std::regex_replace( str, symbol_regex, "SYM()" );
+        str = std::regex_replace( str, blob_literal_regex, "BLOB_LITERAL()" );
+        str.replace_all( "\n", "" );
+        str.replace_all( "  ", " " );
+        CHECK( str == d.second );
     }
 }
