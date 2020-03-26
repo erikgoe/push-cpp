@@ -135,29 +135,9 @@ bool FuncHeadExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
     }
-    if ( parameters ) {
-        if ( auto paren_expr = std::dynamic_pointer_cast<ParenthesisExpr>( parameters ); paren_expr != nullptr ) {
-            for ( auto &entry : paren_expr->get_list() ) {
-                if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( entry ); typed != nullptr ) {
-                    if ( std::dynamic_pointer_cast<SymbolExpr>( typed->symbol ) == nullptr ) {
-                        w_ctx.print_msg<MessageType::err_expected_symbol>(
-                            MessageInfo( typed->symbol, 0, FmtStr::Color::Red ) );
-                        return false;
-                    }
-                    if ( std::dynamic_pointer_cast<SymbolExpr>( typed->type ) == nullptr ) {
-                        w_ctx.print_msg<MessageType::err_expected_symbol>(
-                            MessageInfo( typed->type, 0, FmtStr::Color::Red ) );
-                        return false;
-                    }
-                } else if ( std::dynamic_pointer_cast<SymbolExpr>( entry ) == nullptr ) {
-                    w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( entry, 0, FmtStr::Color::Red ) );
-                    return false;
-                }
-            }
-        } else {
-            w_ctx.print_msg<MessageType::err_expected_parametes>( MessageInfo( parameters, 0, FmtStr::Color::Red ) );
-            return false;
-        }
+    if ( parameters && std::dynamic_pointer_cast<ParenthesisExpr>( parameters ) == nullptr ) {
+        w_ctx.print_msg<MessageType::err_expected_parametes>( MessageInfo( parameters, 0, FmtStr::Color::Red ) );
+        return false;
     }
     return true;
 }
