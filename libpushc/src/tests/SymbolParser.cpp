@@ -41,7 +41,7 @@ TEST_CASE( "Basic semantic check", "[semantic_parser]" ) {
     auto w_ctx = g_ctx->setup( 1 );
 
     // Preload prelude config
-    auto config = std::make_shared<PreludeConfig>();
+    auto config = make_shared<PreludeConfig>();
     *config = w_ctx->do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
 
     g_ctx->set_pref<StringSV>( PrefType::input_source, "debug" );
@@ -77,7 +77,6 @@ TEST_CASE( "Basic semantic check", "[semantic_parser]" ) {
         { "let a:1=1;", MessageType::err_expected_symbol },
         { "let 1=1;", MessageType::err_expected_symbol },
         { "use a = b;", MessageType::count },
-        { "use a;", MessageType::err_expected_assignment },
         { "use 1=b;", MessageType::err_expected_symbol },
         { "use a=1;", MessageType::err_expected_symbol },
         { "match a {1=>b, 2=>c}", MessageType::count },

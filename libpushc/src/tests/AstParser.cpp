@@ -39,7 +39,7 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
     auto w_ctx = g_ctx->setup( 1 );
 
     // Preload prelude config
-    auto config = std::make_shared<PreludeConfig>();
+    auto config = make_shared<PreludeConfig>();
     *config = w_ctx->do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
 
     g_ctx->set_pref<StringSV>( PrefType::input_source, "debug" );

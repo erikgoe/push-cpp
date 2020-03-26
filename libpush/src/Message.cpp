@@ -88,7 +88,7 @@ void draw_file( FmtStr &result, const String &file, const std::list<MessageInfo>
 
         auto list =
             w_ctx->global_ctx()
-                ->query( get_source_lines, w_ctx, std::make_shared<String>( file ), source_line_bound, upper_bound )
+                ->query( get_source_lines, w_ctx, make_shared<String>( file ), source_line_bound, upper_bound )
                 ->execute( *w_ctx )
                 ->jobs.front()
                 ->to<std::list<String>>();
