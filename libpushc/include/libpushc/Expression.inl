@@ -17,7 +17,7 @@ bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, s
         if ( !expr.basic_semantic_check( c_ctx, w_ctx ) )
             return false;
     } else if ( vpt == VisitorPassType::FIRST_TRANSFORMATION ) {
-        if ( !expr.first_transformation( c_ctx, w_ctx ) )
+        if ( !expr.first_transformation( c_ctx, w_ctx, anchor ) )
             return false;
     } else if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
         if ( !expr.symbol_discovery( c_ctx, w_ctx ) )

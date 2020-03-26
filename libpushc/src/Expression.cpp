@@ -62,17 +62,13 @@ bool DeclExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
     for ( auto itr = sub_expr.begin(); itr != sub_expr.end(); itr++ ) {
         if ( auto block = std::dynamic_pointer_cast<BlockExpr>( *itr ); block != nullptr ) {
             // Replace BlockExpr with DeclExpr
             auto new_decl = make_shared<DeclExpr>();
             new_decl->sub_expr = block->sub_expr;
             *itr = new_decl;
-        } else if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( *itr ); pub != nullptr ) {
-            // Resolve pub keyword
-            pub->set_inner_public();
-            *itr = pub->symbol;
         }
     }
     return true;
@@ -87,12 +83,7 @@ bool SingleCompletedExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx )
     return true;
 }
 
-bool SingleCompletedExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
-    if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( sub_expr ); pub != nullptr ) {
-        // Resolve pub keyword
-        pub->set_inner_public();
-        sub_expr = pub->symbol;
-    }
+bool SingleCompletedExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
     return true;
 }
 
@@ -431,29 +422,7 @@ bool StructExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool StructExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
-    if ( auto single = std::dynamic_pointer_cast<SingleCompletedExpr>( body ); single != nullptr ) {
-        if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( single->sub_expr ); pub != nullptr ) {
-            // Resolve pub keyword
-            pub->set_inner_public();
-            single->sub_expr = pub->symbol;
-        }
-    } else {
-        std::vector<sptr<Expr>> *list;
-
-        if ( auto block = std::dynamic_pointer_cast<SetExpr>( body ); block != nullptr )
-            list = &block->sub_expr;
-        else if ( auto block = std::dynamic_pointer_cast<BlockExpr>( body ); block != nullptr )
-            list = &block->sub_expr;
-
-        for ( auto itr = list->begin(); itr != list->end(); itr++ ) {
-            if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( *itr ); pub != nullptr ) {
-                // Resolve pub keyword
-                pub->set_inner_public();
-                *itr = pub->symbol;
-            }
-        }
-    }
+bool StructExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
     return true;
 }
 
@@ -500,29 +469,7 @@ bool TraitExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool TraitExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
-    if ( auto single = std::dynamic_pointer_cast<SingleCompletedExpr>( body ); single != nullptr ) {
-        if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( single->sub_expr ); pub != nullptr ) {
-            // Resolve pub keyword
-            pub->set_inner_public();
-            single->sub_expr = pub->symbol;
-        }
-    } else {
-        std::vector<sptr<Expr>> *list;
-
-        if ( auto block = std::dynamic_pointer_cast<SetExpr>( body ); block != nullptr )
-            list = &block->sub_expr;
-        else if ( auto block = std::dynamic_pointer_cast<BlockExpr>( body ); block != nullptr )
-            list = &block->sub_expr;
-
-        for ( auto itr = list->begin(); itr != list->end(); itr++ ) {
-            if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( *itr ); pub != nullptr ) {
-                // Resolve pub keyword
-                pub->set_inner_public();
-                *itr = pub->symbol;
-            }
-        }
-    }
+bool TraitExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
     return true;
 }
 
@@ -572,29 +519,7 @@ bool ImplExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool ImplExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
-    if ( auto single = std::dynamic_pointer_cast<SingleCompletedExpr>( body ); single != nullptr ) {
-        if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( single->sub_expr ); pub != nullptr ) {
-            // Resolve pub keyword
-            pub->set_inner_public();
-            single->sub_expr = pub->symbol;
-        }
-    } else {
-        std::vector<sptr<Expr>> *list;
-
-        if ( auto block = std::dynamic_pointer_cast<SetExpr>( body ); block != nullptr )
-            list = &block->sub_expr;
-        else if ( auto block = std::dynamic_pointer_cast<BlockExpr>( body ); block != nullptr )
-            list = &block->sub_expr;
-
-        for ( auto itr = list->begin(); itr != list->end(); itr++ ) {
-            if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( *itr ); pub != nullptr ) {
-                // Resolve pub keyword
-                pub->set_inner_public();
-                *itr = pub->symbol;
-            }
-        }
-    }
+bool ImplExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
     return true;
 }
 
@@ -657,29 +582,21 @@ bool PublicAttrExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool PublicAttrExpr::is_inner_public() {
+bool PublicAttrExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
+    // Resolve public attribute
     if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( symbol ); typed != nullptr ) {
-        return std::dynamic_pointer_cast<SymbolExpr>( typed->symbol )->is_public();
+        std::dynamic_pointer_cast<SymbolExpr>( typed->symbol )->set_public();
     } else if ( auto symbol_expr = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_expr != nullptr ) {
-        return symbol_expr->is_public();
+        symbol_expr->set_public();
     } else if ( auto fn = std::dynamic_pointer_cast<FuncHeadExpr>( symbol ); fn != nullptr ) {
-        return fn->pub;
+        fn->pub = true;
     } else if ( auto fn = std::dynamic_pointer_cast<FuncExpr>( symbol ); fn != nullptr ) {
-        return fn->pub;
+        fn->pub = true;
     }
-    return false; // never happens
-}
 
-void PublicAttrExpr::set_inner_public( bool value ) {
-    if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( symbol ); typed != nullptr ) {
-        std::dynamic_pointer_cast<SymbolExpr>( typed->symbol )->set_public( value );
-    } else if ( auto symbol_expr = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_expr != nullptr ) {
-        symbol_expr->set_public( value );
-    } else if ( auto fn = std::dynamic_pointer_cast<FuncHeadExpr>( symbol ); fn != nullptr ) {
-        fn->pub = value;
-    } else if ( auto fn = std::dynamic_pointer_cast<FuncExpr>( symbol ); fn != nullptr ) {
-        fn->pub = value;
-    }
+    anchor = symbol;
+
+    return true;
 }
 
 bool StaticStatementExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {

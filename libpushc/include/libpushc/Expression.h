@@ -84,7 +84,7 @@ public:
     virtual bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) = 0;
 
     // Does basic transformations, which don't require symbol information
-    virtual bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
+    virtual bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) { return true; }
 
     // Checks very basic semantic conditions on an expr. Returns false when an error has been found
     virtual bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
@@ -165,7 +165,7 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
 
     String get_debug_repr() override {
         String str = "GLOBAL {\n ";
@@ -213,7 +213,7 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
 
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";" + get_additional_debug_data(); }
 
@@ -541,8 +541,8 @@ public:
 
     // Separates the expression and all its sub expressions depending on their precedence.
     // Also adds all static statements recursively
-    void split_prepend_recursively( std::vector<sptr<Expr>> &rev_list, std::vector<sptr<Expr>> &stst_set,
-                                    u32 prec, bool ltr, u8 rule_length ) {
+    void split_prepend_recursively( std::vector<sptr<Expr>> &rev_list, std::vector<sptr<Expr>> &stst_set, u32 prec,
+                                    bool ltr, u8 rule_length ) {
         stst_set.insert( stst_set.end(), static_statements.begin(), static_statements.end() );
         for ( auto expr_itr = original_list.rbegin(); expr_itr != original_list.rend(); expr_itr++ ) {
             auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
@@ -1149,7 +1149,7 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1186,7 +1186,7 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1225,7 +1225,7 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1475,9 +1475,7 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool is_inner_public();
-
-    void set_inner_public( bool value = true );
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
 
     String get_debug_repr() override {
         return "PUBLIC(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
