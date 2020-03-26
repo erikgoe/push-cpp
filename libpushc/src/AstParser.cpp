@@ -227,7 +227,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
                 recheck = false;
                 SyntaxRule *best_rule = nullptr;
                 std::vector<sptr<Expr>> best_rule_rev_deep_expr_list;
-                std::vector<sptr<StaticStatementExpr>> best_rule_stst_set;
+                std::vector<sptr<Expr>> best_rule_stst_set;
                 size_t best_rule_cutout_ctr;
                 // Check each syntax rule
                 for ( auto &rule : c_ctx.rules ) {
@@ -241,7 +241,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
 
                         // Prepare backtracing
                         std::vector<sptr<Expr>> rev_deep_expr_list;
-                        std::vector<sptr<StaticStatementExpr>> stst_set;
+                        std::vector<sptr<Expr>> stst_set;
                         size_t cutout_ctr = 0;
                         for ( auto expr_itr = expr_list->first.rbegin();
                               expr_itr != expr_list->first.rend() && rev_deep_expr_list.size() < rule_length;

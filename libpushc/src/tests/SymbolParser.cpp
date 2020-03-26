@@ -33,7 +33,7 @@ static void test_parser( const String &data, sptr<PreludeConfig> config, sptr<st
 
         c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, Token::Type::eof, nullptr );
         for ( auto &pass : *passes )
-            c_ctx->ast->visit( *c_ctx, w_ctx, pass );
+            c_ctx->ast->visit( *c_ctx, w_ctx, pass, c_ctx->ast );
         return c_ctx;
     } );
 }

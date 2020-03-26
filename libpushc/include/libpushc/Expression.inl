@@ -12,7 +12,7 @@
 // limitations under the License.
 
 template <typename T>
-bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) {
+bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor ) {
     if ( vpt == VisitorPassType::BASIC_SEMANTIC_CHECK ) {
         if ( !expr.basic_semantic_check( c_ctx, w_ctx ) )
             return false;
@@ -29,14 +29,14 @@ bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) 
 
     bool result = true;
     for ( auto &ss : expr.static_statements ) {
-        if ( !ss->visit( c_ctx, w_ctx, vpt ) )
+        if ( !ss->visit( c_ctx, w_ctx, vpt, ss ) )
             result = false;
     }
     return result;
 }
 
 template <typename T>
-bool post_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) {
+bool post_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor ) {
     if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
         if ( !expr.post_symbol_discovery( c_ctx, w_ctx ) )
             return false;
