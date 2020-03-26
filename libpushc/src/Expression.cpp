@@ -62,6 +62,21 @@ bool DeclExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
+bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
+    for ( auto itr = sub_expr.begin(); itr != sub_expr.end(); itr++ ) {
+        if ( auto block = std::dynamic_pointer_cast<BlockExpr>( *itr ); block != nullptr ) {
+            // Replace BlockExpr with DeclExpr
+            auto new_decl = make_shared<DeclExpr>();
+            new_decl->sub_expr = block->sub_expr;
+            *itr = new_decl;
+        } else if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( *itr ); pub != nullptr ) {
+            // Resolve pub keyword
+            std::dynamic_pointer_cast<SymbolExpr>( pub->symbol )->set_public();
+            *itr = pub->symbol;
+        }
+    }
+    return true;
+}
 
 bool SingleCompletedExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<CompletedExpr>( sub_expr ) != nullptr ) { // double semicolon
@@ -261,8 +276,9 @@ bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( expr, 0, FmtStr::Color::Red ) );
         return false;
     }
-        return true;
+    return true;
 }
+
 void IfExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
@@ -408,6 +424,18 @@ bool StructExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
+bool StructExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
+    auto list = std::dynamic_pointer_cast<ListedExpr>( body )->get_list();
+    for ( auto itr = list.begin(); itr != list.end(); itr++ ) {
+        if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( *itr ); pub != nullptr ) {
+            // Resolve pub keyword
+            std::dynamic_pointer_cast<SymbolExpr>( pub->symbol )->set_public();
+            *itr = pub->symbol;
+        }
+    }
+    return true;
+}
+
 void StructExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( name ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
@@ -445,6 +473,18 @@ bool TraitExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     } else {
         w_ctx.print_msg<MessageType::err_expected_comma_list>( MessageInfo( body, 0, FmtStr::Color::Red ) );
         return false;
+    }
+    return true;
+}
+
+bool TraitExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
+    auto list = std::dynamic_pointer_cast<ListedExpr>( body )->get_list();
+    for ( auto itr = list.begin(); itr != list.end(); itr++ ) {
+        if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( *itr ); pub != nullptr ) {
+            // Resolve pub keyword
+            std::dynamic_pointer_cast<SymbolExpr>( pub->symbol )->set_public();
+            *itr = pub->symbol;
+        }
     }
     return true;
 }
@@ -489,6 +529,18 @@ bool ImplExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     } else {
         w_ctx.print_msg<MessageType::err_expected_comma_list>( MessageInfo( body, 0, FmtStr::Color::Red ) );
         return false;
+    }
+    return true;
+}
+
+bool ImplExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
+    auto list = std::dynamic_pointer_cast<ListedExpr>( body )->get_list();
+    for ( auto itr = list.begin(); itr != list.end(); itr++ ) {
+        if ( auto pub = std::dynamic_pointer_cast<PublicAttrExpr>( *itr ); pub != nullptr ) {
+            // Resolve pub keyword
+            std::dynamic_pointer_cast<SymbolExpr>( pub->symbol )->set_public();
+            *itr = pub->symbol;
+        }
     }
     return true;
 }

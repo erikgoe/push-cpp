@@ -35,7 +35,9 @@ constexpr TypeId LAST_FIX_TYPE = MODULE_TYPE; // The last not variable type
 // Defines the type of a visitor pass
 enum class VisitorPassType {
     BASIC_SEMANTIC_CHECK, // checks some basic semantic requirements for each expression
+    FIRST_TRANSFORMATION, // transformations which can be done without symbol information
     SYMBOL_DISCOVERY, // discover all symbols in the global declarative scope
+    SECOND_TRANSFORMATION, // transformations which require with symbol information
 
     count
 };
@@ -44,6 +46,7 @@ class StaticStatementExpr;
 struct CrateCtx;
 class SymbolExpr;
 class SymbolIdentifier;
+class PublicAttrExpr;
 
 // Dispatcher for preparations for visitor passes
 template <typename T>
@@ -80,6 +83,9 @@ public:
     // visit_impl()). Returns false if the pass failed
     virtual bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt ) = 0;
 
+    // Does basic transformations, which don't require symbol information
+    virtual bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
+
     // Checks very basic semantic conditions on an expr. Returns false when an error has been found
     virtual bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
 
@@ -88,6 +94,9 @@ public:
 
     // Used in the symbol discovery pass
     virtual void symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {}
+
+    // Does basic transformations, which require symbol information
+    virtual bool second_transformation( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
 
     // Debugging & message methods
 
@@ -158,6 +167,8 @@ public:
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         String str = "GLOBAL {\n ";
@@ -420,6 +431,9 @@ public:
         LOG_ERR( "Virtual function!" );
         return 0;
     }
+
+    virtual bool is_public() { return false; }
+    virtual void set_public( bool value = true ) {}
 };
 
 // A simple symbol/identifier (variable, function, etc.)
@@ -428,6 +442,7 @@ public:
     TypeId type;
     String symbol_name;
     SymbolId symbol;
+    bool pub = false; // whether this symbol is public or not
 
     TypeId get_type() override { return type; }
 
@@ -445,6 +460,10 @@ public:
     SymbolId get_symbol_id() override { return symbol; }
 
     String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")" + get_additional_debug_data(); }
+
+    virtual bool is_public() { return pub; }
+
+    virtual void set_public( bool value = true ) { pub = value; }
 };
 
 // Base class for a simple literal
@@ -1142,6 +1161,8 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1177,6 +1198,8 @@ public:
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1215,6 +1238,8 @@ public:
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     void pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1290,6 +1315,7 @@ public:
         if ( name_symbol )
             name_symbol->update_symbol_id( new_id );
     }
+
     SymbolId get_symbol_id() override {
         auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( name );
         if ( name_symbol )
@@ -1301,6 +1327,10 @@ public:
         return "SCOPE(" + ( base ? base->get_debug_repr() : "<global>" ) + "::" + name->get_debug_repr() + ")" +
                get_additional_debug_data();
     }
+
+    virtual bool is_public() { return std::dynamic_pointer_cast<SymbolExpr>( name )->is_public(); }
+
+    virtual void set_public( bool value = true ) { std::dynamic_pointer_cast<SymbolExpr>( name )->set_public( value ); }
 };
 
 // Borrow a symbol
@@ -1609,6 +1639,7 @@ public:
         if ( name_symbol )
             name_symbol->update_symbol_id( new_id );
     }
+
     SymbolId get_symbol_id() override {
         auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol );
         if ( name_symbol )
@@ -1619,5 +1650,11 @@ public:
     String get_debug_repr() override {
         return "TEMPLATE " + symbol->get_debug_repr() + "<" + attributes->get_debug_repr() + ">" +
                get_additional_debug_data();
+    }
+
+    virtual bool is_public() { return std::dynamic_pointer_cast<SymbolExpr>( symbol )->is_public(); }
+
+    virtual void set_public( bool value = true ) {
+        std::dynamic_pointer_cast<SymbolExpr>( symbol )->set_public( value );
     }
 };
