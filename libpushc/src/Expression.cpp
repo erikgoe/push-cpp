@@ -242,20 +242,26 @@ bool SimpleBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     // TODO make "=" operator not hard coded
-    auto assignment = std::dynamic_pointer_cast<OperatorExpr>( expr );
-    if ( assignment == nullptr || assignment->op != "=" ) {
-        w_ctx.print_msg<MessageType::err_expected_assignment>( MessageInfo( expr, 0, FmtStr::Color::Red ) );
+    if ( auto assignment = std::dynamic_pointer_cast<OperatorExpr>( expr ); assignment != nullptr ) {
+        if ( assignment->op != "=" ) {
+            w_ctx.print_msg<MessageType::err_expected_assignment>( MessageInfo( expr, 0, FmtStr::Color::Red ) );
+            return false;
+        }
+        if ( auto lvalue = std::dynamic_pointer_cast<SymbolExpr>( assignment->lvalue ); lvalue == nullptr ) {
+            w_ctx.print_msg<MessageType::err_expected_symbol>(
+                MessageInfo( assignment->lvalue, 0, FmtStr::Color::Red ) );
+            return false;
+        }
+        if ( auto lvalue = std::dynamic_pointer_cast<SymbolExpr>( assignment->rvalue ); lvalue == nullptr ) {
+            w_ctx.print_msg<MessageType::err_expected_symbol>(
+                MessageInfo( assignment->lvalue, 0, FmtStr::Color::Red ) );
+            return false;
+        }
+    } else if ( std::dynamic_pointer_cast<SymbolExpr>( expr ) == nullptr ) {
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( expr, 0, FmtStr::Color::Red ) );
         return false;
     }
-    if ( auto lvalue = std::dynamic_pointer_cast<SymbolExpr>( assignment->lvalue ); lvalue == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( assignment->lvalue, 0, FmtStr::Color::Red ) );
-        return false;
-    }
-    if ( auto lvalue = std::dynamic_pointer_cast<SymbolExpr>( assignment->rvalue ); lvalue == nullptr ) {
-        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( assignment->lvalue, 0, FmtStr::Color::Red ) );
-        return false;
-    }
-    return true;
+        return true;
 }
 void IfExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
