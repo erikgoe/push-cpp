@@ -12,13 +12,6 @@
 // limitations under the License.
 
 template <typename T>
-void pre_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) {
-    if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
-        expr.pre_symbol_discovery( c_ctx, w_ctx );
-    }
-}
-
-template <typename T>
 bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) {
     if ( vpt == VisitorPassType::BASIC_SEMANTIC_CHECK ) {
         if ( !expr.basic_semantic_check( c_ctx, w_ctx ) )
@@ -27,7 +20,8 @@ bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) 
         if ( !expr.first_transformation( c_ctx, w_ctx ) )
             return false;
     } else if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
-        expr.symbol_discovery( c_ctx, w_ctx );
+        if ( !expr.symbol_discovery( c_ctx, w_ctx ) )
+            return false;
     } else if ( vpt == VisitorPassType::SECOND_TRANSFORMATION ) {
         if ( !expr.second_transformation( c_ctx, w_ctx ) )
             return false;
@@ -39,4 +33,13 @@ bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) 
             result = false;
     }
     return result;
+}
+
+template <typename T>
+bool post_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr ) {
+    if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
+        if ( !expr.post_symbol_discovery( c_ctx, w_ctx ) )
+            return false;
+    }
+    return true;
 }

@@ -98,14 +98,16 @@ bool BlockExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-void BlockExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool BlockExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void BlockExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool BlockExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
 bool ArraySpecifierExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -187,7 +189,7 @@ bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-void FuncExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
         switch_scope_to_symbol( c_ctx, new_id );
@@ -200,7 +202,7 @@ void FuncExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                 c_ctx.current_scope );
             if ( return_symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( return_type, 0, FmtStr::Color::Red ) );
-                return;
+                return false;
             } else if ( return_symbols.size() != 1 ) {
                 std::vector<MessageInfo> notes;
                 for ( auto &rs : return_symbols ) {
@@ -213,11 +215,13 @@ void FuncExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
             c_ctx.symbol_graph[new_id].identifier.eval_type = return_symbols.front();
         }
     }
+    return true;
 }
 
-void FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool FuncExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol(
         c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
+    return true;
 }
 
 bool FuncCallExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -279,64 +283,76 @@ bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-void IfExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool IfExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void IfExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool IfExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
-void IfElseExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool IfElseExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void IfElseExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool IfElseExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
-void PreLoopExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool PreLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void PreLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool PreLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
-void PostLoopExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool PostLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void PostLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool PostLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
-void InfLoopExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool InfLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void InfLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool InfLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
-void ItrLoopExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool ItrLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void ItrLoopExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool ItrLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
 bool MatchExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -356,14 +372,16 @@ bool MatchExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-void MatchExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool MatchExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void MatchExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool MatchExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
 bool ArrayAccessExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -436,18 +454,20 @@ bool StructExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-void StructExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( name ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( name );
     }
+    return true;
 }
 
-void StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool StructExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol( c_ctx,
                             c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_symbol_id()].parent );
+    return true;
 }
 
 bool TraitExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -489,18 +509,20 @@ bool TraitExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-void TraitExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( name ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( name );
     }
+    return true;
 }
 
-void TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool TraitExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol( c_ctx,
                             c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_symbol_id()].parent );
+    return true;
 }
 
 bool ImplExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -545,32 +567,36 @@ bool ImplExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-void ImplExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool ImplExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( struct_name ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( struct_name );
     }
+    return true;
 }
 
-void ImplExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool ImplExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol(
         c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( struct_name )->get_symbol_id()].parent );
+    return true;
 }
 
-void ModuleExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
     }
+    return true;
 }
 
-void ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool ModuleExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol(
         c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
+    return true;
 }
 
 bool DeclarationExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -600,14 +626,16 @@ bool PublicAttrExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-void StaticStatementExpr::pre_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool StaticStatementExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
     c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
+    return true;
 }
 
-void StaticStatementExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool StaticStatementExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
 }
 
 bool CompilerAnnotationExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
