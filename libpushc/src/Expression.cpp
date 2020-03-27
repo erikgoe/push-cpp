@@ -168,6 +168,16 @@ bool FuncHeadExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
+bool FuncHeadExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+    if ( std::dynamic_pointer_cast<DeclExpr>( parent ) == nullptr ) {
+        auto new_decl = make_shared<FuncCallExpr>();
+        new_decl->symbol = symbol;
+        new_decl->parameters = parameters;
+        anchor = new_decl;
+    }
+    return true;
+}
+
 bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( symbol && std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
@@ -618,6 +628,13 @@ bool PublicAttrExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 bool PublicAttrExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+    if ( std::dynamic_pointer_cast<DeclExpr>( parent ) == nullptr ) {
+        // public symbols are only allowed in decl scopes
+        w_ctx.print_msg<MessageType::err_public_not_allowed_in_context>(
+            MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ) );
+        return false;
+    }
+
     // Resolve public attribute
     if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( symbol ); typed != nullptr ) {
         std::dynamic_pointer_cast<SymbolExpr>( typed->symbol )->set_public();

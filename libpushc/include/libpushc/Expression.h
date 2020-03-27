@@ -696,6 +696,8 @@ public:
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
