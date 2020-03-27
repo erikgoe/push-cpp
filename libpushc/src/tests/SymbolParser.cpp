@@ -121,7 +121,6 @@ TEST_CASE( "Basic semantic check", "[semantic_parser]" ) {
         { "impl A { f {} }", MessageType::count },
         { "impl A { f{}, g() {} }", MessageType::count },
         { "impl A { pub f() {}, g() {} }", MessageType::count },
-        { "impl A {}", MessageType::count },
         { "impl A if a b;", MessageType::err_expected_comma_list },
         { "impl A { f() }", MessageType::err_expected_function_definition },
         { "impl A { a }", MessageType::err_expected_function_definition },
