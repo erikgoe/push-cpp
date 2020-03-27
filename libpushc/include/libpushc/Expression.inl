@@ -12,12 +12,12 @@
 // limitations under the License.
 
 template <typename T>
-bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor ) {
+bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( vpt == VisitorPassType::BASIC_SEMANTIC_CHECK ) {
         if ( !expr.basic_semantic_check( c_ctx, w_ctx ) )
             return false;
     } else if ( vpt == VisitorPassType::FIRST_TRANSFORMATION ) {
-        if ( !expr.first_transformation( c_ctx, w_ctx, anchor ) )
+        if ( !expr.first_transformation( c_ctx, w_ctx, anchor, parent ) )
             return false;
     } else if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
         if ( !expr.symbol_discovery( c_ctx, w_ctx ) )
@@ -29,14 +29,15 @@ bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, s
 
     bool result = true;
     for ( auto &ss : expr.static_statements ) {
-        if ( !ss->visit( c_ctx, w_ctx, vpt, ss ) )
+        if ( !ss->visit( c_ctx, w_ctx, vpt, ss, expr.shared_from_this() ) )
             result = false;
     }
     return result;
 }
 
 template <typename T>
-bool post_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor ) {
+bool post_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor,
+                      sptr<Expr> parent ) {
     if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
         if ( !expr.post_symbol_discovery( c_ctx, w_ctx ) )
             return false;

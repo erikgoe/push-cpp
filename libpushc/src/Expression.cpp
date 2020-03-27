@@ -62,7 +62,7 @@ bool DeclExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
+bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     for ( auto itr = sub_expr.begin(); itr != sub_expr.end(); itr++ ) {
         if ( auto block = std::dynamic_pointer_cast<BlockExpr>( *itr ); block != nullptr ) {
             // Replace BlockExpr with DeclExpr
@@ -83,7 +83,8 @@ bool SingleCompletedExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx )
     return true;
 }
 
-bool SingleCompletedExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
+bool SingleCompletedExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor,
+                                                sptr<Expr> parent ) {
     return true;
 }
 
@@ -422,7 +423,7 @@ bool StructExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool StructExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
+bool StructExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     return true;
 }
 
@@ -469,7 +470,7 @@ bool TraitExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool TraitExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
+bool TraitExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     return true;
 }
 
@@ -519,7 +520,7 @@ bool ImplExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool ImplExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
+bool ImplExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     return true;
 }
 
@@ -582,7 +583,7 @@ bool PublicAttrExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool PublicAttrExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) {
+bool PublicAttrExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     // Resolve public attribute
     if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( symbol ); typed != nullptr ) {
         std::dynamic_pointer_cast<SymbolExpr>( typed->symbol )->set_public();

@@ -50,11 +50,12 @@ class PublicAttrExpr;
 
 // Dispatcher for preparations for visitor passes
 template <typename T>
-bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor );
+bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor, sptr<Expr> parent );
 
 // Dispatcher for visitor passes. Returns false if the pass failed
 template <typename T>
-bool post_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor );
+bool post_visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, sptr<Expr> &anchor,
+                      sptr<Expr> parent );
 
 // Creates a symbol chain from an expression which contains symbols or scoped symbols
 sptr<std::vector<SymbolIdentifier>> get_symbol_chain_from_expr( sptr<SymbolExpr> expr );
@@ -81,10 +82,13 @@ public:
 
     // This method is used to minimize the needed code to implement a visitor pattern using templates (see
     // post_visit_impl()). Returns false if the pass failed
-    virtual bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) = 0;
+    virtual bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor,
+                        sptr<Expr> parent ) = 0;
 
     // Does basic transformations, which don't require symbol information
-    virtual bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) { return true; }
+    virtual bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+        return true;
+    }
 
     // Checks very basic semantic conditions on an expr. Returns false when an error has been found
     virtual bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
@@ -115,8 +119,9 @@ class OperandExpr : public virtual Expr {
 public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<OperandExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 };
 
@@ -130,8 +135,9 @@ public:
     // Has no type because it is not a real AST node
     TypeId get_type() override { return 0; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -154,18 +160,18 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
         for ( auto &e : sub_expr ) {
-            if ( !e->visit( c_ctx, w_ctx, vpt, e ) )
+            if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && result;
+        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     String get_debug_repr() override {
         String str = "GLOBAL {\n ";
@@ -184,8 +190,9 @@ class CompletedExpr : public virtual Expr {
 public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<CompletedExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 };
 
@@ -206,14 +213,15 @@ public:
         return std::dynamic_pointer_cast<SingleCompletedExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && sub_expr->visit( c_ctx, w_ctx, vpt, sub_expr ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               sub_expr->visit( c_ctx, w_ctx, vpt, sub_expr, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     String get_debug_repr() override { return "SC " + sub_expr->get_debug_repr() + ";" + get_additional_debug_data(); }
 
@@ -243,13 +251,13 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<BlockExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
         for ( auto &e : sub_expr ) {
-            if ( !e->visit( c_ctx, w_ctx, vpt, e ) )
+            if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && result;
+        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -291,8 +299,9 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<UnitExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override { return "UNIT()"; }
@@ -310,13 +319,13 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TupleExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
         for ( auto &e : sub_expr ) {
-            if ( !e->visit( c_ctx, w_ctx, vpt, e ) )
+            if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && result;
+        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
     }
 
     String get_debug_repr() override {
@@ -339,13 +348,13 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SetExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
         for ( auto &e : sub_expr ) {
-            if ( !e->visit( c_ctx, w_ctx, vpt, e ) )
+            if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && result;
+        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
     }
 
     String get_debug_repr() override {
@@ -367,9 +376,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TermExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && sub_expr->visit( c_ctx, w_ctx, vpt, sub_expr ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               sub_expr->visit( c_ctx, w_ctx, vpt, sub_expr, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override {
@@ -388,13 +398,13 @@ public:
         return std::dynamic_pointer_cast<ArraySpecifierExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
         for ( auto &e : sub_expr ) {
-            if ( !e->visit( c_ctx, w_ctx, vpt, e ) )
+            if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && result;
+        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -412,8 +422,9 @@ class SymbolExpr : public virtual OperandExpr {
 public:
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     // Updates the internal symbol id reference
@@ -442,8 +453,9 @@ public:
         return std::dynamic_pointer_cast<AtomicSymbolExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     void update_symbol_id( SymbolId new_id ) override { symbol = new_id; }
@@ -481,8 +493,9 @@ public:
         return std::dynamic_pointer_cast<BlobLiteralExpr<Bytes>>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override {
@@ -523,8 +536,9 @@ public:
         return std::dynamic_pointer_cast<StringLiteralExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override { return "STR \"" + str + "\"" + get_additional_debug_data(); }
@@ -597,13 +611,13 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<CommaExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
         for ( auto &e : exprs ) {
-            if ( !e->visit( c_ctx, w_ctx, vpt, e ) )
+            if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && result;
+        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
     }
 
     String get_debug_repr() override {
@@ -635,10 +649,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncHeadExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               ( parameters ? parameters->visit( c_ctx, w_ctx, vpt, parameters ) : true ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               ( parameters ? parameters->visit( c_ctx, w_ctx, vpt, parameters, shared_from_this() ) : true ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -675,12 +690,13 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) &&
-               ( parameters ? parameters->visit( c_ctx, w_ctx, vpt, parameters ) : true ) &&
-               ( return_type ? return_type->visit( c_ctx, w_ctx, vpt, return_type ) : true ) &&
-               symbol->visit( c_ctx, w_ctx, vpt, symbol ) && body->visit( c_ctx, w_ctx, vpt, body ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               ( parameters ? parameters->visit( c_ctx, w_ctx, vpt, parameters, shared_from_this() ) : true ) &&
+               ( return_type ? return_type->visit( c_ctx, w_ctx, vpt, return_type, shared_from_this() ) : true ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               body->visit( c_ctx, w_ctx, vpt, body, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -718,10 +734,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<FuncCallExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) &&
-               ( parameters ? parameters->visit( c_ctx, w_ctx, vpt, parameters ) : true ) &&
-               symbol->visit( c_ctx, w_ctx, vpt, symbol ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               ( parameters ? parameters->visit( c_ctx, w_ctx, vpt, parameters, shared_from_this() ) : true ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -751,11 +768,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<OperatorExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) &&
-               ( lvalue ? lvalue->visit( c_ctx, w_ctx, vpt, lvalue ) : true ) &&
-               ( rvalue ? rvalue->visit( c_ctx, w_ctx, vpt, rvalue ) : true ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               ( lvalue ? lvalue->visit( c_ctx, w_ctx, vpt, lvalue, shared_from_this() ) : true ) &&
+               ( rvalue ? rvalue->visit( c_ctx, w_ctx, vpt, rvalue, shared_from_this() ) : true ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override {
@@ -780,9 +797,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SimpleBindExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && expr->visit( c_ctx, w_ctx, vpt, expr ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               expr->visit( c_ctx, w_ctx, vpt, expr, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -806,9 +824,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<AliasBindExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && expr->visit( c_ctx, w_ctx, vpt, expr ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               expr->visit( c_ctx, w_ctx, vpt, expr, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -834,9 +853,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && cond->visit( c_ctx, w_ctx, vpt, cond ) &&
-               expr_t->visit( c_ctx, w_ctx, vpt, expr_t ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               cond->visit( c_ctx, w_ctx, vpt, cond, shared_from_this() ) &&
+               expr_t->visit( c_ctx, w_ctx, vpt, expr_t, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -868,10 +889,12 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<IfElseExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && cond->visit( c_ctx, w_ctx, vpt, cond ) &&
-               expr_t->visit( c_ctx, w_ctx, vpt, expr_t ) && expr_f->visit( c_ctx, w_ctx, vpt, expr_f ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               cond->visit( c_ctx, w_ctx, vpt, cond, shared_from_this() ) &&
+               expr_t->visit( c_ctx, w_ctx, vpt, expr_t, shared_from_this() ) &&
+               expr_f->visit( c_ctx, w_ctx, vpt, expr_f, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -904,9 +927,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PreLoopExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && cond->visit( c_ctx, w_ctx, vpt, cond ) &&
-               expr->visit( c_ctx, w_ctx, vpt, expr ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               cond->visit( c_ctx, w_ctx, vpt, cond, shared_from_this() ) &&
+               expr->visit( c_ctx, w_ctx, vpt, expr, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -939,9 +964,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PostLoopExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && cond->visit( c_ctx, w_ctx, vpt, cond ) &&
-               expr->visit( c_ctx, w_ctx, vpt, expr ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               cond->visit( c_ctx, w_ctx, vpt, cond, shared_from_this() ) &&
+               expr->visit( c_ctx, w_ctx, vpt, expr, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -970,9 +997,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<InfLoopExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && expr->visit( c_ctx, w_ctx, vpt, expr ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               expr->visit( c_ctx, w_ctx, vpt, expr, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1001,9 +1029,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ItrLoopExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && itr_expr->visit( c_ctx, w_ctx, vpt, itr_expr ) &&
-               expr->visit( c_ctx, w_ctx, vpt, expr ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               itr_expr->visit( c_ctx, w_ctx, vpt, itr_expr, shared_from_this() ) &&
+               expr->visit( c_ctx, w_ctx, vpt, expr, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1033,9 +1063,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MatchExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && selector->visit( c_ctx, w_ctx, vpt, selector ) &&
-               cases->visit( c_ctx, w_ctx, vpt, cases ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               selector->visit( c_ctx, w_ctx, vpt, selector, shared_from_this() ) &&
+               cases->visit( c_ctx, w_ctx, vpt, cases, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1067,9 +1099,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ArrayAccessExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && value->visit( c_ctx, w_ctx, vpt, value ) &&
-               index->visit( c_ctx, w_ctx, vpt, index ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               value->visit( c_ctx, w_ctx, vpt, value, shared_from_this() ) &&
+               index->visit( c_ctx, w_ctx, vpt, index, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1100,11 +1134,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<RangeExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) &&
-               ( from ? from->visit( c_ctx, w_ctx, vpt, from ) : true ) &&
-               ( to ? to->visit( c_ctx, w_ctx, vpt, to ) : true ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               ( from ? from->visit( c_ctx, w_ctx, vpt, from, shared_from_this() ) : true ) &&
+               ( to ? to->visit( c_ctx, w_ctx, vpt, to, shared_from_this() ) : true ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override {
@@ -1140,16 +1174,16 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<StructExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) &&
-               ( name ? name->visit( c_ctx, w_ctx, vpt, name ) : true ) &&
-               ( body ? body->visit( c_ctx, w_ctx, vpt, body ) : true ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               ( name ? name->visit( c_ctx, w_ctx, vpt, name, shared_from_this() ) : true ) &&
+               ( body ? body->visit( c_ctx, w_ctx, vpt, body, shared_from_this() ) : true ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1179,14 +1213,16 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TraitExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && name->visit( c_ctx, w_ctx, vpt, name ) &&
-               body->visit( c_ctx, w_ctx, vpt, body ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               name->visit( c_ctx, w_ctx, vpt, name, shared_from_this() ) &&
+               body->visit( c_ctx, w_ctx, vpt, body, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1217,15 +1253,17 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ImplExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && struct_name->visit( c_ctx, w_ctx, vpt, struct_name ) &&
-               ( trait_name ? trait_name->visit( c_ctx, w_ctx, vpt, trait_name ) : true ) &&
-               body->visit( c_ctx, w_ctx, vpt, body ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               struct_name->visit( c_ctx, w_ctx, vpt, struct_name, shared_from_this() ) &&
+               ( trait_name ? trait_name->visit( c_ctx, w_ctx, vpt, trait_name, shared_from_this() ) : true ) &&
+               body->visit( c_ctx, w_ctx, vpt, body, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1261,9 +1299,11 @@ public:
         return std::dynamic_pointer_cast<MemberAccessExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && base->visit( c_ctx, w_ctx, vpt, base ) &&
-               name->visit( c_ctx, w_ctx, vpt, name ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               base->visit( c_ctx, w_ctx, vpt, base, shared_from_this() ) &&
+               name->visit( c_ctx, w_ctx, vpt, name, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override {
@@ -1289,10 +1329,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ScopeAccessExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) &&
-               ( base ? base->visit( c_ctx, w_ctx, vpt, base ) : true ) && name->visit( c_ctx, w_ctx, vpt, name ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               ( base ? base->visit( c_ctx, w_ctx, vpt, base, shared_from_this() ) : true ) &&
+               name->visit( c_ctx, w_ctx, vpt, name, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     void update_symbol_id( SymbolId new_id ) override {
@@ -1334,9 +1375,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ReferenceExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override { return "REF(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
@@ -1359,9 +1401,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TypeOfExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override {
@@ -1386,9 +1429,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TypedExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               type->visit( c_ctx, w_ctx, vpt, type ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               type->visit( c_ctx, w_ctx, vpt, type, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override {
@@ -1412,9 +1457,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<ModuleExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1442,9 +1488,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclarationExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1468,14 +1515,15 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<PublicAttrExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor ) override;
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     String get_debug_repr() override {
         return "PUBLIC(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
@@ -1496,9 +1544,10 @@ public:
         return std::dynamic_pointer_cast<StaticStatementExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && body->visit( c_ctx, w_ctx, vpt, body ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               body->visit( c_ctx, w_ctx, vpt, body, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1527,10 +1576,11 @@ public:
         return std::dynamic_pointer_cast<CompilerAnnotationExpr>( other ) != nullptr;
     }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               parameters->visit( c_ctx, w_ctx, vpt, parameters ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               parameters->visit( c_ctx, w_ctx, vpt, parameters, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1559,9 +1609,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MacroExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && name->visit( c_ctx, w_ctx, vpt, name ) &&
-               body->visit( c_ctx, w_ctx, vpt, body ) && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               name->visit( c_ctx, w_ctx, vpt, name, shared_from_this() ) &&
+               body->visit( c_ctx, w_ctx, vpt, body, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1586,9 +1638,10 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<UnsafeExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && block->visit( c_ctx, w_ctx, vpt, block ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               block->visit( c_ctx, w_ctx, vpt, block, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override { return "UNSAFE " + block->get_debug_repr() + get_additional_debug_data(); }
@@ -1611,10 +1664,11 @@ public:
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<TemplateExpr>( other ) != nullptr; }
 
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor ) override {
-        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor ) && symbol->visit( c_ctx, w_ctx, vpt, symbol ) &&
-               attributes->visit( c_ctx, w_ctx, vpt, attributes ) &&
-               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        return visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) &&
+               symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               attributes->visit( c_ctx, w_ctx, vpt, attributes, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
