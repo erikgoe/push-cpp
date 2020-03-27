@@ -172,7 +172,7 @@ public:
             if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
+        return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -269,7 +269,7 @@ public:
             if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
+        return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -343,7 +343,7 @@ public:
             if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
+        return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     String get_debug_repr() override {
@@ -374,7 +374,7 @@ public:
             if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
+        return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
@@ -430,7 +430,7 @@ public:
             if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
+        return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -621,27 +621,27 @@ public:
 // Combines one ore multiple expressions with commas
 class CommaExpr : public SeparableExpr, public ListedExpr {
 public:
-    std::vector<sptr<Expr>> exprs;
+    std::vector<sptr<Expr>> sub_expr;
 
     CommaExpr() {}
     CommaExpr( sptr<Expr> lvalue, sptr<Expr> rvalue, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
         auto lvalue_list = std::dynamic_pointer_cast<CommaExpr>( lvalue );
         if ( lvalue_list ) { // Is a comma expression
-            exprs = lvalue_list->exprs;
+            sub_expr = lvalue_list->sub_expr;
         } else if ( lvalue ) {
-            exprs.push_back( lvalue );
+            sub_expr.push_back( lvalue );
         }
         auto rvalue_list = std::dynamic_pointer_cast<CommaExpr>( rvalue );
         if ( rvalue_list ) { // Is a comma expression
-            exprs.insert( exprs.end(), rvalue_list->exprs.begin(), rvalue_list->exprs.end() );
+            sub_expr.insert( sub_expr.end(), rvalue_list->sub_expr.begin(), rvalue_list->sub_expr.end() );
         } else if ( rvalue ) {
-            exprs.push_back( rvalue );
+            sub_expr.push_back( rvalue );
         }
         this->precedence = precedence;
         this->original_list = original_list;
     }
 
-    TypeId get_type() override { return exprs.empty() ? TYPE_UNIT : exprs.back()->get_type(); }
+    TypeId get_type() override { return sub_expr.empty() ? TYPE_UNIT : sub_expr.back()->get_type(); }
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<CommaExpr>( other ) != nullptr; }
 
@@ -649,21 +649,23 @@ public:
         bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
         if ( anchor != shared_from_this() ) // replaced itself (object is now invalid)
             return anchor->visit( c_ctx, w_ctx, vpt, anchor, parent );
-        for ( auto &e : exprs ) {
+        for ( auto &e : sub_expr ) {
             if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
                 result = false;
         }
-        return post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent ) && result;
+        return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     String get_debug_repr() override {
         String str = "COMMA( ";
-        for ( auto &s : exprs )
+        for ( auto &s : sub_expr )
             str += s->get_debug_repr() + ", ";
         return str + ")" + get_additional_debug_data();
     }
 
-    std::vector<sptr<Expr>> get_list() override { return exprs; }
+    std::vector<sptr<Expr>> get_list() override { return sub_expr; }
 };
 
 // The head of a function. Must be resolved into other expressions
@@ -1749,12 +1751,12 @@ public:
 class TemplateExpr : public SeparableExpr, public SymbolExpr {
 public:
     sptr<Expr> symbol;
-    sptr<Expr> attributes;
+    std::vector<sptr<Expr>> attributes;
 
     TemplateExpr() {}
     TemplateExpr( sptr<Expr> symbol, sptr<Expr> attributes, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
-        this->attributes = attributes;
+        this->attributes = std::vector<sptr<Expr>>( 1, attributes );
         this->precedence = precedence;
         this->original_list = original_list;
     }
@@ -1766,12 +1768,17 @@ public:
         bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
         if ( anchor != shared_from_this() ) // replaced itself (object is now invalid)
             return anchor->visit( c_ctx, w_ctx, vpt, anchor, parent );
+        for ( auto &e : attributes ) {
+            if ( !e->visit( c_ctx, w_ctx, vpt, e, shared_from_this() ) )
+                result = false;
+        }
         return result && symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
-               attributes->visit( c_ctx, w_ctx, vpt, attributes, shared_from_this() ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     void update_symbol_id( SymbolId new_id ) override {
         auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol );
@@ -1787,8 +1794,10 @@ public:
     }
 
     String get_debug_repr() override {
-        return "TEMPLATE " + symbol->get_debug_repr() + "<" + attributes->get_debug_repr() + ">" +
-               get_additional_debug_data();
+        String str = "TEMPLATE " + symbol->get_debug_repr() + "<";
+        for ( auto &s : attributes )
+            str += s->get_debug_repr() + ", ";
+        return str + " >" + get_additional_debug_data();
     }
 
     virtual bool is_public() { return std::dynamic_pointer_cast<SymbolExpr>( symbol )->is_public(); }

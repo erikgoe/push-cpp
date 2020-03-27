@@ -77,6 +77,7 @@ bool SingleCompletedExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx )
 
 bool SingleCompletedExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor,
                                                 sptr<Expr> parent ) {
+    anchor = sub_expr; // resolve single completed exprs
     return true;
 }
 
@@ -136,6 +137,21 @@ bool ArraySpecifierExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) 
             w_ctx.print_msg<MessageType::err_unfinished_expr>( MessageInfo( *expr, 0, FmtStr::Color::Red ) );
             return false;
         }
+    }
+    return true;
+}
+
+bool CommaExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+    if ( std::dynamic_pointer_cast<StructExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<TraitExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<ImplExpr>( parent ) != nullptr ) {
+        auto new_decl = make_shared<DeclExpr>();
+        new_decl->sub_expr = sub_expr;
+        anchor = new_decl;
+    } else if ( std::dynamic_pointer_cast<MatchExpr>( parent ) != nullptr ) {
+        auto new_decl = make_shared<TupleExpr>();
+        new_decl->sub_expr = sub_expr;
+        anchor = new_decl;
     }
     return true;
 }
@@ -655,5 +671,15 @@ bool TemplateExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
     }
+    return true;
+}
+
+bool TemplateExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+    if ( attributes.size() == 1 ) {
+        if ( auto comma_list = std::dynamic_pointer_cast<CommaExpr>( attributes.front() ); comma_list != nullptr ) {
+            attributes = comma_list->sub_expr;
+        }
+    }
+
     return true;
 }

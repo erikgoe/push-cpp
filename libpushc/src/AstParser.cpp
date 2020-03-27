@@ -364,7 +364,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
         if ( expr_list.size() == 1 && std::dynamic_pointer_cast<CommaExpr>( expr_list.front() ) ) { // set
             auto block = make_shared<SetExpr>();
             block->pos_info = pos_info;
-            block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->exprs;
+            block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->sub_expr;
             return block;
         } else { // block
             auto block = make_shared<BlockExpr>();
@@ -389,7 +389,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
             } else if ( expr_list.size() == 1 && std::dynamic_pointer_cast<CommaExpr>( expr_list.front() ) ) { // tuple
                 auto block = make_shared<TupleExpr>();
                 block->pos_info = pos_info;
-                block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->exprs;
+                block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->sub_expr;
                 return block;
             } else { // term
                 auto block = make_shared<TermExpr>();

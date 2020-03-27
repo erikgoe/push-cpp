@@ -121,8 +121,8 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
           "GLOBAL { FUNC(0 SCOPE(SYM()::SYM()) BLOCK { SC BINDING(OP(SYM() = MEMBER(SYM().SYM()))); SC "
           "OP(MEMBER(FUNC_HEAD(UNIT() MEMBER(SCOPE(SYM()::SYM()).SYM())).SYM()) ++); }) }" },
         { "fn<T:type> { let val:T = 3; fn<int>();}",
-          "GLOBAL { FUNC(0 TEMPLATE SYM()<TYPED(SYM():SYM())> BLOCK { SC BINDING(OP(TYPED(SYM():SYM()) = "
-          "BLOB_LITERAL())); SC FUNC_HEAD(UNIT() TEMPLATE SYM()<SYM()>); }) }" },
+          "GLOBAL { FUNC(0 TEMPLATE SYM()<TYPED(SYM():SYM()), > BLOCK { SC BINDING(OP(TYPED(SYM():SYM()) = "
+          "BLOB_LITERAL())); SC FUNC_HEAD(UNIT() TEMPLATE SYM()<SYM(), >); }) }" },
         { "fn { unsafe { C::printf(\"hello world\\n\");} } ",
           "GLOBAL { FUNC(0 SYM() BLOCK { UNSAFE BLOCK { SC FUNC_HEAD(TERM( STR \"hello world\\n\" ) "
           "SCOPE(SYM()::SYM())); "
@@ -140,25 +140,25 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
         { "#not_inline() #other_annotation() fn {  } ",
           "GLOBAL { ANNOTATE(SYM() UNIT()) ANNOTATE(SYM() UNIT()) FUNC(0 SYM() BLOCK { }) }" },
         { "f(g<a>(c)); fn<A, B>() { a+fn(a+b, c); }",
-          "GLOBAL { SC FUNC_HEAD(TERM( FUNC_HEAD(TERM( SYM() ) TEMPLATE SYM()<SYM()>) ) SYM()); FUNC(0 UNIT() TEMPLATE "
-          "SYM()<COMMA( SYM(), SYM(), )> BLOCK { SC OP(SYM() + FUNC_HEAD(TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
+          "GLOBAL { SC FUNC_HEAD(TERM( FUNC_HEAD(TERM( SYM() ) TEMPLATE SYM()<SYM(), >) ) SYM()); FUNC(0 UNIT() TEMPLATE "
+          "SYM()<COMMA( SYM(), SYM(), ), > BLOCK { SC OP(SYM() + FUNC_HEAD(TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
           "}) }" },
         { "f(g<a>(c)); fn<A, B> { a+fn(a+b, c); }",
-          "GLOBAL { SC FUNC_HEAD(TERM( FUNC_HEAD(TERM( SYM() ) TEMPLATE SYM()<SYM()>) ) SYM()); FUNC(0 TEMPLATE "
-          "SYM()<COMMA( SYM(), SYM(), )> BLOCK { SC OP(SYM() + FUNC_HEAD(TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
+          "GLOBAL { SC FUNC_HEAD(TERM( FUNC_HEAD(TERM( SYM() ) TEMPLATE SYM()<SYM(), >) ) SYM()); FUNC(0 TEMPLATE "
+          "SYM()<COMMA( SYM(), SYM(), ), > BLOCK { SC OP(SYM() + FUNC_HEAD(TUPLE( OP(SYM() + SYM()), SYM(), ) SYM())); "
           "}) }" },
         { "a..b; a..; ..b; a..=b; ..=b; ",
           "GLOBAL { SC RANGE EXCLUDE SYM()..SYM(); SC RANGE EXCLUDE_FROM SYM(); SC RANGE EXCLUDE_TO SYM(); SC RANGE "
           "INCLUDE SYM()..SYM(); SC RANGE INCLUDE_TO SYM(); }" },
-        { "Vec1<Vec2<a> >;", "GLOBAL { SC TEMPLATE SYM()<TEMPLATE SYM()<SYM()>>; }" },
-        { "Vec1<Vec2<a>>; a >> b;", "GLOBAL { SC TEMPLATE SYM()<TEMPLATE SYM()<SYM()>>; SC OP(SYM() >> SYM()); }" },
+        { "Vec1<Vec2<a> >;", "GLOBAL { SC TEMPLATE SYM()<TEMPLATE SYM()<SYM(), >, >; }" },
+        { "Vec1<Vec2<a>>; a >> b;", "GLOBAL { SC TEMPLATE SYM()<TEMPLATE SYM()<SYM(), >, >; SC OP(SYM() >> SYM()); }" },
         { "Vec1<Vec2<a>>(); Vec<Vec<Vec<Vec<Vec<a>, b>>>>(); Vec<Vec<Vec<Vec<Vec<a>, b>>>>(); a >> b; "
           "Vec1<Vec2<a+b>>(); ",
-          "GLOBAL { SC FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<SYM()>>); SC FUNC_HEAD(UNIT() TEMPLATE "
-          "SYM()<TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<COMMA( TEMPLATE SYM()<SYM()>, SYM(), )>>>>); SC "
-          "FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<COMMA( TEMPLATE SYM()<SYM()>, "
-          "SYM(), )>>>>); SC OP(SYM() >> SYM()); SC FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<OP(SYM() + "
-          "SYM())>>); }" }
+          "GLOBAL { SC FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<SYM(), >, >); SC FUNC_HEAD(UNIT() TEMPLATE "
+          "SYM()<TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<COMMA( TEMPLATE SYM()<SYM(), >, SYM(), ), >, >, >, >); SC "
+          "FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<TEMPLATE SYM()<COMMA( TEMPLATE SYM()<SYM(), >, "
+          "SYM(), ), >, >, >, >); SC OP(SYM() >> SYM()); SC FUNC_HEAD(UNIT() TEMPLATE SYM()<TEMPLATE SYM()<OP(SYM() + "
+          "SYM()), >, >); }" }
     };
 
     std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*:[0-9]*\\)" );
