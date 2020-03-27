@@ -178,9 +178,11 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
         { "{}", "GLOBAL { GLOBAL { } }" },
         { "{{}}{}", "GLOBAL { GLOBAL { GLOBAL { } } GLOBAL { } }" },
         { "pub fn();", "GLOBAL { SC FUNC_HEAD(UNIT() SYM()); }" },
-        { "struct A { pub a, b }", "GLOBAL { STRUCT SYM() SET { SYM(), SYM(), } }" },
-        { "struct B { pub a, pub b }", "GLOBAL { STRUCT SYM() SET { SYM(), SYM(), } }" },
-        { "trait C { pub fn() }", "GLOBAL { TRAIT SYM() BLOCK { FUNC_HEAD(UNIT() SYM()) } }" },
+        { "struct A { pub a, b }", "GLOBAL { STRUCT SYM() GLOBAL { SYM() SYM() } }" },
+        { "struct B { pub a, pub b }", "GLOBAL { STRUCT SYM() GLOBAL { SYM() SYM() } }" },
+        { "trait C { pub fn() }", "GLOBAL { TRAIT SYM() GLOBAL { FUNC_HEAD(UNIT() SYM()) } }" },
+        { "struct A { {}, a }", "GLOBAL { STRUCT SYM() GLOBAL { GLOBAL { } SYM() } }" },
+        { "fn() { {} a }", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { BLOCK { } SYM() }) }" },
     };
 
     std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*:[0-9]*\\)" );

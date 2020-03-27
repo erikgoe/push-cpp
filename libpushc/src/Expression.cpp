@@ -63,14 +63,6 @@ bool DeclExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
-    for ( auto itr = sub_expr.begin(); itr != sub_expr.end(); itr++ ) {
-        if ( auto block = std::dynamic_pointer_cast<BlockExpr>( *itr ); block != nullptr ) {
-            // Replace BlockExpr with DeclExpr
-            auto new_decl = make_shared<DeclExpr>();
-            new_decl->sub_expr = block->sub_expr;
-            *itr = new_decl;
-        }
-    }
     return true;
 }
 
@@ -99,6 +91,19 @@ bool BlockExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
+bool BlockExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+    if ( std::dynamic_pointer_cast<DeclExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<StructExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<TraitExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<ImplExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<ModuleExpr>( parent ) != nullptr ) {
+        auto new_decl = make_shared<DeclExpr>();
+        new_decl->sub_expr = sub_expr;
+        anchor = new_decl;
+    }
+    return true;
+}
+
 bool BlockExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     SymbolId new_id = create_new_local_symbol( c_ctx, "" );
     switch_scope_to_symbol( c_ctx, new_id );
@@ -108,6 +113,19 @@ bool BlockExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool BlockExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
+    return true;
+}
+
+bool SetExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+    if ( std::dynamic_pointer_cast<DeclExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<StructExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<TraitExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<ImplExpr>( parent ) != nullptr ||
+         std::dynamic_pointer_cast<ModuleExpr>( parent ) != nullptr ) {
+        auto new_decl = make_shared<DeclExpr>();
+        new_decl->sub_expr = sub_expr;
+        anchor = new_decl;
+    }
     return true;
 }
 
