@@ -1530,13 +1530,15 @@ public:
 };
 
 // Specification of a module
-class ModuleExpr : public SeparableExpr {
+class ModuleExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> symbol;
+    sptr<Expr> body;
 
     ModuleExpr() {}
-    ModuleExpr( sptr<Expr> symbol, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+    ModuleExpr( sptr<Expr> symbol, sptr<Expr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
         this->symbol = symbol;
+        this->body = body;
         this->precedence = precedence;
         this->original_list = original_list;
     }
@@ -1550,6 +1552,7 @@ public:
         if ( anchor != shared_from_this() ) // replaced itself (object is now invalid)
             return anchor->visit( c_ctx, w_ctx, vpt, anchor, parent );
         return result && symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               body->visit( c_ctx, w_ctx, vpt, body, shared_from_this() ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
@@ -1558,7 +1561,7 @@ public:
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
-        return "MODULE(" + symbol->get_debug_repr() + ")" + get_additional_debug_data();
+        return "MODULE " + symbol->get_debug_repr() + " " + body->get_debug_repr() + get_additional_debug_data();
     }
 };
 

@@ -111,9 +111,9 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
         { "let a:&int = type_of s; let a:struct = 4;",
           "GLOBAL { SC BINDING(OP(TYPED(SYM():REF(SYM())) = TYPE_OF(SYM()))); SC BINDING(OP(TYPED(SYM():STRUCT "
           "<anonymous> <undefined>) = BLOB_LITERAL())); }" },
-        { "mod modulename;", "GLOBAL { SC MODULE(SYM()); }" },
-        { "mod crate::base::module;", "GLOBAL { SC MODULE(SCOPE(SCOPE(SYM()::SYM())::SYM())); }" },
-        { "mod ::base::module;", "GLOBAL { SC MODULE(SCOPE(<global>::SCOPE(SYM()::SYM()))); }" },
+        { "mod modulename {}", "GLOBAL { MODULE SYM() BLOCK { } }" },
+        { "mod crate::base::module {}", "GLOBAL { MODULE SCOPE(SCOPE(SYM()::SYM())::SYM()) BLOCK { } }" },
+        { "mod ::base::module {}", "GLOBAL { MODULE SCOPE(<global>::SCOPE(SYM()::SYM())) BLOCK { } }" },
         { "let result = 40 ${val != 0} / val;",
           "GLOBAL { SC BINDING(OP(SYM() = OP(BLOB_LITERAL() / SYM())$(STST BLOCK { OP(SYM() != BLOB_LITERAL()) }, "
           "))); }" },

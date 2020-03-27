@@ -328,7 +328,7 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
         parse_rule( new_rule, lm, o.syntax );
         copy_syntax_properties( new_rule, o );
         new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<ModuleExpr>( list[lm.at( "name" )], o.precedence, list );
+            return make_shared<ModuleExpr>( list[lm.at( "name" )], list[lm.at( "body" )], o.precedence, list );
         };
         c_ctx.rules.push_back( new_rule );
     }

@@ -86,7 +86,7 @@ define_mci_rule( SCOPE_ACCESS, 4, ltr, triple_list, symbol -> base, "::" -> op, 
 define_mci_rule( SCOPE_ACCESS, 5, ltr, double_list, "::" -> op, symbol -> name ); // global scope access
 
 // Module specifier
-define_mci_rule( MODULE_SPECIFIER, 6, rtl, double_list, "mod", symbol -> name ); // module specification ("mod" keyword)
+define_mci_rule( MODULE_SPECIFIER, 6, rtl, triple_list, "mod", symbol -> name, completed -> body ); // module specification ("mod" keyword)
 
 // Member and array access
 define_mci_rule( MEMBER_ACCESS, 7, ltr, triple_list, expr -> base, "." -> op, expr -> name ); // member access of an object
