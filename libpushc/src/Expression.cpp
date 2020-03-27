@@ -200,7 +200,8 @@ bool FuncHeadExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Ex
 }
 
 bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
-    if ( symbol && std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
+    if ( symbol && ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr &&
+                     std::dynamic_pointer_cast<ArraySpecifierExpr>( symbol ) == nullptr ) ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
     }
