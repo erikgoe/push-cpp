@@ -174,6 +174,27 @@ bool FuncHeadExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Ex
         new_decl->symbol = symbol;
         new_decl->parameters = parameters;
         anchor = new_decl;
+    } else if ( parameters ) {
+        // Check if parameter syntax is correct (can check this here the first time, because previously it could also
+        // have been a FuncCall)
+        auto paren_expr = std::dynamic_pointer_cast<ParenthesisExpr>( parameters );
+        for ( auto &entry : paren_expr->get_list() ) {
+            if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( entry ); typed != nullptr ) {
+                if ( std::dynamic_pointer_cast<SymbolExpr>( typed->symbol ) == nullptr ) {
+                    w_ctx.print_msg<MessageType::err_expected_symbol>(
+                        MessageInfo( typed->symbol, 0, FmtStr::Color::Red ) );
+                    return false;
+                }
+                if ( std::dynamic_pointer_cast<SymbolExpr>( typed->type ) == nullptr ) {
+                    w_ctx.print_msg<MessageType::err_expected_symbol>(
+                        MessageInfo( typed->type, 0, FmtStr::Color::Red ) );
+                    return false;
+                }
+            } else if ( std::dynamic_pointer_cast<SymbolExpr>( entry ) == nullptr ) {
+                w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( entry, 0, FmtStr::Color::Red ) );
+                return false;
+            }
+        }
     }
     return true;
 }
