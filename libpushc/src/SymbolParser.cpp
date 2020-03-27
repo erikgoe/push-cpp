@@ -21,6 +21,11 @@ void parse_symbols( sptr<CrateCtx> c_ctx, JobsBuilder &jb, UnitCtx &parent_ctx )
         if ( successful )
             successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::BASIC_SEMANTIC_CHECK, c_ctx->ast, nullptr );
         if ( successful )
+            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::FIRST_TRANSFORMATION, c_ctx->ast, nullptr );
+        if ( successful )
             successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SYMBOL_DISCOVERY, c_ctx->ast, nullptr );
+        if ( successful )
+            successful =
+                c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SECOND_TRANSFORMATION, c_ctx->ast, nullptr );
     } );
 }

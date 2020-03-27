@@ -145,7 +145,7 @@ MESSAGE_DEFINITION( MessageType::err_expected_function_definition, MessageClass:
 MESSAGE_DEFINITION( MessageType::err_method_not_allowed, MessageClass::Error, "C", "Method not allowed",
                     "Methods are not allowed in this scope, please move it into an impl block." );
 MESSAGE_DEFINITION( MessageType::err_public_not_allowed_in_context, MessageClass::Error, "C",
-                    "A symbol may not be public in this context", "Remove this." );
+                    "A symbol may not be public in this context", "This symbol." );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",
