@@ -134,6 +134,7 @@ bool BlockExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr>
          std::dynamic_pointer_cast<ImplExpr>( parent ) != nullptr ||
          std::dynamic_pointer_cast<ModuleExpr>( parent ) != nullptr ) {
         auto new_decl = make_shared<DeclExpr>();
+        new_decl->copy_from_other( shared_from_this() );
         new_decl->sub_expr = sub_expr;
         anchor = new_decl;
     } else {
@@ -177,6 +178,7 @@ bool SetExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &
          std::dynamic_pointer_cast<ImplExpr>( parent ) != nullptr ||
          std::dynamic_pointer_cast<ModuleExpr>( parent ) != nullptr ) {
         auto new_decl = make_shared<DeclExpr>();
+        new_decl->copy_from_other( shared_from_this() );
         new_decl->sub_expr = sub_expr;
         anchor = new_decl;
     } else {
@@ -243,6 +245,7 @@ bool FuncHeadExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool FuncHeadExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<DeclExpr>( parent ) == nullptr ) {
         auto new_decl = make_shared<FuncCallExpr>();
+        new_decl->copy_from_other( shared_from_this() );
         new_decl->symbol = symbol;
         new_decl->parameters = parameters;
         anchor = new_decl;
@@ -311,7 +314,9 @@ bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool FuncExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( body )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( body );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         body = new_block;
     }
     return true;
@@ -414,7 +419,9 @@ bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool IfExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr_t ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr_t )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( expr_t );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         expr_t = new_block;
     }
     return true;
@@ -435,12 +442,16 @@ bool IfExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool IfElseExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr_t ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr_t )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( expr_t );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         expr_t = new_block;
     }
     if ( std::dynamic_pointer_cast<BlockExpr>( expr_f ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr_f )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( expr_f );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         expr_f = new_block;
     }
     return true;
@@ -461,7 +472,9 @@ bool IfElseExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool PreLoopExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( expr );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         expr = new_block;
     }
     return true;
@@ -482,7 +495,9 @@ bool PreLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool PostLoopExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( expr );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         expr = new_block;
     }
     return true;
@@ -503,7 +518,9 @@ bool PostLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool InfLoopExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( expr );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         expr = new_block;
     }
     return true;
@@ -524,7 +541,9 @@ bool InfLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool ItrLoopExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( expr );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         expr = new_block;
     }
     return true;
@@ -562,10 +581,12 @@ bool MatchExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool MatchExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( auto set = std::dynamic_pointer_cast<BlockExpr>( cases ); set != nullptr ) {
         auto new_block = make_shared<SetExpr>();
+        new_block->copy_from_other( cases );
         new_block->sub_expr = set->sub_expr;
         cases = new_block;
     } else if ( std::dynamic_pointer_cast<SetExpr>( cases ) == nullptr ) {
         auto new_block = make_shared<SetExpr>();
+        new_block->copy_from_other( cases );
         new_block->sub_expr.push_back( cases );
         cases = new_block;
     }
@@ -646,6 +667,7 @@ bool StructExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr &&
          std::dynamic_pointer_cast<SetExpr>( body ) == nullptr ) {
         auto new_block = make_shared<DeclExpr>();
+        new_block->copy_from_other( body );
         new_block->sub_expr.push_back( body );
         body = new_block;
     }
@@ -699,6 +721,7 @@ bool TraitExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr>
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr &&
          std::dynamic_pointer_cast<SetExpr>( body ) == nullptr ) {
         auto new_block = make_shared<DeclExpr>();
+        new_block->copy_from_other( body );
         new_block->sub_expr.push_back( body );
         body = new_block;
     }
@@ -755,6 +778,7 @@ bool ImplExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> 
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr &&
          std::dynamic_pointer_cast<SetExpr>( body ) == nullptr ) {
         auto new_block = make_shared<DeclExpr>();
+        new_block->copy_from_other( body );
         new_block->sub_expr.push_back( body );
         body = new_block;
     }
@@ -780,7 +804,9 @@ bool ImplExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool ModuleExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr ) {
         auto new_block = make_shared<DeclExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( body )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( body );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         body = new_block;
     }
     return true;
@@ -869,7 +895,9 @@ bool StaticStatementExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, 
                                                 sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( body )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( body );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         body = new_block;
     }
     return true;
@@ -910,7 +938,9 @@ bool MacroExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool UnsafeExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( block ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( block )->sub_expr );
+        auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( block );
+        new_block->copy_from_other( sc_expr );
+        new_block->sub_expr.push_back( sc_expr->sub_expr );
         block = new_block;
     }
     return true;

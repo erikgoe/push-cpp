@@ -42,11 +42,11 @@ enum class VisitorPassType {
     count
 };
 
-class StaticStatementExpr;
+class SymbolIdentifier;
 struct CrateCtx;
 class SymbolExpr;
-class SymbolIdentifier;
 class PublicAttrExpr;
+class StaticStatementExpr;
 
 // Dispatcher for preparations for visitor passes
 template <typename T>
@@ -80,6 +80,13 @@ public:
     virtual bool matches( sptr<Expr> other ) { return std::dynamic_pointer_cast<Expr>( other ) != nullptr; }
 
     // Symbol & type methods
+
+    // Copies data common to all exprs from another expr
+    virtual void copy_from_other( sptr<Expr> other ) {
+        pos_info = other->pos_info;
+        static_statements = other->static_statements;
+        annotations = other->annotations;
+    }
 
     // This method is used to minimize the needed code to implement a visitor pattern using templates (see
     // post_visit_impl()). Returns false if the pass failed
@@ -612,6 +619,14 @@ public:
 
     virtual bool matches( sptr<Expr> other ) override {
         return std::dynamic_pointer_cast<SeparableExpr>( other ) != nullptr;
+    }
+
+    virtual void copy_from_other( sptr<Expr> other ) override {
+        Expr::copy_from_other( other );
+        if ( auto other_separable = std::dynamic_pointer_cast<SeparableExpr>(other); other_separable != nullptr ) {
+            original_list = other_separable->original_list;
+            precedence = other_separable->precedence;
+        }
     }
 
     PosInfo get_position_info() override {
