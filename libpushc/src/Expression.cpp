@@ -117,6 +117,10 @@ bool BlockExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr>
         auto new_decl = make_shared<DeclExpr>();
         new_decl->sub_expr = sub_expr;
         anchor = new_decl;
+    } else {
+        // Insert implicit return type
+        if ( !sub_expr.empty() && std::dynamic_pointer_cast<SingleCompletedExpr>( sub_expr.back() ) != nullptr )
+            sub_expr.push_back( make_shared<UnitExpr>() );
     }
     return true;
 }
@@ -262,7 +266,7 @@ bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool FuncExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( body );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( body )->sub_expr );
         body = new_block;
     }
     return true;
@@ -365,7 +369,7 @@ bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool IfExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr_t ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( expr_t );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr_t )->sub_expr );
         expr_t = new_block;
     }
     return true;
@@ -386,12 +390,12 @@ bool IfExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool IfElseExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr_t ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( expr_t );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr_t )->sub_expr );
         expr_t = new_block;
     }
     if ( std::dynamic_pointer_cast<BlockExpr>( expr_f ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( expr_f );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr_f )->sub_expr );
         expr_f = new_block;
     }
     return true;
@@ -412,7 +416,7 @@ bool IfElseExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool PreLoopExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( expr );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr )->sub_expr );
         expr = new_block;
     }
     return true;
@@ -433,7 +437,7 @@ bool PreLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool PostLoopExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( expr );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr )->sub_expr );
         expr = new_block;
     }
     return true;
@@ -454,7 +458,7 @@ bool PostLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool InfLoopExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( expr );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr )->sub_expr );
         expr = new_block;
     }
     return true;
@@ -475,7 +479,7 @@ bool InfLoopExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool ItrLoopExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( expr ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( expr );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( expr )->sub_expr );
         expr = new_block;
     }
     return true;
@@ -731,7 +735,7 @@ bool ImplExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool ModuleExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr ) {
         auto new_block = make_shared<DeclExpr>();
-        new_block->sub_expr.push_back( body );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( body )->sub_expr );
         body = new_block;
     }
     return true;
@@ -808,7 +812,7 @@ bool StaticStatementExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, 
                                                 sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( body ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( body );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( body )->sub_expr );
         body = new_block;
     }
     return true;
@@ -849,7 +853,7 @@ bool MacroExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool UnsafeExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     if ( std::dynamic_pointer_cast<BlockExpr>( block ) == nullptr ) {
         auto new_block = make_shared<BlockExpr>();
-        new_block->sub_expr.push_back( block );
+        new_block->sub_expr.push_back( std::dynamic_pointer_cast<SingleCompletedExpr>( block )->sub_expr );
         block = new_block;
     }
     return true;

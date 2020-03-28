@@ -197,8 +197,9 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
         { "match x { 1=>a, 2=>b }",
           "GLOBAL { MATCH(SYM() WITH SET { OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), }) }" },
         { "if a b; else c;", "GLOBAL { IF(SYM() THEN BLOCK { SYM() } ELSE BLOCK { SYM() } ) }" },
+        { "if a { b; } else { c; }", "GLOBAL { IF(SYM() THEN BLOCK { SYM() UNIT() } ELSE BLOCK { SYM() UNIT() } ) }" },
         { "fn<A, B>() {}", "GLOBAL { FUNC(0 UNIT() TEMPLATE SYM()<SYM(), SYM(), > BLOCK { }) }" },
-        { "fn() { fn(); }", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { FN_CALL(0 UNIT() SYM()) }) }" },
+        { "fn() { fn(); }", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { FN_CALL(0 UNIT() SYM()) UNIT() }) }" },
     };
 
     std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*:[0-9]*\\)" );
