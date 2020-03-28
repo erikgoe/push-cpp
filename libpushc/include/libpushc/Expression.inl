@@ -32,6 +32,10 @@ bool visit_impl( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, T &expr, s
         if ( !ss->visit( c_ctx, w_ctx, vpt, ss, expr.shared_from_this() ) )
             result = false;
     }
+    for ( auto &a : expr.annotations ) {
+        if ( !a->visit( c_ctx, w_ctx, vpt, a, expr.shared_from_this() ) )
+            result = false;
+    }
     return result;
 }
 

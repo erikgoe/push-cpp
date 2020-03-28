@@ -36,6 +36,13 @@ sptr<std::vector<SymbolIdentifier>> get_symbol_chain_from_expr( sptr<SymbolExpr>
 
 String Expr::get_additional_debug_data() {
     String result;
+    if ( !annotations.empty() ) {
+        result += "#(";
+        for ( auto &a : annotations ) {
+            result += a->get_debug_repr() + ", ";
+        }
+        result += ")";
+    }
     if ( !static_statements.empty() ) {
         result += "$(";
         for ( auto &stst : static_statements ) {
@@ -63,8 +70,20 @@ bool DeclExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
-    // Resolve commas
+    std::vector<sptr<Expr>> annotation_list;
     for ( size_t i = 0; i < sub_expr.size(); i++ ) {
+        // Resolve annotations
+        if ( std::dynamic_pointer_cast<CompilerAnnotationExpr>( sub_expr[i] ) != nullptr ) {
+            annotation_list.push_back( sub_expr[i] );
+            sub_expr.erase( sub_expr.begin() + i );
+            i--;
+            continue;
+        } else if ( !annotation_list.empty() ) {
+            sub_expr[i]->annotations = std::move( annotation_list );
+            annotation_list.clear();
+        }
+
+        // Resolve commas
         if ( auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( sub_expr[i] ); sc_expr != nullptr ) {
             if ( auto comma_expr = std::dynamic_pointer_cast<CommaExpr>( sc_expr->sub_expr ); comma_expr != nullptr ) {
                 sub_expr.erase( sub_expr.begin() + i );
@@ -121,6 +140,20 @@ bool BlockExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr>
         // Insert implicit return type
         if ( !sub_expr.empty() && std::dynamic_pointer_cast<SingleCompletedExpr>( sub_expr.back() ) != nullptr )
             sub_expr.push_back( make_shared<UnitExpr>() );
+
+        std::vector<sptr<Expr>> annotation_list;
+        for ( size_t i = 0; i < sub_expr.size(); i++ ) {
+            // Resolve annotations
+            if ( std::dynamic_pointer_cast<CompilerAnnotationExpr>( sub_expr[i] ) != nullptr ) {
+                annotation_list.push_back( sub_expr[i] );
+                sub_expr.erase( sub_expr.begin() + i );
+                i--;
+                continue;
+            } else if ( !annotation_list.empty() ) {
+                sub_expr[i]->annotations = std::move( annotation_list );
+                annotation_list.clear();
+            }
+        }
     }
     return true;
 }
@@ -147,8 +180,20 @@ bool SetExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &
         new_decl->sub_expr = sub_expr;
         anchor = new_decl;
     } else {
-        // Resolve commas
+        std::vector<sptr<Expr>> annotation_list;
         for ( size_t i = 0; i < sub_expr.size(); i++ ) {
+            // Resolve annotations
+            if ( std::dynamic_pointer_cast<CompilerAnnotationExpr>( sub_expr[i] ) != nullptr ) {
+                annotation_list.push_back( sub_expr[i] );
+                sub_expr.erase( sub_expr.begin() + i );
+                i--;
+                continue;
+            } else if ( !annotation_list.empty() ) {
+                sub_expr[i]->annotations = std::move( annotation_list );
+                annotation_list.clear();
+            }
+
+            // Resolve commas
             if ( auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( sub_expr[i] ); sc_expr != nullptr ) {
                 if ( auto comma_expr = std::dynamic_pointer_cast<CommaExpr>( sc_expr->sub_expr );
                      comma_expr != nullptr ) {

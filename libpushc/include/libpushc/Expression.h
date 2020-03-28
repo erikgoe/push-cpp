@@ -67,6 +67,7 @@ class Expr : public std::enable_shared_from_this<Expr> {
 public:
     PosInfo pos_info;
     std::vector<sptr<Expr>> static_statements;
+    std::vector<sptr<Expr>> annotations;
 
     virtual ~Expr() {}
 
