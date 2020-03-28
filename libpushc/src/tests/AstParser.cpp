@@ -44,6 +44,7 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
 
     g_ctx->set_pref<StringSV>( PrefType::input_source, "debug" );
 
+    // Pairs of code and the expected AST
     std::vector<std::pair<String, String>> test_data = {
         { "a+b;", "GLOBAL { SC OP(SYM() + SYM()); }" },
         { "/// Basic function without anything special\n function {let val = 5;}",
@@ -98,7 +99,7 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
           "}" },
         { "fn { (a,b,c,d); match a 1=>x, 2=>y, 3=>z; }",
           "GLOBAL { FUNC(0 SYM() BLOCK { SC TUPLE( SYM(), SYM(), SYM(), SYM(), ); MATCH(SYM() WITH SC COMMA( "
-          "OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), ); ) }) }" },
+          "OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), );) }) }" },
         { "let a = { a, b, c };", "GLOBAL { SC BINDING(OP(SYM() = SET { SYM(), SYM(), SYM(), })); }" },
         { "fn (s) { }", "GLOBAL { FUNC(0 TERM( SYM() ) SYM() BLOCK { }) }" },
         { "s.b; A::B; ::C;", "GLOBAL { SC MEMBER(SYM().SYM()); SC SCOPE(SYM()::SYM()); SC SCOPE(<global>::SYM()); }" },

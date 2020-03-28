@@ -746,6 +746,8 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -916,6 +918,8 @@ public:
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -954,6 +958,8 @@ public:
                expr_f->visit( c_ctx, w_ctx, vpt, expr_f, shared_from_this() ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -994,6 +1000,8 @@ public:
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1033,6 +1041,8 @@ public:
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1066,6 +1076,8 @@ public:
         return result && expr->visit( c_ctx, w_ctx, vpt, expr, shared_from_this() ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1101,6 +1113,8 @@ public:
                expr->visit( c_ctx, w_ctx, vpt, expr, shared_from_this() ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
@@ -1140,12 +1154,14 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
-        return "MATCH(" + selector->get_debug_repr() + " WITH " + cases->get_debug_repr() + " )" +
+        return "MATCH(" + selector->get_debug_repr() + " WITH " + cases->get_debug_repr() + ")" +
                get_additional_debug_data();
     }
 };
@@ -1556,6 +1572,8 @@ public:
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1649,6 +1667,8 @@ public:
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
@@ -1669,7 +1689,7 @@ public:
         this->parameters = parameters;
     }
 
-    TypeId get_type() override { return parameters->get_type(); }
+    TypeId get_type() override { return TYPE_UNIT; }
 
     bool matches( sptr<Expr> other ) override {
         return std::dynamic_pointer_cast<CompilerAnnotationExpr>( other ) != nullptr;
@@ -1748,6 +1768,8 @@ public:
         return result && block->visit( c_ctx, w_ctx, vpt, block, shared_from_this() ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
     String get_debug_repr() override { return "UNSAFE " + block->get_debug_repr() + get_additional_debug_data(); }
 };

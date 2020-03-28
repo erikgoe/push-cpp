@@ -175,7 +175,7 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
     auto passes = make_shared<std::vector<VisitorPassType>>();
     passes->push_back( VisitorPassType::FIRST_TRANSFORMATION );
 
-    // Pairs of code and the expected (single) message error (or none if MessageType::count)
+    // Pairs of code and the expected transformed AST
     std::vector<std::pair<String, String>> test_data = {
         { "{}", "GLOBAL { GLOBAL { } }" },
         { "{{}}{}", "GLOBAL { GLOBAL { GLOBAL { } } GLOBAL { } }" },
@@ -185,7 +185,18 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
         { "trait C { pub fn() }", "GLOBAL { TRAIT SYM() GLOBAL { FUNC_HEAD(UNIT() SYM()) } }" },
         { "struct A { {}, a }", "GLOBAL { STRUCT SYM() GLOBAL { GLOBAL { } SYM() } }" },
         { "fn() { {} a }", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { BLOCK { } SYM() }) }" },
+        { "fn() a;", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { SYM() }) }" },
+        { "struct A a;", "GLOBAL { STRUCT SYM() GLOBAL { SYM() } }" },
+        { "struct A { a }", "GLOBAL { STRUCT SYM() GLOBAL { SYM() } }" },
         { "struct A a, b;", "GLOBAL { STRUCT SYM() GLOBAL { SYM() SYM() } }" },
+        { "struct A { a, b }", "GLOBAL { STRUCT SYM() GLOBAL { SYM() SYM() } }" },
+        { "match x 1=>a;", "GLOBAL { MATCH(SYM() WITH SET { OP(BLOB_LITERAL() => SYM()), }) }" },
+        { "match x { 1=>a }", "GLOBAL { MATCH(SYM() WITH SET { OP(BLOB_LITERAL() => SYM()), }) }" },
+        { "match x 1=>a, 2=>b;",
+          "GLOBAL { MATCH(SYM() WITH SET { OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), }) }" },
+        { "match x { 1=>a, 2=>b }",
+          "GLOBAL { MATCH(SYM() WITH SET { OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), }) }" },
+        { "if a b; else c;", "GLOBAL { IF(SYM() THEN BLOCK { SYM() } ELSE BLOCK { SYM() } ) }" },
         { "fn<A, B>() {}", "GLOBAL { FUNC(0 UNIT() TEMPLATE SYM()<SYM(), SYM(), > BLOCK { }) }" },
         { "fn() { fn(); }", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { FN_CALL(0 UNIT() SYM()) }) }" },
     };
