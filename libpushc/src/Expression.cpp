@@ -822,7 +822,11 @@ bool PublicAttrExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         }
     } else if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr &&
                 std::dynamic_pointer_cast<FuncHeadExpr>( symbol ) == nullptr &&
-                std::dynamic_pointer_cast<FuncExpr>( symbol ) == nullptr ) {
+                std::dynamic_pointer_cast<FuncExpr>( symbol ) == nullptr &&
+                std::dynamic_pointer_cast<StructExpr>( symbol ) == nullptr &&
+                std::dynamic_pointer_cast<TraitExpr>( symbol ) == nullptr &&
+                std::dynamic_pointer_cast<ImplExpr>( symbol ) == nullptr &&
+                std::dynamic_pointer_cast<ModuleExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
     }
@@ -845,6 +849,14 @@ bool PublicAttrExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<
     } else if ( auto fn = std::dynamic_pointer_cast<FuncHeadExpr>( symbol ); fn != nullptr ) {
         fn->pub = true;
     } else if ( auto fn = std::dynamic_pointer_cast<FuncExpr>( symbol ); fn != nullptr ) {
+        fn->pub = true;
+    } else if ( auto fn = std::dynamic_pointer_cast<StructExpr>( symbol ); fn != nullptr ) {
+        fn->pub = true;
+    } else if ( auto fn = std::dynamic_pointer_cast<TraitExpr>( symbol ); fn != nullptr ) {
+        fn->pub = true;
+    } else if ( auto fn = std::dynamic_pointer_cast<ImplExpr>( symbol ); fn != nullptr ) {
+        fn->pub = true;
+    } else if ( auto fn = std::dynamic_pointer_cast<ModuleExpr>( symbol ); fn != nullptr ) {
         fn->pub = true;
     }
 
