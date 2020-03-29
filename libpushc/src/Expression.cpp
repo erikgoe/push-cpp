@@ -83,15 +83,23 @@ bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> 
             annotation_list.clear();
         }
 
-        // Resolve commas
         if ( auto sc_expr = std::dynamic_pointer_cast<SingleCompletedExpr>( sub_expr[i] ); sc_expr != nullptr ) {
             if ( auto comma_expr = std::dynamic_pointer_cast<CommaExpr>( sc_expr->sub_expr ); comma_expr != nullptr ) {
+                // Resolve commas
                 sub_expr.erase( sub_expr.begin() + i );
                 sub_expr.insert( sub_expr.begin() + i, comma_expr->sub_expr.begin(), comma_expr->sub_expr.end() );
                 i--;
                 continue;
+            } else if ( auto alias = std::dynamic_pointer_cast<AliasBindExpr>( sc_expr->sub_expr ); alias != nullptr ) {
+                // Resolve alias statements
+                auto subs = alias->get_substitutions();
+                substitutions.insert( substitutions.end(), subs.begin(), subs.end() );
+                sub_expr.erase( sub_expr.begin() + i );
+                i--;
+                continue;
             }
         } else if ( auto comma_expr = std::dynamic_pointer_cast<CommaExpr>( sub_expr[i] ); comma_expr != nullptr ) {
+            // Resolve commas
             sub_expr.erase( sub_expr.begin() + i );
             sub_expr.insert( sub_expr.begin() + i, comma_expr->sub_expr.begin(), comma_expr->sub_expr.end() );
             i--;
@@ -414,6 +422,19 @@ bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         return false;
     }
     return true;
+}
+
+std::vector<SymbolSubstitution> AliasBindExpr::get_substitutions() {
+    std::vector<SymbolSubstitution> result;
+    if ( auto assignment = std::dynamic_pointer_cast<OperatorExpr>( expr ); assignment != nullptr ) {
+        result.push_back(
+            { get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( assignment->lvalue ) ),
+              get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( assignment->rvalue ) ) } );
+    } else {
+        auto chain = get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( expr ) );
+        result.push_back( { make_shared<std::vector<SymbolIdentifier>>( 1, chain->back() ), chain } );
+    }
+    return result;
 }
 
 bool IfExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {

@@ -14,23 +14,7 @@
 #pragma once
 #include "libpushc/stdafx.h"
 #include "libpushc/Util.h"
-
-// Identifies a type
-using TypeId = u32;
-
-// Identifies a symbol
-using SymbolId = u32;
-constexpr SymbolId ROOT_SYMBOL = 1; // the global root symbol
-
-// Identifies a function body
-using FunctionBodyId = u32;
-
-// Constants
-constexpr TypeId TYPE_UNIT = 1; // The initial unit type
-constexpr TypeId TYPE_NEVER = 2; // The initial never type
-constexpr TypeId TYPE_TYPE = 3; // The initial type type
-constexpr TypeId MODULE_TYPE = 4; // The initial module type
-constexpr TypeId LAST_FIX_TYPE = MODULE_TYPE; // The last not variable type
+#include "libpushc/Ast.h"
 
 // Defines the type of a visitor pass
 enum class VisitorPassType {
@@ -42,8 +26,6 @@ enum class VisitorPassType {
     count
 };
 
-class SymbolIdentifier;
-struct CrateCtx;
 class SymbolExpr;
 class PublicAttrExpr;
 class StaticStatementExpr;
@@ -169,6 +151,7 @@ public:
 class DeclExpr : public Expr {
 public:
     std::vector<sptr<Expr>> sub_expr;
+    std::vector<SymbolSubstitution> substitutions;
 
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<DeclExpr>( other ) != nullptr; }
 
@@ -903,6 +886,9 @@ public:
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    // Returns the list of the subsitutions rules from this alias expr
+    std::vector<SymbolSubstitution> get_substitutions();
 
     String get_debug_repr() override { return "ALIAS(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };

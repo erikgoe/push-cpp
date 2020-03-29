@@ -203,6 +203,7 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
         { "#annotation() fn() a;", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { SYM() })#(ANNOTATE(SYM() UNIT()), ) }" },
         { "trait C { #annotation() fn() }",
           "GLOBAL { TRAIT SYM() GLOBAL { FUNC_HEAD(UNIT() SYM())#(ANNOTATE(SYM() UNIT()), ) } }" },
+        { "use a = b; struct A {}", "GLOBAL { STRUCT SYM() GLOBAL { } }" },
     };
 
     std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*:[0-9]*\\)" );

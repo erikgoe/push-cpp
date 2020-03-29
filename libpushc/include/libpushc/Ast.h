@@ -13,7 +13,25 @@
 
 #pragma once
 #include "libpushc/stdafx.h"
-#include "libpushc/Expression.h"
+
+// Identifies a type
+using TypeId = u32;
+
+// Identifies a symbol
+using SymbolId = u32;
+constexpr SymbolId ROOT_SYMBOL = 1; // the global root symbol
+
+// Identifies a function body
+using FunctionBodyId = u32;
+
+// Constants
+constexpr TypeId TYPE_UNIT = 1; // The initial unit type
+constexpr TypeId TYPE_NEVER = 2; // The initial never type
+constexpr TypeId TYPE_TYPE = 3; // The initial type type
+constexpr TypeId MODULE_TYPE = 4; // The initial module type
+constexpr TypeId LAST_FIX_TYPE = MODULE_TYPE; // The last not variable type
+
+class Expr;
 
 // Checks if a token list matches a specific expression and translates it
 struct SyntaxRule {
@@ -51,6 +69,11 @@ struct SymbolIdentifier {
     std::vector<std::pair<TypeId, String>> parameters; // type-name pairs of parameters
 
     std::vector<std::pair<TypeId, ConstValue>> template_values; // type-value pairs of template parameters
+};
+
+// Used to substitute symbol paths
+struct SymbolSubstitution {
+    sptr<std::vector<SymbolIdentifier>> from, to;
 };
 
 // A node in the Symbol graph, representing a symbol

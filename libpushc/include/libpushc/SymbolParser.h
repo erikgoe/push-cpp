@@ -13,7 +13,7 @@
 
 #pragma once
 #include "libpushc/stdafx.h"
-#include "libpushc/Ast.h"
+#include "libpushc/Expression.h"
 
 // Parse the symbols from an AST
 void parse_symbols( sptr<CrateCtx> c_ctx, JobsBuilder &jb, UnitCtx &parent_ctx );

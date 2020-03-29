@@ -13,7 +13,7 @@
 
 #pragma once
 #include "libpushc/stdafx.h"
-#include "libpushc/Ast.h"
+#include "libpushc/Expression.h"
 
 // Splits a symbol string into a chain of strings. NOTE: This is only used for external inputs like the prelude
 sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, String separator );

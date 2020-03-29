@@ -13,6 +13,7 @@
 
 #include "libpushc/stdafx.h"
 #include "libpushc/Ast.h"
+#include "libpushc/Expression.h"
 
 bool SyntaxRule::matches_reversed( std::vector<sptr<Expr>> &rev_list ) {
     if ( rev_list.size() < expr_list.size() )
