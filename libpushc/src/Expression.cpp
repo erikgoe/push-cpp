@@ -336,6 +336,7 @@ bool FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
+        c_ctx.symbol_graph[new_id].pub = pub;
 
         if ( return_type != 0 ) {
             auto return_symbols = find_sub_symbol_by_identifier_chain(
@@ -701,6 +702,7 @@ bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( name );
+        c_ctx.symbol_graph[new_id].pub = pub;
     }
     return true;
 }
@@ -755,6 +757,7 @@ bool TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( name );
+        c_ctx.symbol_graph[new_id].pub = pub;
     }
     return true;
 }
@@ -812,6 +815,7 @@ bool ImplExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( struct_name );
+        c_ctx.symbol_graph[new_id].pub = pub;
     }
     return true;
 }
@@ -839,6 +843,7 @@ bool ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         switch_scope_to_symbol( c_ctx, new_id );
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
+        c_ctx.symbol_graph[new_id].pub = pub;
     }
     return true;
 }
