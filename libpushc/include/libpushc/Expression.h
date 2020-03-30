@@ -672,7 +672,6 @@ class FuncHeadExpr : public SeparableExpr {
 public:
     sptr<Expr> symbol;
     sptr<Expr> parameters;
-    bool pub; // public keyword
 
     FuncHeadExpr() {}
     FuncHeadExpr( sptr<Expr> symbol, sptr<Expr> parameters, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
@@ -717,7 +716,6 @@ public:
     sptr<Expr> return_type;
     sptr<Expr> symbol;
     sptr<Expr> body;
-    bool pub; // public keyword
 
     FuncExpr() {}
     FuncExpr( sptr<Expr> symbol, TypeId type, sptr<Expr> parameters, sptr<Expr> return_type, sptr<CompletedExpr> block,
@@ -1255,7 +1253,6 @@ class StructExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> name;
     sptr<Expr> body;
-    bool pub; // public keyword
 
     StructExpr() {}
     StructExpr( sptr<Expr> name, sptr<CompletedExpr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
@@ -1297,7 +1294,6 @@ class TraitExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> name;
     sptr<Expr> body;
-    bool pub; // public keyword
 
     TraitExpr() {}
     TraitExpr( sptr<Expr> name, sptr<CompletedExpr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
@@ -1338,7 +1334,6 @@ class ImplExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> struct_name, trait_name;
     sptr<Expr> body;
-    bool pub; // public keyword
 
     ImplExpr() {}
     ImplExpr( sptr<Expr> struct_name, sptr<Expr> trait_name, sptr<CompletedExpr> body, u32 precedence,
@@ -1559,7 +1554,6 @@ class ModuleExpr : public SeparableExpr, public CompletedExpr {
 public:
     sptr<Expr> symbol;
     sptr<Expr> body;
-    bool pub; // public keyword
 
     ModuleExpr() {}
     ModuleExpr( sptr<Expr> symbol, sptr<Expr> body, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
