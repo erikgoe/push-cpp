@@ -695,9 +695,13 @@ public:
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
     bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
 
-    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+    bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         return "FUNC_HEAD(" + ( parameters ? parameters->get_debug_repr() + " " : "" ) + symbol->get_debug_repr() +

@@ -9,6 +9,16 @@ struct A {
     foobar:f32
 }
 
+trait Add {
+    add(self, other)
+}
+
+impl Add for A {
+    add(self, other) {
+        foo + other.foo
+    }
+}
+
 mod submodule {
     struct B {
         a,b

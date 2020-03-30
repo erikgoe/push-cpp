@@ -282,6 +282,24 @@ bool FuncHeadExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Ex
     return true;
 }
 
+bool FuncHeadExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+    if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_symbol ) {
+        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
+        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_symbol_id( new_id );
+        c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
+        c_ctx.symbol_graph[new_id].pub = pub;
+        c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
+    }
+    return true;
+}
+
+bool FuncHeadExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+    switch_scope_to_symbol(
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
+    return true;
+}
+
 bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( symbol && ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr &&
                      std::dynamic_pointer_cast<ArraySpecifierExpr>( symbol ) == nullptr ) ) {
@@ -708,38 +726,48 @@ bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
         // Handle type
         if ( c_ctx.symbol_graph[new_id].value == 0 )
-            TypeId new_type = create_new_type( c_ctx, new_id );
+            create_new_type( c_ctx, new_id );
 
         // Handle Members
         for ( auto &expr : std::dynamic_pointer_cast<DeclExpr>( body )->sub_expr ) {
-            sptr<SymbolExpr> symbol_expr;
-            if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( expr ); typed != nullptr ) {
-                symbol_expr = std::dynamic_pointer_cast<SymbolExpr>( typed->symbol );
-            }
-            if ( symbol_expr || ( symbol_expr = std::dynamic_pointer_cast<SymbolExpr>( expr ) ) != nullptr ) {
-                auto identifier_list = get_symbol_chain_from_expr( symbol_expr );
-                if ( identifier_list->size() != 1 ) {
-                    w_ctx.print_msg<MessageType::err_member_in_invalid_scope>(
-                        MessageInfo( symbol_expr, 0, FmtStr::Color::Red ) );
-                    return false;
-                }
+            sptr<SymbolExpr> symbol;
 
-                auto indices = find_member_symbol_by_identifier( c_ctx, identifier_list->front(), new_id );
-                auto &members = c_ctx.type_table[c_ctx.symbol_graph[new_id].type].members;
-                if ( !indices.empty() ) {
-                    std::vector<MessageInfo> notes;
-                    for ( auto &idx : indices ) {
-                        if ( !members[idx].original_expr.empty() )
-                            notes.push_back( MessageInfo( members[idx].original_expr.front(), 1 ) );
-                    }
-                    w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                        MessageInfo( symbol_expr, 0, FmtStr::Color::Red ), notes );
-                }
-
-                auto &new_member = create_new_member_symbol( c_ctx, identifier_list->front(), new_id );
-                new_member.original_expr.push_back( expr );
-                new_member.pub = symbol_expr->is_public();
+            // Select symbol
+            if ( auto trait_expr = std::dynamic_pointer_cast<TypedExpr>( expr ); trait_expr != nullptr ) {
+                symbol = std::dynamic_pointer_cast<SymbolExpr>( trait_expr->symbol );
+            } else if ( auto symbol_expr = std::dynamic_pointer_cast<SymbolExpr>( expr ); symbol_expr != nullptr ) {
+                symbol = symbol_expr;
+            } else {
+                LOG_ERR( "Struct member is not a symbol" );
+                return false;
             }
+
+            // Check if scope is right
+            auto identifier_list = get_symbol_chain_from_expr( symbol );
+            if ( identifier_list->size() != 1 ) {
+                w_ctx.print_msg<MessageType::err_member_in_invalid_scope>(
+                    MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+                return false;
+            }
+
+            // Check if symbol doesn't already exits
+            auto indices = find_member_symbol_by_identifier( c_ctx, identifier_list->front(), new_id );
+            auto &members = c_ctx.type_table[c_ctx.symbol_graph[new_id].type].members;
+            if ( !indices.empty() ) {
+                std::vector<MessageInfo> notes;
+                for ( auto &idx : indices ) {
+                    if ( !members[idx].original_expr.empty() )
+                        notes.push_back( MessageInfo( members[idx].original_expr.front(), 1 ) );
+                }
+                w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( symbol, 0, FmtStr::Color::Red ),
+                                                                       notes );
+                return false;
+            }
+
+            // Create member
+            auto &new_member = create_new_member_symbol( c_ctx, identifier_list->front(), new_id );
+            new_member.original_expr.push_back( expr );
+            new_member.pub = symbol->is_public();
         }
     }
     return true;
@@ -797,6 +825,10 @@ bool TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         c_ctx.symbol_graph[new_id].original_expr.push_back( name );
         c_ctx.symbol_graph[new_id].pub = pub;
         c_ctx.symbol_graph[new_id].type = c_ctx.trait_type;
+
+        // Handle type
+        if ( c_ctx.symbol_graph[new_id].value == 0 )
+            create_new_type( c_ctx, new_id );
     }
     return true;
 }
