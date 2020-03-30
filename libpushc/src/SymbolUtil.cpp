@@ -205,13 +205,22 @@ SymbolId create_new_relative_symbol_from_name_chain( CrateCtx &c_ctx,
                                                      const sptr<std::vector<SymbolIdentifier>> symbol_chain,
                                                      SymbolId parent_symbol ) {
     SymbolId curr_symbol = parent_symbol;
-    for ( auto &symbol : *symbol_chain ) {
-        std::vector<SymbolId> sub_symbols = find_sub_symbol_by_identifier( c_ctx, symbol, curr_symbol );
+    for ( int i = 0; i < symbol_chain->size(); i++ ) {
+        std::vector<SymbolId> sub_symbols = find_sub_symbol_by_identifier( c_ctx, ( *symbol_chain )[i], curr_symbol );
         if ( sub_symbols.size() == 1 ) {
             curr_symbol = sub_symbols.front();
+
+            // Test for invalid scope access
+            if ( i != symbol_chain->size() - 1 && c_ctx.symbol_graph[curr_symbol].type != c_ctx.mod_type &&
+                 c_ctx.symbol_graph[curr_symbol].type != 0 ) {
+                LOG_ERR( "Implicit scope is not a module" );
+                return 0; // TODO create error message
+            }
         } else if ( sub_symbols.empty() ) { // create new symbol
-            curr_symbol = create_new_relative_symbol( c_ctx, symbol.name, curr_symbol );
+            curr_symbol = create_new_relative_symbol( c_ctx, ( *symbol_chain )[i].name, curr_symbol );
+            c_ctx.symbol_graph[curr_symbol].type = c_ctx.mod_type;
         } else {
+            LOG_ERR( "Symbol chain is not unique" );
             return 0; // TODO create error message, because symbol chain is not unique d
         }
     }

@@ -25,7 +25,7 @@ mod submodule {
     }
 }
 
-base::function (a, b) -> u32 {
+base::B::A::b::a::function (a, b) -> u32 {
     {
         let a:A = {1,2};
     }
