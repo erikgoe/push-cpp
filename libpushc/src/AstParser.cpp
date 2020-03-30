@@ -412,6 +412,12 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
 }
 
 void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg ) {
+    // Internal types
+    c_ctx.struct_type = create_new_internal_type( c_ctx );
+    c_ctx.trait_type = create_new_internal_type( c_ctx );
+    c_ctx.fn_type = create_new_internal_type( c_ctx );
+    c_ctx.mod_type = create_new_internal_type( c_ctx );
+
     // Most basic types/traits
     SymbolId new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ) );
@@ -466,7 +472,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         log( "SYMBOLS ------" );
         for ( size_t i = 1; i < c_ctx->symbol_graph.size(); i++ ) {
             log( " " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, i ) + " - val " +
-                 to_string( c_ctx->symbol_graph[i].value ) );
+                 to_string( c_ctx->symbol_graph[i].value ) + " - type " + to_string( c_ctx->symbol_graph[i].type ) );
         }
         log( "TYPES --------" );
         for ( size_t i = 1; i < c_ctx->type_table.size(); i++ ) {

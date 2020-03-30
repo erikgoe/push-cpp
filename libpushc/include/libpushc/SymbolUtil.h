@@ -63,6 +63,9 @@ SymbolId create_new_local_symbol_from_name_chain( CrateCtx &c_ctx,
 SymbolGraphNode &create_new_member_symbol( CrateCtx &c_ctx, const SymbolIdentifier &symbol_identifier,
                                            SymbolId parent_symbol );
 
+// Creates a new type with no symbol
+TypeId create_new_internal_type( CrateCtx &c_ctx );
+
 // Creates a new type from a existing symbol
 TypeId create_new_type( CrateCtx &c_ctx, SymbolId from_symbol );
 

@@ -232,6 +232,12 @@ SymbolGraphNode &create_new_member_symbol( CrateCtx &c_ctx, const SymbolIdentifi
     return parent_type.members.back();
 }
 
+TypeId create_new_internal_type( CrateCtx &c_ctx ) {
+    SymbolId type_id = c_ctx.type_table.size();
+    c_ctx.type_table.emplace_back();
+    return type_id;
+}
+
 TypeId create_new_type( CrateCtx &c_ctx, SymbolId from_symbol ) {
     if ( c_ctx.symbol_graph[from_symbol].value != 0 )
         LOG_ERR( "Attempted to create a type on a symbol which already has a type" );

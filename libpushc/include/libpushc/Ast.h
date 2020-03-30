@@ -88,6 +88,7 @@ struct SymbolGraphNode {
 
     TypeId value = 0; // type/value of this symbol (every function has its own type; for structs this is struct body;
                       // for (local) variables this is 0)
+    TypeId type = 0; // the type behind the value of this symbol
 };
 
 // An entry in the type table, representing a type
@@ -115,6 +116,10 @@ struct CrateCtx {
     std::vector<TypeTableEntry> type_table; // contains all types
     std::vector<FunctionBody> functions; // contains all function implementations (MIR)
 
+    TypeId struct_type = 0; // internal struct type
+    TypeId trait_type = 0; // internal trait type
+    TypeId fn_type = 0; // internal function type
+    TypeId mod_type = 0; // internal module type
     TypeId int_type = 0; // type of the integer trait
     TypeId str_type = 0; // type of the string trait
 
