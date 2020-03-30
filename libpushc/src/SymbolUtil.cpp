@@ -85,6 +85,41 @@ std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx,
     }
 }
 
+std::vector<size_t> find_member_symbol_by_identifier( CrateCtx &c_ctx, const SymbolIdentifier &identifier,
+                                                      SymbolId parent_symbol ) {
+    std::vector<size_t> ret;
+    auto &parent_type = c_ctx.type_table[c_ctx.symbol_graph[parent_symbol].value];
+
+    for ( size_t i = 0; i < parent_type.members.size(); i++ ) {
+        if ( parent_type.members[i].identifier.name == identifier.name ) {
+            if ( identifier.eval_type == 0 || parent_type.members[i].identifier.eval_type == identifier.eval_type ) {
+                bool matches = true;
+
+                if ( parent_type.members[i].identifier.parameters.size() < identifier.parameters.size() )
+                    matches = false;
+                for ( size_t i = 0; i < identifier.parameters.size() && matches; i++ ) {
+                    if ( identifier.parameters[i].first != 0 &&
+                         parent_type.members[i].identifier.parameters[i].first != identifier.parameters[i].first )
+                        matches = false;
+                }
+
+                if ( parent_type.members[i].identifier.template_values.size() < identifier.template_values.size() )
+                    matches = false;
+                for ( size_t i = 0; i < identifier.template_values.size() && matches; i++ ) {
+                    if ( identifier.template_values[i].first != 0 &&
+                         parent_type.members[i].identifier.template_values[i].first !=
+                             identifier.template_values[i].first )
+                        matches = false;
+                }
+
+                if ( matches )
+                    ret.push_back( i );
+            }
+        }
+    }
+    return ret;
+}
+
 String get_local_symbol_name( CrateCtx &c_ctx, SymbolId symbol ) {
     if ( symbol == 0 )
         return "";
@@ -186,6 +221,15 @@ SymbolId create_new_relative_symbol_from_name_chain( CrateCtx &c_ctx,
 SymbolId create_new_local_symbol_from_name_chain( CrateCtx &c_ctx,
                                                   const sptr<std::vector<SymbolIdentifier>> symbol_chain ) {
     return create_new_relative_symbol_from_name_chain( c_ctx, symbol_chain, c_ctx.current_scope );
+}
+
+SymbolGraphNode &create_new_member_symbol( CrateCtx &c_ctx, const SymbolIdentifier &symbol_identifier,
+                                           SymbolId parent_symbol ) {
+    auto &parent_type = c_ctx.type_table[c_ctx.symbol_graph[parent_symbol].value];
+    parent_type.members.emplace_back();
+    parent_type.members.back().identifier = symbol_identifier;
+    parent_type.members.back().parent = parent_symbol;
+    return parent_type.members.back();
 }
 
 TypeId create_new_type( CrateCtx &c_ctx, SymbolId from_symbol ) {

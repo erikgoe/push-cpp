@@ -54,6 +54,7 @@ enum class MessageType {
     err_expected_function_definition,
     err_method_not_allowed,
     err_public_not_allowed_in_context,
+    err_member_in_invalid_scope,
 
     warning = 5000,
 
@@ -146,6 +147,8 @@ MESSAGE_DEFINITION( MessageType::err_method_not_allowed, MessageClass::Error, "C
                     "Methods are not allowed in this scope, please move it into an impl block." );
 MESSAGE_DEFINITION( MessageType::err_public_not_allowed_in_context, MessageClass::Error, "C",
                     "A symbol may not be public in this context", "This symbol." );
+MESSAGE_DEFINITION( MessageType::err_member_in_invalid_scope, MessageClass::Error, "C",
+                    "Member defined in a invalid scope", "Remove the scope operator" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

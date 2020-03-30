@@ -473,6 +473,9 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
             auto type = c_ctx->type_table[i];
             log( " " + to_string( i ) + " add_size " + to_string( type.additional_mem_size ) + " - sym " +
                  get_full_symbol_name( *c_ctx, type.symbol ) );
+            for ( const auto &m : c_ctx->type_table[i].members ) {
+                log( "  member " + m.identifier.name );
+            }
         }
         log( "--------------" );
         auto duration = std::chrono::system_clock::now() - start_time;

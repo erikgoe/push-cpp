@@ -19,11 +19,17 @@
 sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, String separator );
 
 // Searches for a sub-symbol by name and returns its id. Returns 0 if no such sub-symbol exits
-std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, const SymbolIdentifier &identifier, SymbolId parent );
+std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, const SymbolIdentifier &identifier,
+                                                     SymbolId parent );
 
 // Searches for a sub-symbol by name chain and returns its id. Returns 0 if no such sub-symbol exits
-std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx, sptr<std::vector<SymbolIdentifier>> identifier_chain,
-                                        SymbolId parent = ROOT_SYMBOL );
+std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx,
+                                                           sptr<std::vector<SymbolIdentifier>> identifier_chain,
+                                                           SymbolId parent = ROOT_SYMBOL );
+
+// Returns a list of indices of members which match the identifier
+std::vector<size_t> find_member_symbol_by_identifier( CrateCtx &c_ctx, const SymbolIdentifier &identifier,
+                                                      SymbolId parent_symbol );
 
 // Returns only the head of a symbol
 String get_local_symbol_name( CrateCtx &c_ctx, SymbolId symbol );
@@ -41,14 +47,21 @@ SymbolId create_new_relative_symbol( CrateCtx &c_ctx, const String &name, Symbol
 SymbolId create_new_local_symbol( CrateCtx &c_ctx, const String &name );
 
 // Creates a new global symbol from a symbol chain. Existing symbols are skipped
-SymbolId create_new_global_symbol_from_name_chain( CrateCtx &c_ctx, const sptr<std::vector<SymbolIdentifier>> symbol_chain );
+SymbolId create_new_global_symbol_from_name_chain( CrateCtx &c_ctx,
+                                                   const sptr<std::vector<SymbolIdentifier>> symbol_chain );
 
 // Creates a new relative symbol from a symbol chain. Existing symbols are skipped
-SymbolId create_new_relative_symbol_from_name_chain( CrateCtx &c_ctx, const sptr<std::vector<SymbolIdentifier>> symbol_chain,
+SymbolId create_new_relative_symbol_from_name_chain( CrateCtx &c_ctx,
+                                                     const sptr<std::vector<SymbolIdentifier>> symbol_chain,
                                                      SymbolId parent_symbol );
 
 // Creates a new local symbol from a symbol chain. Existing symbols are skipped
-SymbolId create_new_local_symbol_from_name_chain( CrateCtx &c_ctx, const sptr<std::vector<SymbolIdentifier>> symbol_chain );
+SymbolId create_new_local_symbol_from_name_chain( CrateCtx &c_ctx,
+                                                  const sptr<std::vector<SymbolIdentifier>> symbol_chain );
+
+// Creates a new symbol for a member (attribute, method)
+SymbolGraphNode &create_new_member_symbol( CrateCtx &c_ctx, const SymbolIdentifier &symbol_identifier,
+                                           SymbolId parent_symbol );
 
 // Creates a new type from a existing symbol
 TypeId create_new_type( CrateCtx &c_ctx, SymbolId from_symbol );

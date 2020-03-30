@@ -703,6 +703,42 @@ bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_symbol_id( new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( name );
         c_ctx.symbol_graph[new_id].pub = pub;
+
+        // Handle type
+        if ( c_ctx.symbol_graph[new_id].value == 0 )
+            TypeId new_type = create_new_type( c_ctx, new_id );
+
+        // Handle Members
+        for ( auto &expr : std::dynamic_pointer_cast<DeclExpr>( body )->sub_expr ) {
+            sptr<SymbolExpr> symbol_expr;
+            if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( expr ); typed != nullptr ) {
+                symbol_expr = std::dynamic_pointer_cast<SymbolExpr>( typed->symbol );
+            }
+            if ( symbol_expr || ( symbol_expr = std::dynamic_pointer_cast<SymbolExpr>( expr ) ) != nullptr ) {
+                auto identifier_list = get_symbol_chain_from_expr( symbol_expr );
+                if ( identifier_list->size() != 1 ) {
+                    w_ctx.print_msg<MessageType::err_member_in_invalid_scope>(
+                        MessageInfo( symbol_expr, 0, FmtStr::Color::Red ) );
+                    return false;
+                }
+
+                auto indices = find_member_symbol_by_identifier( c_ctx, identifier_list->front(), new_id );
+                auto &members = c_ctx.type_table[c_ctx.symbol_graph[new_id].type].members;
+                if ( !indices.empty() ) {
+                    std::vector<MessageInfo> notes;
+                    for ( auto &idx : indices ) {
+                        if ( !members[idx].original_expr.empty() )
+                            notes.push_back( MessageInfo( members[idx].original_expr.front(), 1 ) );
+                    }
+                    w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
+                        MessageInfo( symbol_expr, 0, FmtStr::Color::Red ), notes );
+                }
+
+                auto &new_member = create_new_member_symbol( c_ctx, identifier_list->front(), new_id );
+                new_member.original_expr.push_back( expr );
+                new_member.pub = symbol_expr->is_public();
+            }
+        }
     }
     return true;
 }
