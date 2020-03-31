@@ -295,8 +295,9 @@ bool FuncHeadExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Ex
 bool FuncHeadExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
-        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
+        switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
@@ -306,7 +307,7 @@ bool FuncHeadExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool FuncHeadExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol(
-        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_left_symbol_id()].parent );
     return true;
 }
 
@@ -361,8 +362,9 @@ bool FuncExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> 
 bool FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
-        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
+        switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
@@ -391,7 +393,7 @@ bool FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool FuncExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol(
-        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_left_symbol_id()].parent );
     return true;
 }
 
@@ -728,8 +730,9 @@ bool StructExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr
 bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( name ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
-        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
+        switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( name );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
@@ -784,8 +787,8 @@ bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 bool StructExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
-    switch_scope_to_symbol( c_ctx,
-                            c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_symbol_id()].parent );
+    switch_scope_to_symbol(
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_left_symbol_id()].parent );
     return true;
 }
 
@@ -830,8 +833,9 @@ bool TraitExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr>
 bool TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( name ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
-        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
+        switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( name );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.trait_type;
@@ -844,8 +848,8 @@ bool TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 }
 
 bool TraitExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
-    switch_scope_to_symbol( c_ctx,
-                            c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_symbol_id()].parent );
+    switch_scope_to_symbol(
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( name )->get_left_symbol_id()].parent );
     return true;
 }
 
@@ -893,8 +897,9 @@ bool ImplExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> 
 bool ImplExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( struct_name ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
-        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
+        switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( struct_name );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
@@ -904,7 +909,7 @@ bool ImplExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool ImplExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol(
-        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( struct_name )->get_symbol_id()].parent );
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( struct_name )->get_left_symbol_id()].parent );
     return true;
 }
 
@@ -922,8 +927,9 @@ bool ModuleExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr
 bool ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_symbol ) {
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, get_symbol_chain_from_expr( symbol_symbol ) );
-        switch_scope_to_symbol( c_ctx, new_id );
+        symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
+        switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.mod_type;
@@ -933,7 +939,7 @@ bool ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
 bool ModuleExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol(
-        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_symbol_id()].parent );
+        c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( symbol )->get_left_symbol_id()].parent );
     return true;
 }
 

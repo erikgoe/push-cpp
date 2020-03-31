@@ -457,6 +457,9 @@ public:
         LOG_ERR( "Virtual function!" );
         return 0;
     }
+    virtual void update_left_symbol_id( SymbolId new_id ) { update_symbol_id( new_id ); }
+    // Returns the symbol id of the leftmost sub-expr (used to find the actual parent)
+    virtual SymbolId get_left_symbol_id() { return get_symbol_id(); }
 
     virtual bool is_public() { return false; }
     virtual void set_public( bool value = true ) {}
@@ -1451,7 +1454,20 @@ public:
     SymbolId get_symbol_id() override {
         auto name_symbol = std::dynamic_pointer_cast<SymbolExpr>( name );
         if ( name_symbol )
-            name_symbol->get_symbol_id();
+            return name_symbol->get_symbol_id();
+        return 0;
+    }
+    
+    void update_left_symbol_id( SymbolId new_id ) override {
+        auto base_symbol = std::dynamic_pointer_cast<SymbolExpr>( base );
+        if ( base_symbol )
+            base_symbol->update_left_symbol_id( new_id );
+    }
+
+    SymbolId get_left_symbol_id() override {
+        auto base_symbol = std::dynamic_pointer_cast<SymbolExpr>( base );
+        if ( base_symbol )
+            return base_symbol->get_left_symbol_id();
         return 0;
     }
 

@@ -167,7 +167,7 @@ bool alias_name_chain( CrateCtx &c_ctx, std::vector<SymbolIdentifier> &symbol_ch
         auto first = std::find_if( scope_itr->begin(), scope_itr->end(), test );
         if ( first != scope_itr->end() ) {
             // Found a substitution rule
-            auto second = std::find_if( first, scope_itr->end(), test );
+            auto second = std::find_if( first + 1, scope_itr->end(), test );
             if ( second != scope_itr->end() ) {
                 LOG_ERR( "Ambiguous symbol substitution" );
                 return false; // TODO create error message

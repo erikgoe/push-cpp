@@ -1,6 +1,6 @@
 #prelude(push)
 
-using op = std::op;
+use op = std::op;
 
 struct A {
     foo:u32,
@@ -37,4 +37,16 @@ base::B::A::b::a::function (a, b) -> u32 {
     }
 
     fn()
+}
+
+sub::new_fn() {
+
+}
+
+other_fn() {
+
+}
+
+another_sub::fn() {
+
 }
