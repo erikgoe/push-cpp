@@ -109,6 +109,16 @@ bool DeclExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> 
     return true;
 }
 
+bool DeclExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+    c_ctx.current_substitutions.push_back( substitutions );
+    return true;
+}
+
+bool DeclExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
+    c_ctx.current_substitutions.pop_back();
+    return true;
+}
+
 bool SingleCompletedExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<CompletedExpr>( sub_expr ) != nullptr ) { // double semicolon
         w_ctx.print_msg<MessageType::err_semicolon_without_meaning>(

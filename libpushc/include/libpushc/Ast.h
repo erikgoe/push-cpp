@@ -123,7 +123,8 @@ struct CrateCtx {
     TypeId int_type = 0; // type of the integer trait
     TypeId str_type = 0; // type of the string trait
 
-    SymbolId current_scope = 1; // new symbols are created on top of this one
+    SymbolId current_scope = ROOT_SYMBOL; // new symbols are created on top of this one
+    std::vector<std::vector<SymbolSubstitution>> current_substitutions; // Substitution rules for each new scope
 
     std::unordered_map<String, std::pair<TypeId, u64>> literals_map; // maps literals to their typeid and mem_value
 

@@ -75,13 +75,13 @@ public:
     virtual bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor,
                         sptr<Expr> parent ) = 0;
 
+    // Checks very basic semantic conditions on an expr. Returns false when an error has been found
+    virtual bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
+
     // Does basic transformations, which don't require symbol information
     virtual bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
         return true;
     }
-
-    // Checks very basic semantic conditions on an expr. Returns false when an error has been found
-    virtual bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
 
     // Prepares the symbol discovery for this expr
     virtual bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
@@ -169,6 +169,10 @@ public:
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
+    bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override {
         String str = "GLOBAL {\n ";
@@ -606,7 +610,7 @@ public:
 
     virtual void copy_from_other( sptr<Expr> other ) override {
         Expr::copy_from_other( other );
-        if ( auto other_separable = std::dynamic_pointer_cast<SeparableExpr>(other); other_separable != nullptr ) {
+        if ( auto other_separable = std::dynamic_pointer_cast<SeparableExpr>( other ); other_separable != nullptr ) {
             original_list = other_separable->original_list;
             precedence = other_separable->precedence;
         }

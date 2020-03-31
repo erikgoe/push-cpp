@@ -37,6 +37,9 @@ String get_local_symbol_name( CrateCtx &c_ctx, SymbolId symbol );
 // Returns the full symbol path for a symbol
 String get_full_symbol_name( CrateCtx &c_ctx, SymbolId symbol );
 
+// Applies local alias rules to a name chain. Returns false on error
+bool alias_name_chain( CrateCtx &c_ctx, std::vector<SymbolIdentifier> &symbol_chain );
+
 // Creates a new symbol from a global name. @param name may not contain scope operators
 SymbolId create_new_global_symbol( CrateCtx &c_ctx, const String &name );
 

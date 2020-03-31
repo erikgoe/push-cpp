@@ -1,5 +1,7 @@
 #prelude(push)
 
+using op = std::op;
+
 struct A {
     foo:u32,
     bar:u32,
@@ -9,11 +11,11 @@ struct A {
     foobar:f32
 }
 
-trait Add {
+trait op::Add {
     add(self, other)
 }
 
-impl Add for A {
+impl op::Add for A {
     add(self, other) {
         foo + other.foo
     }
