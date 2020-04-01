@@ -217,3 +217,126 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
         CHECK( str == d.second );
     }
 }
+
+TEST_CASE( "Symbol discovery", "[semantic_parser]" ) {
+    auto g_ctx = make_shared<GlobalCtx>();
+    auto w_ctx = g_ctx->setup( 1 );
+
+    // Preload prelude config
+    auto config = make_shared<PreludeConfig>();
+    *config = w_ctx->do_query( load_prelude, make_shared<String>( "push" ) )->jobs.back()->to<PreludeConfig>();
+
+    g_ctx->set_pref<StringSV>( PrefType::input_source, "debug" );
+    auto passes = make_shared<std::vector<VisitorPassType>>();
+    passes->push_back( VisitorPassType::FIRST_TRANSFORMATION );
+    passes->push_back( VisitorPassType::SYMBOL_DISCOVERY );
+
+    // Pairs of code and the expected transformed AST
+    String test_file =
+        "#prelude(push)"
+        "use op = std::op;"
+        "struct A {"
+        "    foo:u32,"
+        "    bar:u32,"
+        "}"
+        "struct A {"
+        "    foobar:f32"
+        "}"
+        "trait op::Add {"
+        "    add(self, other)"
+        "}"
+        "impl op::Add for A {"
+        "    add(self, other) {"
+        "        foo + other.foo"
+        "    }"
+        "}"
+        "mod submodule {"
+        "    struct B {"
+        "        a,b"
+        "    }"
+        "}"
+        "base::B::A::b::a::function (a, b) -> u32 {"
+        "    {"
+        "        let a:A = {1,2};"
+        "    }"
+        "    "
+        "    fn {"
+        "        a+b"
+        "    }"
+        "    fn()"
+        "}"
+        "sub::new_fn() {"
+        "}"
+        "other_fn() {"
+        "}"
+        "another_sub::fn() {"
+        "}";
+
+    // Parse
+    auto c_ctx = w_ctx->do_query( test_parser, test_file, config, passes )->jobs.back()->to<sptr<CrateCtx>>();
+
+    // Check
+    auto graph_start = std::find_if( c_ctx->symbol_graph.begin(), c_ctx->symbol_graph.end(),
+                                     []( const SymbolGraphNode &node ) { return node.identifier.name == "A"; } );
+    u32 graph_start_idx = graph_start - c_ctx->symbol_graph.begin();
+    auto type_start =
+        std::find_if( c_ctx->type_table.begin(), c_ctx->type_table.end(),
+                      [&graph_start_idx]( const TypeTableEntry &entry ) { return entry.symbol == graph_start_idx; } );
+    u32 type_start_idx = type_start - c_ctx->type_table.begin();
+    REQUIRE( c_ctx->symbol_graph.end() - graph_start == 26 ); // expected graph element count
+    REQUIRE( c_ctx->type_table.end() - type_start == 9 ); // expected type table element count
+
+    // Create expected data
+    u32 type_ctr = graph_start_idx;
+    std::vector<SymbolGraphNode> expected_graph_nodes = {
+        SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "A" }, {}, false, type_start_idx, c_ctx->struct_type },
+        SymbolGraphNode{ 2, {}, {}, SymbolIdentifier{ "op" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{
+            graph_start_idx + 1, {}, {}, SymbolIdentifier{ "Add" }, {}, false, type_start_idx + 1, c_ctx->trait_type },
+        SymbolGraphNode{ graph_start_idx + 2, {}, {}, SymbolIdentifier{ "add" }, {}, false, 0, c_ctx->fn_type },
+        SymbolGraphNode{
+            graph_start_idx, {}, {}, SymbolIdentifier{ "add" }, {}, false, type_start_idx + 2, c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 4, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+        SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "submodule" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{
+            graph_start_idx + 6, {}, {}, SymbolIdentifier{ "B" }, {}, false, type_start_idx + 3, c_ctx->struct_type },
+        SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "base" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 8, {}, {}, SymbolIdentifier{ "B" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 9, {}, {}, SymbolIdentifier{ "A" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 10, {}, {}, SymbolIdentifier{ "b" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 11, {}, {}, SymbolIdentifier{ "a" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 12,
+                         {},
+                         {},
+                         SymbolIdentifier{ "function" },
+                         {},
+                         false,
+                         type_start_idx + 4,
+                         c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 13, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+        SymbolGraphNode{ graph_start_idx + 14, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+        SymbolGraphNode{
+            graph_start_idx + 14, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 5, c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 16, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+        SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "sub" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{
+            graph_start_idx + 18, {}, {}, SymbolIdentifier{ "new_fn" }, {}, false, type_start_idx + 6, c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 19, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+        SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "other_fn" }, {}, false, type_start_idx + 7, c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 21, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+        SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "another_sub" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{
+            graph_start_idx + 23, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 8, c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 24, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+    };
+
+    for ( size_t i = graph_start_idx; i < c_ctx->symbol_graph.size(); i++ ) {
+        SymbolGraphNode &generated = c_ctx->symbol_graph[i];
+        SymbolGraphNode &expected = expected_graph_nodes[i - graph_start_idx];
+        INFO( "At test index " + to_string( i - graph_start_idx ) );
+        CHECK( generated.parent == expected.parent );
+        CHECK( generated.identifier.name == expected.identifier.name );
+        CHECK( generated.value == expected.value );
+        CHECK( generated.type == expected.type );
+    }
+}
