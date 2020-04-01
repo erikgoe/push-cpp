@@ -369,6 +369,10 @@ bool FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
 
+        // Handle type
+        create_new_type( c_ctx, new_id );
+
+        // TODO move into own pass
         if ( return_type != 0 ) {
             auto return_symbols = find_sub_symbol_by_identifier_chain(
                 c_ctx, get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( return_type ) ),
