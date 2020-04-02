@@ -427,6 +427,12 @@ void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg ) {
         c_ctx, split_symbol_chain( cfg.string_trait, cfg.scope_access_operator ) );
     c_ctx.str_type = create_new_type( c_ctx, new_symbol );
 
+    // Most basic functions
+    // TODO move std::drop into prelude
+    new_symbol =
+        create_new_global_symbol_from_name_chain( c_ctx, split_symbol_chain( "std::drop", cfg.scope_access_operator ) );
+    c_ctx.drop_fn = create_new_type( c_ctx, new_symbol );
+
     // Memblob types
     for ( auto &mbt : cfg.memblob_types ) {
         new_symbol = create_new_global_symbol_from_name_chain(
@@ -445,15 +451,16 @@ void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg ) {
 }
 
 void get_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
-    jb.add_job<void>( []( Worker &w_ctx ) { w_ctx.do_query( parse_ast ); } );
+    jb.add_job<sptr<CrateCtx>>(
+        []( Worker &w_ctx ) { return w_ctx.do_query( parse_ast )->jobs.back()->to<sptr<CrateCtx>>(); } );
 }
 
 void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
-    jb.add_job<void>( []( Worker &w_ctx ) {
+    jb.add_job<sptr<CrateCtx>>( []( Worker &w_ctx ) -> sptr<CrateCtx> {
         auto start_time = std::chrono::system_clock::now();
         auto input = get_source_input( w_ctx.unit_ctx()->root_file, w_ctx );
         if ( !input )
-            return;
+            return nullptr;
 
         select_prelude( *input, w_ctx );
 
@@ -486,5 +493,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         log( "--------------" );
         auto duration = std::chrono::system_clock::now() - start_time;
         log( "Took " + to_string( duration.count() / 1000000 ) + " milliseconds" );
+
+        return c_ctx;
     } );
 }

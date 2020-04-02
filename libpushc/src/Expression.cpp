@@ -14,6 +14,7 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/Expression.h"
 #include "libpushc/SymbolUtil.h"
+#include "libpushc/MirTranslation.h"
 
 // Defined here, because libpush does not define the Expr symbol
 MessageInfo::MessageInfo( const sptr<Expr> &expr, u32 message_idx, FmtStr::Color color )
@@ -187,6 +188,31 @@ bool BlockExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool BlockExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     pop_scope( c_ctx );
     return true;
+}
+
+MirVarId BlockExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+    c_ctx.curr_living_vars.emplace_back();
+    c_ctx.curr_name_mapping.emplace_back();
+
+    // Handle all expressions
+    if ( sub_expr.size() > 1 ) {
+        for ( auto expr = sub_expr.begin(); expr != sub_expr.end() - 1; expr++ ) {
+            ( *expr )->parse_mir( c_ctx, w_ctx, func );
+        }
+    }
+    MirVarId ret = 0;
+    if ( !sub_expr.empty() ) {
+        ret = sub_expr.back()->parse_mir( c_ctx, w_ctx, func );
+    }
+
+    // Drop all created variables
+    for ( auto &var : c_ctx.curr_living_vars.back() ) {
+        drop_variable( c_ctx, w_ctx, func, shared_from_this(), var );
+    }
+
+    c_ctx.curr_name_mapping.pop_back();
+    c_ctx.curr_living_vars.pop_back();
+    return ret;
 }
 
 bool SetExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {

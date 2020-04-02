@@ -13,6 +13,7 @@
 
 #pragma once
 #include "libpushc/stdafx.h"
+#include "libpushc/Intrinsics.h"
 
 // Identifies a type
 using TypeId = u32;
@@ -22,7 +23,13 @@ using SymbolId = u32;
 constexpr SymbolId ROOT_SYMBOL = 1; // the global root symbol
 
 // Identifies a function body
-using FunctionBodyId = u32;
+using FunctionImplId = u32;
+
+// Identifies a local mir variable
+using MirVarId = u32;
+
+// Stores literal values (or pointers)
+using MirLiteral = u64;
 
 // Constants
 constexpr TypeId TYPE_UNIT = 1; // The initial unit type
@@ -100,12 +107,67 @@ struct TypeTableEntry {
     std::vector<TypeId> supertypes; // basically traits
     std::vector<TypeId> subtypes; // the types which implement this trait (so this must be a trait)
 
-    FunctionBodyId function_body = 0; // the function body, if it's a function
+    FunctionImplId function_body = 0; // the function body, if it's a function
+};
+
+// Represent s a MIR instruction inside a function
+struct MirEntry {
+    sptr<Expr> original_expr;
+
+    // The type of this instruction
+    enum class Type {
+        nop, // no operation
+        intrinsic, // some intrinsic operation
+        type, // specifies the type of a variable
+        literal, // literal definition
+        call, // function call
+        param, // parameter declaration
+        ret, // return instruction
+        member, // member access
+        label, // label declaration
+        cond_jmp_z, // conditional jump if arg is zero
+        cast, // type cast
+
+        count
+    } type = Type::nop;
+
+
+    MirVarId ret = 0; // variable which will contain the result
+    std::vector<MirVarId> params; // parameters for this instruction
+    SymbolId symbol = 0; // used symbol (e. g. for calls)
+    MirLiteral data; // contains literal data or a pointer to it
+    MirIntrinsic intrinsic = MirIntrinsic::none; // if it's an intrinsic operation
+};
+
+// Represents a local MIR variable inside the function
+struct MirVariable {
+    // The type of this variable
+    enum class Type {
+        value, // normal owning variable
+        rvalue, // rvalue
+        l_ref, // local reference
+        p_ref, // parameter reference
+        label, // just a label specifier
+
+        count
+    } type = Type::value;
+
+    String name; // the original variable name (temporaries have an empty name)
+    TypeId value_type = 0; // type of the value of this variable
+    bool mut = false; // whether this variable can be updated
+    MirVarId ref = 0; // referred variable (for l_ref)
+    size_t member_idx = 0; // used for member access operations
 };
 
 // Represents the content of a function
-struct FunctionBody {
+struct FunctionImpl {
     TypeId type = 0;
+
+    std::vector<MirVarId > params;
+    MirVarId ret;
+
+    std::vector<MirEntry> ops; // instructions
+    std::vector<MirVariable> vars; // variables
 };
 
 
@@ -114,7 +176,7 @@ struct CrateCtx {
     sptr<Expr> ast; // the current Abstract Syntax Tree
     std::vector<SymbolGraphNode> symbol_graph; // contains all graph nodes, idx 0 is the global root node
     std::vector<TypeTableEntry> type_table; // contains all types
-    std::vector<FunctionBody> functions; // contains all function implementations (MIR)
+    std::vector<FunctionImpl> functions; // contains all function implementations (MIR)
 
     TypeId struct_type = 0; // internal struct type
     TypeId trait_type = 0; // internal trait type
@@ -123,12 +185,16 @@ struct CrateCtx {
     TypeId int_type = 0; // type of the integer trait
     TypeId str_type = 0; // type of the string trait
 
+    TypeId drop_fn = 0; // the function which is called on variable drop
+
+    std::vector<SyntaxRule> rules;
+    std::unordered_map<String, std::pair<TypeId, u64>> literals_map; // maps literals to their typeid and mem_value
+
     SymbolId current_scope = ROOT_SYMBOL; // new symbols are created on top of this one
     std::vector<std::vector<SymbolSubstitution>> current_substitutions; // Substitution rules for each new scope
 
-    std::unordered_map<String, std::pair<TypeId, u64>> literals_map; // maps literals to their typeid and mem_value
-
-    std::vector<SyntaxRule> rules;
+    std::vector<std::vector<MirVarId>> curr_living_vars;
+    std::vector<std::map<String, MirVarId>> curr_name_mapping;
 
     CrateCtx() {
         symbol_graph.resize( 2 );

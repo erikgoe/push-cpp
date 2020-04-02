@@ -55,6 +55,8 @@ enum class MessageType {
     err_method_not_allowed,
     err_public_not_allowed_in_context,
     err_member_in_invalid_scope,
+    err_multiple_fn_definitions,
+    err_var_not_living,
 
     warning = 5000,
 
@@ -149,6 +151,10 @@ MESSAGE_DEFINITION( MessageType::err_public_not_allowed_in_context, MessageClass
                     "A symbol may not be public in this context", "This symbol." );
 MESSAGE_DEFINITION( MessageType::err_member_in_invalid_scope, MessageClass::Error, "C",
                     "Member defined in a invalid scope", "Remove the scope operator" );
+MESSAGE_DEFINITION( MessageType::err_multiple_fn_definitions, MessageClass::Error, "C",
+                    "Found multiple definitions of the same function", "first definition", "other definition" );
+MESSAGE_DEFINITION( MessageType::err_var_not_living, MessageClass::Error, "C",
+                    "Tried to access a variable outside of its lifetime", "in this expression" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

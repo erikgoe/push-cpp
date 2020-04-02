@@ -61,7 +61,7 @@ public:
     // Checks if matches the expression
     virtual bool matches( sptr<Expr> other ) { return std::dynamic_pointer_cast<Expr>( other ) != nullptr; }
 
-    // Symbol & type methods
+    // Symbol methods
 
     // Copies data common to all exprs from another expr
     virtual void copy_from_other( sptr<Expr> other ) {
@@ -91,6 +91,14 @@ public:
 
     // Does basic transformations, which require symbol information
     virtual bool second_transformation( CrateCtx &c_ctx, Worker &w_ctx ) { return true; }
+
+    // Mir methods
+
+    // Parses the expr and appends the generated instructions to the function. Returns the result variable
+    virtual MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+        LOG_ERR( "Not implemented!" );
+        return 0;
+    }
 
     // Debugging & message methods
 
@@ -274,6 +282,8 @@ public:
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override;
 
     String get_debug_repr() override {
         String str = "BLOCK {\n ";
@@ -1457,7 +1467,7 @@ public:
             return name_symbol->get_symbol_id();
         return 0;
     }
-    
+
     void update_left_symbol_id( SymbolId new_id ) override {
         auto base_symbol = std::dynamic_pointer_cast<SymbolExpr>( base );
         if ( base_symbol )
