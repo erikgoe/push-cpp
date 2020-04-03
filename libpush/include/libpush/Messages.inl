@@ -42,6 +42,8 @@ enum class MessageType {
     err_array_access_with_multiple_expr,
     err_symbol_not_found,
     err_symbol_is_ambiguous,
+    err_operator_symbol_not_found,
+    err_operator_symbol_is_ambiguous,
     err_orphan_token,
     err_unfinished_expr,
     err_expected_symbol,
@@ -57,6 +59,7 @@ enum class MessageType {
     err_member_in_invalid_scope,
     err_multiple_fn_definitions,
     err_var_not_living,
+    err_local_variable_scoped,
 
     warning = 5000,
 
@@ -124,6 +127,12 @@ MESSAGE_DEFINITION( MessageType::err_array_access_with_multiple_expr, MessageCla
 MESSAGE_DEFINITION( MessageType::err_symbol_not_found, MessageClass::Error, "C", "Symbol not found", "" );
 MESSAGE_DEFINITION( MessageType::err_symbol_is_ambiguous, MessageClass::Error, "C",
                     "The symbol identifier does not uniquely specify a symbol.", "", "Possible match defined here" );
+MESSAGE_DEFINITION( MessageType::err_operator_symbol_not_found, MessageClass::Error, "C",
+                    "Symbol '" + GET_ARG( 0 ) + "' for operator '" + GET_ARG( 1 ) + "' not found", "" );
+MESSAGE_DEFINITION( MessageType::err_operator_symbol_is_ambiguous, MessageClass::Error, "C",
+                    "The symbol identifier '" + GET_ARG( 0 ) + "' for operator '" + GET_ARG( 1 ) +
+                        "' does not uniquely specify a symbol.",
+                    "", "Possible match defined here" );
 MESSAGE_DEFINITION( MessageType::err_orphan_token, MessageClass::Error, "C",
                     "Orphan token found! Please check the syntax of the sourrounding operations.",
                     "This token could not be merged into an expression" );
@@ -155,6 +164,8 @@ MESSAGE_DEFINITION( MessageType::err_multiple_fn_definitions, MessageClass::Erro
                     "Found multiple definitions of the same function", "first definition", "other definition" );
 MESSAGE_DEFINITION( MessageType::err_var_not_living, MessageClass::Error, "C",
                     "Tried to access a variable outside of its lifetime", "in this expression" );
+MESSAGE_DEFINITION( MessageType::err_local_variable_scoped, MessageClass::Error, "C",
+                    "Local variable name with scope operator", "only simple identifiers allowed" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

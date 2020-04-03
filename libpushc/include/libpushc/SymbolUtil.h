@@ -18,11 +18,11 @@
 // Splits a symbol string into a chain of strings. NOTE: This is only used for external inputs like the prelude
 sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, String separator );
 
-// Searches for a sub-symbol by name and returns its id. Returns 0 if no such sub-symbol exits
+// Searches for a sub-symbol by name and returns its id
 std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, const SymbolIdentifier &identifier,
                                                      SymbolId parent );
 
-// Searches for a sub-symbol by name chain and returns its id. Returns 0 if no such sub-symbol exits
+// Searches for a sub-symbol by name chain and returns its id
 std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx,
                                                            sptr<std::vector<SymbolIdentifier>> identifier_chain,
                                                            SymbolId parent = ROOT_SYMBOL );

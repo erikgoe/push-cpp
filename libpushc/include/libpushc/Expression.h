@@ -15,6 +15,7 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/Util.h"
 #include "libpushc/Ast.h"
+#include "libpushc/MirTranslation.h"
 
 // Defines the type of a visitor pass
 enum class VisitorPassType {
@@ -325,6 +326,8 @@ public:
         return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override { return 0; }
+
     String get_debug_repr() override { return "UNIT()"; }
 
     std::vector<sptr<Expr>> get_list() override { return std::vector<sptr<Expr>>(); }
@@ -496,6 +499,8 @@ public:
         return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override;
+
     void update_symbol_id( SymbolId new_id ) override { symbol = new_id; }
 
     SymbolId get_symbol_id() override { return symbol; }
@@ -538,6 +543,16 @@ public:
         return result && post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override {
+        static_assert( Bytes <= sizeof( MirLiteral ) );
+
+        auto op = create_operation( c_ctx, w_ctx, func, shared_from_this(), MirEntry::Type::literal, 0, {} );
+        store_in_literal( op.data );
+        c_ctx.functions[func].vars[op.ret].value_type = type;
+
+        return op.ret;
+    }
+
     String get_debug_repr() override {
         bool non_zero = false;
         String str = "BLOB_LITERAL(";
@@ -561,6 +576,14 @@ public:
         const u8 *tmp = reinterpret_cast<const u8 *>( &num );
         for ( size_t i = 0; i < max_mem_size; i++ )
             blob[i] = tmp[i];
+    }
+
+    // Stores the blob in a low endian representation of a mir literal
+    void store_in_literal( MirLiteral &literal, u8 max_mem_size = Bytes ) {
+        max_mem_size = std::min( max_mem_size, static_cast<u8>( sizeof( MirLiteral ) ) );
+        u8 *tmp = reinterpret_cast<u8 *>( &literal );
+        for ( size_t i = 0; i < max_mem_size; i++ )
+            tmp[i] = blob[i];
     }
 };
 
@@ -821,11 +844,13 @@ class OperatorExpr : public SeparableExpr {
 public:
     sptr<Expr> lvalue, rvalue;
     String op;
+    sptr<String> fn;
 
     OperatorExpr() {}
-    OperatorExpr( String op, sptr<Expr> lvalue, sptr<Expr> rvalue, u32 precedence,
+    OperatorExpr( String op, sptr<String> fn, sptr<Expr> lvalue, sptr<Expr> rvalue, u32 precedence,
                   std::vector<sptr<Expr>> &original_list ) {
         this->op = op;
+        this->fn = fn;
         this->lvalue = lvalue;
         this->rvalue = rvalue;
         this->precedence = precedence;
@@ -844,6 +869,8 @@ public:
                ( rvalue ? rvalue->visit( c_ctx, w_ctx, vpt, rvalue, shared_from_this() ) : true ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
+
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override;
 
     String get_debug_repr() override {
         return "OP(" + ( lvalue ? lvalue->get_debug_repr() + " " : "" ) + op +
@@ -876,6 +903,8 @@ public:
     }
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override;
 
     String get_debug_repr() override { return "BINDING(" + expr->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
@@ -1573,6 +1602,8 @@ public:
                type->visit( c_ctx, w_ctx, vpt, type, shared_from_this() ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
+
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override;
 
     String get_debug_repr() override {
         return "TYPED(" + symbol->get_debug_repr() + ":" + type->get_debug_repr() + ")" + get_additional_debug_data();

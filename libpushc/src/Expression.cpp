@@ -270,6 +270,23 @@ bool ArraySpecifierExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) 
     return true;
 }
 
+MirVarId AtomicSymbolExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+    auto name_chain = get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( shared_from_this() ) );
+    if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
+        w_ctx.print_msg<MessageType::err_local_variable_scoped>(
+            MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ) );
+    }
+
+    for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
+        if ( auto var_itr = itr->find( name_chain->front().name ); var_itr != itr->end() ) {
+            return var_itr->second;
+        }
+    }
+
+    LOG_ERR( "Atomic symbol not found" );
+    return 0;
+}
+
 bool CommaExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
     return true;
 }
@@ -391,32 +408,9 @@ bool FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
-        c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
+        c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
-
-        // Handle type
-        create_new_type( c_ctx, new_id );
-
-        // TODO move into own pass
-        if ( return_type != 0 ) {
-            auto return_symbols = find_sub_symbol_by_identifier_chain(
-                c_ctx, get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( return_type ) ),
-                c_ctx.current_scope );
-            if ( return_symbols.empty() ) {
-                w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( return_type, 0, FmtStr::Color::Red ) );
-                return false;
-            } else if ( return_symbols.size() != 1 ) {
-                std::vector<MessageInfo> notes;
-                for ( auto &rs : return_symbols ) {
-                    if ( !c_ctx.symbol_graph[rs].original_expr.empty() )
-                        notes.push_back( MessageInfo( c_ctx.symbol_graph[rs].original_expr.front(), 1 ) );
-                }
-                w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                    MessageInfo( return_type, 0, FmtStr::Color::Red ), notes );
-            }
-            c_ctx.symbol_graph[new_id].identifier.eval_type = return_symbols.front();
-        }
     }
     return true;
 }
@@ -437,6 +431,38 @@ bool FuncCallExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         return false;
     }
     return true;
+}
+
+MirVarId OperatorExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+    auto calls = find_sub_symbol_by_identifier_chain(
+        c_ctx, split_symbol_chain( *fn, w_ctx.unit_ctx()->prelude_conf.scope_access_operator ), c_ctx.current_scope );
+
+    for ( auto &candidate : calls ) {
+        analyse_function_signature( c_ctx, w_ctx, candidate );
+    }
+
+    // TODO select the function based on its signature
+
+    if ( calls.empty() ) {
+        w_ctx.print_msg<MessageType::err_operator_symbol_not_found>(
+            MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ), std::vector<MessageInfo>(), *fn, op );
+    } else if ( calls.size() > 1 ) {
+        std::vector<MessageInfo> notes;
+        for ( auto &c : calls ) {
+            if ( !c_ctx.symbol_graph[c].original_expr.empty() )
+                notes.push_back( MessageInfo( c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
+        }
+        w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ),
+                                                               notes, *fn, op );
+    }
+
+
+    auto left_result = lvalue->parse_mir( c_ctx, w_ctx, func );
+    auto right_result = rvalue->parse_mir( c_ctx, w_ctx, func );
+
+    auto op = create_call( c_ctx, w_ctx, func, shared_from_this(), calls.front(), left_result, { right_result } );
+
+    return op.ret;
 }
 
 bool SimpleBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -460,6 +486,29 @@ bool SimpleBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         return false;
     }
     return true;
+}
+
+MirVarId SimpleBindExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+    auto assignment = std::dynamic_pointer_cast<OperatorExpr>( expr );
+    sptr<SymbolExpr> symbol;
+    if ( auto lvalue = std::dynamic_pointer_cast<TypedExpr>( assignment->lvalue ); lvalue != nullptr ) {
+        symbol = std::dynamic_pointer_cast<SymbolExpr>( lvalue->symbol );
+    } else {
+        symbol = std::dynamic_pointer_cast<SymbolExpr>( assignment->lvalue );
+    }
+
+    auto name_chain = get_symbol_chain_from_expr( symbol );
+    if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
+        w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+    }
+
+    // Create variable
+    create_variable( c_ctx, w_ctx, func, name_chain->front().name );
+
+    // Expr operation
+    auto var = assignment->parse_mir( c_ctx, w_ctx, func );
+
+    return 0;
 }
 
 bool AliasBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
@@ -763,7 +812,7 @@ bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
-        c_ctx.symbol_graph[new_id].original_expr.push_back( name );
+        c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
 
@@ -866,7 +915,7 @@ bool TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
-        c_ctx.symbol_graph[new_id].original_expr.push_back( name );
+        c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.trait_type;
 
@@ -930,7 +979,7 @@ bool ImplExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
-        c_ctx.symbol_graph[new_id].original_expr.push_back( struct_name );
+        c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
     }
@@ -941,6 +990,34 @@ bool ImplExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     switch_scope_to_symbol(
         c_ctx, c_ctx.symbol_graph[std::dynamic_pointer_cast<SymbolExpr>( struct_name )->get_left_symbol_id()].parent );
     return true;
+}
+
+MirVarId TypedExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+    auto ret = symbol->parse_mir( c_ctx, w_ctx, func );
+
+    auto type_ids = find_sub_symbol_by_identifier_chain(
+        c_ctx, get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( type ) ), c_ctx.current_scope );
+
+    if ( type_ids.empty() ) {
+        w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( type, 0, FmtStr::Color::Red ) );
+        return false;
+    } else if ( type_ids.size() != 1 ) {
+        std::vector<MessageInfo> notes;
+        for ( auto &tid : type_ids ) {
+            if ( !c_ctx.symbol_graph[tid].original_expr.empty() )
+                notes.push_back( MessageInfo( c_ctx.symbol_graph[tid].original_expr.front(), 1 ) );
+        }
+        w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( type, 0, FmtStr::Color::Red ), notes );
+    }
+
+    // Set type
+    auto op = create_operation( c_ctx, w_ctx, func, shared_from_this(), MirEntry::Type::type, ret, {} );
+    op.symbol = type_ids.front();
+    if ( c_ctx.functions[func].vars[ret].value_type == 0 ) {
+        c_ctx.functions[func].vars[ret].value_type = c_ctx.symbol_graph[type_ids.front()].value;
+    }
+
+    return ret;
 }
 
 bool ModuleExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
@@ -960,7 +1037,7 @@ bool ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
-        c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
+        c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
         c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
         c_ctx.symbol_graph[new_id].type = c_ctx.mod_type;
     }

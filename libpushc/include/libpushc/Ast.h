@@ -72,8 +72,19 @@ struct ConstValue {
 struct SymbolIdentifier {
     String name; // the local symbol name (empty means anonymous scope)
 
-    TypeId eval_type = 0; // the type which is returned when the symbol is evaluated (return type of functions)
-    std::vector<std::pair<TypeId, String>> parameters; // type-name pairs of parameters
+    // Signature of a parameter or return type
+    struct ParamSig {
+        TypeId type = 0; // type of the parameter
+        String name; // name of the parameter (not for return types)
+        bool ref = false; // whether the value is borrowed
+        bool mut = false; // whether the value is mutable
+
+        bool operator==( const ParamSig &other ) const {
+            return type == other.type && name == other.name && ref == other.ref && mut == other.mut;
+        }
+    };
+    ParamSig eval_type; // the type which is returned when the symbol is evaluated (return type of functions)
+    std::vector<ParamSig> parameters; // function parameters
 
     std::vector<std::pair<TypeId, ConstValue>> template_values; // type-value pairs of template parameters
 };
@@ -163,7 +174,7 @@ struct MirVariable {
 struct FunctionImpl {
     TypeId type = 0;
 
-    std::vector<MirVarId > params;
+    std::vector<MirVarId> params;
     MirVarId ret;
 
     std::vector<MirEntry> ops; // instructions
@@ -190,6 +201,7 @@ struct CrateCtx {
     std::vector<SyntaxRule> rules;
     std::unordered_map<String, std::pair<TypeId, u64>> literals_map; // maps literals to their typeid and mem_value
 
+
     SymbolId current_scope = ROOT_SYMBOL; // new symbols are created on top of this one
     std::vector<std::vector<SymbolSubstitution>> current_substitutions; // Substitution rules for each new scope
 
@@ -199,6 +211,6 @@ struct CrateCtx {
     CrateCtx() {
         symbol_graph.resize( 2 );
         type_table.resize( LAST_FIX_TYPE + 1 );
-        functions.resize( 2 );
+        functions.resize( 1 );
     }
 };

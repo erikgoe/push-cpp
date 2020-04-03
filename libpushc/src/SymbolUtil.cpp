@@ -31,13 +31,13 @@ sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, S
 // Checks if a symbol identifier matches a symbol identifier pattern
 bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIdentifier &candidate ) {
     if ( candidate.name == pattern.name ) {
-        if ( pattern.eval_type == 0 || candidate.eval_type == pattern.eval_type ) {
+        if ( pattern.eval_type.type == 0 || candidate.eval_type == pattern.eval_type ) {
             bool matches = true;
 
             if ( candidate.parameters.size() < pattern.parameters.size() )
                 matches = false;
             for ( size_t i = 0; i < pattern.parameters.size() && matches; i++ ) {
-                if ( pattern.parameters[i].first != 0 && candidate.parameters[i].first != pattern.parameters[i].first )
+                if ( pattern.parameters[i].type != 0 && candidate.parameters[i].type != pattern.parameters[i].type )
                     matches = false;
             }
 
@@ -127,10 +127,12 @@ String get_local_symbol_name( CrateCtx &c_ctx, SymbolId symbol ) {
     }
 
     // parameters
-    if ( !ident.parameters.empty() || ident.eval_type != 0 ) {
-        ret += "[" + to_string( ident.eval_type );
+    if ( !ident.parameters.empty() || ident.eval_type.type != 0 ) {
+        ret += "[" + String( ident.eval_type.mut ? "mut " : "" ) + ( ident.eval_type.ref ? "&" : "" ) +
+               to_string( ident.eval_type.type );
         for ( size_t i = 0; i < ident.parameters.size(); i++ ) {
-            ret += "," + ident.parameters[i].second + ":" + to_string( ident.parameters[i].first );
+            ret += "," + String( ident.parameters[i].mut ? "mut " : "" ) + ( ident.parameters[i].ref ? "&" : "" ) +
+                   ident.parameters[i].name + ":" + to_string( ident.parameters[i].type );
         }
         ret += "]";
     }

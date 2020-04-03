@@ -282,9 +282,10 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
             } else {
                 operator_token = std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content;
             }
-            return make_shared<OperatorExpr>(
-                operator_token, ( lm.find( "lvalue" ) == lm.end() ? nullptr : list[lm.at( "lvalue" )] ),
-                ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ), o.op.precedence, list );
+            return make_shared<OperatorExpr>( operator_token, make_shared<String>( o.fn ),
+                                              ( lm.find( "lvalue" ) == lm.end() ? nullptr : list[lm.at( "lvalue" )] ),
+                                              ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ),
+                                              o.op.precedence, list );
         };
         c_ctx.rules.push_back( new_rule );
     }
