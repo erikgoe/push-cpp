@@ -546,9 +546,10 @@ public:
     MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override {
         static_assert( Bytes <= sizeof( MirLiteral ) );
 
-        auto op = create_operation( c_ctx, w_ctx, func, shared_from_this(), MirEntry::Type::literal, 0, {} );
+        auto &op = create_operation( c_ctx, w_ctx, func, shared_from_this(), MirEntry::Type::literal, 0, {} );
         store_in_literal( op.data );
         c_ctx.functions[func].vars[op.ret].value_type = type;
+        c_ctx.functions[func].vars[op.ret].type = MirVariable::Type::rvalue;
 
         return op.ret;
     }
@@ -1543,6 +1544,8 @@ public:
         return result && symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
+
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
     String get_debug_repr() override { return "REF(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
 };

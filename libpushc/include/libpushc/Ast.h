@@ -132,8 +132,6 @@ struct MirEntry {
         type, // specifies the type of a variable
         literal, // literal definition
         call, // function call
-        param, // parameter declaration
-        ret, // return instruction
         member, // member access
         label, // label declaration
         cond_jmp_z, // conditional jump if arg is zero

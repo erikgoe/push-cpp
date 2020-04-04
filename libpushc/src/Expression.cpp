@@ -32,6 +32,7 @@ sptr<std::vector<SymbolIdentifier>> get_symbol_chain_from_expr( sptr<SymbolExpr>
         return get_symbol_chain_from_expr(
             std::dynamic_pointer_cast<SymbolExpr>( template_symbol->symbol ) ); // TODO add template arguments
     }
+    LOG_ERR( "Could not parse symbol chain from expr" );
     return nullptr;
 }
 
@@ -207,7 +208,8 @@ MirVarId BlockExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId fu
 
     // Drop all created variables
     for ( auto &var : c_ctx.curr_living_vars.back() ) {
-        drop_variable( c_ctx, w_ctx, func, shared_from_this(), var );
+        if ( var != ret )
+            drop_variable( c_ctx, w_ctx, func, shared_from_this(), var );
     }
 
     c_ctx.curr_name_mapping.pop_back();
@@ -373,7 +375,8 @@ bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
                             MessageInfo( typed->symbol, 0, FmtStr::Color::Red ) );
                         return false;
                     }
-                    if ( std::dynamic_pointer_cast<SymbolExpr>( typed->type ) == nullptr ) {
+                    if ( std::dynamic_pointer_cast<SymbolExpr>( typed->type ) == nullptr &&
+                         std::dynamic_pointer_cast<ReferenceExpr>( typed->type ) == nullptr ) {
                         w_ctx.print_msg<MessageType::err_expected_symbol>(
                             MessageInfo( typed->type, 0, FmtStr::Color::Red ) );
                         return false;
@@ -460,7 +463,7 @@ MirVarId OperatorExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId
     auto left_result = lvalue->parse_mir( c_ctx, w_ctx, func );
     auto right_result = rvalue->parse_mir( c_ctx, w_ctx, func );
 
-    auto op = create_call( c_ctx, w_ctx, func, shared_from_this(), calls.front(), left_result, { right_result } );
+    auto &op = create_call( c_ctx, w_ctx, func, shared_from_this(), calls.front(), left_result, { right_result } );
 
     return op.ret;
 }
@@ -477,7 +480,8 @@ bool SimpleBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
             w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( lvalue->symbol, 0, FmtStr::Color::Red ) );
             return false;
         }
-        if ( std::dynamic_pointer_cast<SymbolExpr>( lvalue->type ) == nullptr ) {
+        if ( std::dynamic_pointer_cast<SymbolExpr>( lvalue->type ) == nullptr &&
+             std::dynamic_pointer_cast<ReferenceExpr>( lvalue->type ) == nullptr ) {
             w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( lvalue->type, 0, FmtStr::Color::Red ) );
             return false;
         }
@@ -992,6 +996,14 @@ bool ImplExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
+bool ReferenceExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+    if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+        return false;
+    }
+    return true;
+}
+
 MirVarId TypedExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
     auto ret = symbol->parse_mir( c_ctx, w_ctx, func );
 
@@ -1011,7 +1023,7 @@ MirVarId TypedExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId fu
     }
 
     // Set type
-    auto op = create_operation( c_ctx, w_ctx, func, shared_from_this(), MirEntry::Type::type, ret, {} );
+    auto &op = create_operation( c_ctx, w_ctx, func, shared_from_this(), MirEntry::Type::type, ret, {} );
     op.symbol = type_ids.front();
     if ( c_ctx.functions[func].vars[ret].value_type == 0 ) {
         c_ctx.functions[func].vars[ret].value_type = c_ctx.symbol_graph[type_ids.front()].value;

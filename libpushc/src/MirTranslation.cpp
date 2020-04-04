@@ -115,7 +115,7 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, spt
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {
     auto &symbol = c_ctx.symbol_graph[function];
     if ( function && symbol.value == 0 ) {
-        TypeId type_id = create_new_type( c_ctx, function );
+        symbol.value = create_new_type( c_ctx, function );
         auto expr = std::dynamic_pointer_cast<FuncExpr>( symbol.original_expr.front() );
         if ( expr == nullptr ) {
             LOG_ERR( "Function to analyse is not a function" );
@@ -132,8 +132,13 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     sptr<SymbolExpr> parameter_symbol = std::dynamic_pointer_cast<SymbolExpr>( entry );
                     if ( parameter_symbol == nullptr ) {
                         auto typed = std::dynamic_pointer_cast<TypedExpr>( entry );
-                        auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( typed->type );
                         parameter_symbol = std::dynamic_pointer_cast<SymbolExpr>( typed->symbol );
+                        auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( typed->type );
+                        if ( type_symbol == nullptr ) {
+                            type_symbol = std::dynamic_pointer_cast<SymbolExpr>(
+                                std::dynamic_pointer_cast<ReferenceExpr>( typed->type )->symbol );
+                            new_parameter.ref = true;
+                        }
                         auto types = find_sub_symbol_by_identifier_chain(
                             c_ctx, get_symbol_chain_from_expr( type_symbol ), c_ctx.current_scope );
 
@@ -159,16 +164,21 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                             MessageInfo( parameter_symbol, 0, FmtStr::Color::Red ) );
                     new_parameter.name = symbol_chain->front().name;
 
-                    // TODO parse mut and ref properties
+                    // TODO parse mut properties
                 }
             }
         }
 
         // Return value
         if ( expr->return_type != 0 ) {
+            auto return_symbol = std::dynamic_pointer_cast<SymbolExpr>( expr->return_type );
+            if ( return_symbol == nullptr ) {
+                return_symbol = std::dynamic_pointer_cast<SymbolExpr>(
+                    std::dynamic_pointer_cast<ReferenceExpr>( expr->return_type )->symbol );
+                symbol.identifier.eval_type.ref = true;
+            }
             auto return_symbols = find_sub_symbol_by_identifier_chain(
-                c_ctx, get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( expr->return_type ) ),
-                c_ctx.current_scope );
+                c_ctx, get_symbol_chain_from_expr( return_symbol ), c_ctx.current_scope );
             if ( return_symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>(
                     MessageInfo( expr->return_type, 0, FmtStr::Color::Red ) );
@@ -191,9 +201,8 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
 
 
 // Creates a function from a FuncExpr specified by @param symbolId
-void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbolId ) {
-    auto &symbol = c_ctx.symbol_graph[symbolId];
-    auto &type = c_ctx.type_table[symbol.value];
+void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol_id ) {
+    auto &symbol = c_ctx.symbol_graph[symbol_id];
     auto expr = std::dynamic_pointer_cast<FuncExpr>( symbol.original_expr.front() );
 
     // Check if only one definition exists (must be at least one)
@@ -218,6 +227,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     c_ctx.functions.emplace_back();
     FunctionImpl &function = c_ctx.functions.back();
     create_variable( c_ctx, w_ctx, func_id, "" ); // unit return value
+    analyse_function_signature( c_ctx, w_ctx, symbol_id );
+    function.type = symbol.value;
 
     // Parse parameters
     auto paren_expr = std::dynamic_pointer_cast<ParenthesisExpr>( expr->parameters );
@@ -231,15 +242,33 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         }
 
         MirVarId id = create_variable( c_ctx, w_ctx, func_id );
+        function.params.push_back( id );
         String name = get_full_symbol_name( c_ctx, symbol->get_symbol_id() );
         function.vars[id].name = name;
         c_ctx.curr_name_mapping.back()[name] = id;
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
-            if ( auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( type ); type_symbol != nullptr ) {
-                function.vars[id].value_type = c_ctx.symbol_graph[type_symbol->get_symbol_id()].value;
+            auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( type );
+            if ( type_symbol == nullptr ) {
+                type_symbol =
+                    std::dynamic_pointer_cast<SymbolExpr>( std::dynamic_pointer_cast<ReferenceExpr>( type )->symbol );
+                function.vars[id].type = MirVariable::Type::p_ref;
             }
-            // TODO handle references
+            auto symbols = find_sub_symbol_by_identifier_chain( c_ctx, get_symbol_chain_from_expr( type_symbol ),
+                                                                c_ctx.current_scope );
+            if ( symbols.empty() ) {
+                w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( type_symbol, 0, FmtStr::Color::Red ) );
+            } else if ( symbols.size() > 1 ) {
+                std::vector<MessageInfo> notes;
+                for ( auto &s : symbols ) {
+                    if ( !c_ctx.symbol_graph[s].original_expr.empty() )
+                        notes.push_back( MessageInfo( c_ctx.symbol_graph[s].original_expr.front(), 1 ) );
+                }
+                w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
+                    MessageInfo( type_symbol, 0, FmtStr::Color::Red ), notes );
+            }
+
+            function.vars[id].value_type = c_ctx.symbol_graph[symbols.front()].value;
         }
     }
 
@@ -262,8 +291,27 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         log( "MIR FUNCTIONS -" );
         for ( size_t i = 1; i < c_ctx->functions.size(); i++ ) {
             auto &fn = c_ctx->functions[i];
-            log( " fn " + to_string( i ) + " - sym " +
-                 get_full_symbol_name( *c_ctx, c_ctx->type_table[fn.type].symbol ) );
+            auto get_var_name = [&fn]( MirVarId id ) -> String {
+                if ( id == 0 )
+                    return " ()";
+                String type_str = ( fn.vars[id].type == MirVariable::Type::rvalue
+                                        ? "r"
+                                        : fn.vars[id].type == MirVariable::Type::l_ref
+                                              ? "l"
+                                              : fn.vars[id].type == MirVariable::Type::p_ref
+                                                    ? "p"
+                                                    : fn.vars[id].type == MirVariable::Type::label ? "b" : "" );
+                return " " + fn.vars[id].name + "%" + type_str + to_string( id );
+            };
+
+            log( " fn " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, c_ctx->type_table[fn.type].symbol ) );
+
+            // Parameters
+            for ( auto &p : fn.params ) {
+                log( "  param" + get_var_name( p ) );
+            }
+
+            // Operations
             for ( const auto &op : fn.ops ) {
                 String str;
                 if ( op.type == MirEntry::Type::nop )
@@ -276,10 +324,6 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "literal";
                 else if ( op.type == MirEntry::Type::call )
                     str = "call";
-                else if ( op.type == MirEntry::Type::param )
-                    str = "param";
-                else if ( op.type == MirEntry::Type::ret )
-                    str = "ret";
                 else if ( op.type == MirEntry::Type::member )
                     str = "member";
                 else if ( op.type == MirEntry::Type::label )
@@ -295,19 +339,7 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                 if ( op.intrinsic != MirIntrinsic::none )
                     str += " intrinsic " + to_string( static_cast<u32>( op.intrinsic ) );
 
-                auto get_var_name = [&fn]( MirVarId id ) {
-                    String type_str = ( fn.vars[id].type == MirVariable::Type::rvalue
-                                            ? "r"
-                                            : fn.vars[id].type == MirVariable::Type::l_ref
-                                                  ? "l"
-                                                  : fn.vars[id].type == MirVariable::Type::p_ref
-                                                        ? "p"
-                                                        : fn.vars[id].type == MirVariable::Type::label ? "b" : "" );
-                    return " " + fn.vars[id].name + "%" + type_str + to_string( id );
-                };
-
-                if ( op.ret != 0 )
-                    str += get_var_name( op.ret );
+                str += get_var_name( op.ret );
 
                 if ( op.type == MirEntry::Type::literal )
                     str += " 0d" + to_string( op.data );
@@ -317,6 +349,22 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                 }
 
                 log( "  " + str );
+            }
+
+            // Return value
+            log( "  ret" + get_var_name( fn.ret ) );
+
+            // Variables
+            log( "\n  VARS:" );
+            for ( size_t i = 1; i < fn.vars.size(); i++ ) {
+                log( "  " + get_var_name( i ) + " :" + ( fn.vars[i].mut ? "mut" : "" ) +
+                     ( fn.vars[i].type == MirVariable::Type::l_ref || fn.vars[i].type == MirVariable::Type::p_ref
+                           ? "& "
+                           : " " ) +
+                     get_full_symbol_name( *c_ctx, c_ctx->type_table[fn.vars[i].value_type].symbol ) +
+                     ( fn.vars[i].ref != 0
+                           ? " -> " + get_var_name( fn.vars[i].ref ) + " +" + to_string( fn.vars[i].member_idx )
+                           : "" ) );
             }
         }
         log( "--------------" );
