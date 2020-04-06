@@ -344,7 +344,7 @@ bool FuncHeadExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( symbol );
-        c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
+        c_ctx.symbol_graph[new_id].pub = symbol_symbol->has_attribute( SymbolExpr::Attribute::pub );
         c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
     }
     return true;
@@ -376,7 +376,8 @@ bool FuncExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
                         return false;
                     }
                     if ( std::dynamic_pointer_cast<SymbolExpr>( typed->type ) == nullptr &&
-                         std::dynamic_pointer_cast<ReferenceExpr>( typed->type ) == nullptr ) {
+                         std::dynamic_pointer_cast<ReferenceExpr>( typed->type ) == nullptr &&
+                         std::dynamic_pointer_cast<MutAttrExpr>( typed->type ) == nullptr ) {
                         w_ctx.print_msg<MessageType::err_expected_symbol>(
                             MessageInfo( typed->type, 0, FmtStr::Color::Red ) );
                         return false;
@@ -412,7 +413,7 @@ bool FuncExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
-        c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
+        c_ctx.symbol_graph[new_id].pub = symbol_symbol->has_attribute( SymbolExpr::Attribute::pub );
         c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
     }
     return true;
@@ -481,7 +482,8 @@ bool SimpleBindExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
             return false;
         }
         if ( std::dynamic_pointer_cast<SymbolExpr>( lvalue->type ) == nullptr &&
-             std::dynamic_pointer_cast<ReferenceExpr>( lvalue->type ) == nullptr ) {
+             std::dynamic_pointer_cast<ReferenceExpr>( lvalue->type ) == nullptr &&
+             std::dynamic_pointer_cast<MutAttrExpr>( lvalue->type ) == nullptr ) {
             w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( lvalue->type, 0, FmtStr::Color::Red ) );
             return false;
         }
@@ -817,7 +819,7 @@ bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
-        c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
+        c_ctx.symbol_graph[new_id].pub = symbol_symbol->has_attribute( SymbolExpr::Attribute::pub );
         c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
 
         // Handle type
@@ -863,7 +865,7 @@ bool StructExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
             // Create member
             auto &new_member = create_new_member_symbol( c_ctx, identifier_list->front(), new_id );
             new_member.original_expr.push_back( expr );
-            new_member.pub = symbol->is_public();
+            new_member.pub = symbol->has_attribute( SymbolExpr::Attribute::pub );
         }
     }
     return true;
@@ -920,7 +922,7 @@ bool TraitExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
-        c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
+        c_ctx.symbol_graph[new_id].pub = symbol_symbol->has_attribute( SymbolExpr::Attribute::pub );
         c_ctx.symbol_graph[new_id].type = c_ctx.trait_type;
 
         // Handle type
@@ -984,7 +986,7 @@ bool ImplExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
-        c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
+        c_ctx.symbol_graph[new_id].pub = symbol_symbol->has_attribute( SymbolExpr::Attribute::pub );
         c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
     }
     return true;
@@ -1001,6 +1003,32 @@ bool ReferenceExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
         return false;
     }
+    return true;
+}
+
+bool ReferenceExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+    std::dynamic_pointer_cast<SymbolExpr>( symbol )->set_attribute( SymbolExpr::Attribute::ref );
+    anchor = symbol;
+    return true;
+}
+
+bool MutAttrExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
+    if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr &&
+         std::dynamic_pointer_cast<ReferenceExpr>( symbol ) == nullptr ) {
+        w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+        return false;
+    }
+    return true;
+}
+
+bool MutAttrExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) {
+    auto symbol_symbol = std::dynamic_pointer_cast<SymbolExpr>( symbol );
+    if ( symbol_symbol == nullptr ) {
+        symbol_symbol =
+            std::dynamic_pointer_cast<SymbolExpr>( std::dynamic_pointer_cast<ReferenceExpr>( symbol )->symbol );
+    }
+    symbol_symbol->set_attribute( SymbolExpr::Attribute::mut );
+    anchor = symbol; // don't skip the possible ReferenceExpr
     return true;
 }
 
@@ -1050,7 +1078,7 @@ bool ModuleExpr::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         symbol_symbol->update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( shared_from_this() );
-        c_ctx.symbol_graph[new_id].pub = symbol_symbol->is_public();
+        c_ctx.symbol_graph[new_id].pub = symbol_symbol->has_attribute( SymbolExpr::Attribute::pub );
         c_ctx.symbol_graph[new_id].type = c_ctx.mod_type;
     }
     return true;
@@ -1103,21 +1131,21 @@ bool PublicAttrExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<
 
     // Resolve public attribute
     if ( auto typed = std::dynamic_pointer_cast<TypedExpr>( symbol ); typed != nullptr ) {
-        std::dynamic_pointer_cast<SymbolExpr>( typed->symbol )->set_public();
+        std::dynamic_pointer_cast<SymbolExpr>( typed->symbol )->set_attribute( SymbolExpr::Attribute::pub );
     } else if ( auto symbol_expr = std::dynamic_pointer_cast<SymbolExpr>( symbol ); symbol_expr != nullptr ) {
-        symbol_expr->set_public();
+        symbol_expr->set_attribute( SymbolExpr::Attribute::pub );
     } else if ( auto fn = std::dynamic_pointer_cast<FuncHeadExpr>( symbol ); fn != nullptr ) {
-        std::dynamic_pointer_cast<SymbolExpr>( fn->symbol )->set_public();
+        std::dynamic_pointer_cast<SymbolExpr>( fn->symbol )->set_attribute( SymbolExpr::Attribute::pub );
     } else if ( auto fn = std::dynamic_pointer_cast<FuncExpr>( symbol ); fn != nullptr ) {
-        std::dynamic_pointer_cast<SymbolExpr>( fn->symbol )->set_public();
+        std::dynamic_pointer_cast<SymbolExpr>( fn->symbol )->set_attribute( SymbolExpr::Attribute::pub );
     } else if ( auto structure = std::dynamic_pointer_cast<StructExpr>( symbol ); structure != nullptr ) {
-        std::dynamic_pointer_cast<SymbolExpr>( structure->name )->set_public();
+        std::dynamic_pointer_cast<SymbolExpr>( structure->name )->set_attribute( SymbolExpr::Attribute::pub );
     } else if ( auto trait = std::dynamic_pointer_cast<TraitExpr>( symbol ); trait != nullptr ) {
-        std::dynamic_pointer_cast<SymbolExpr>( trait->name )->set_public();
+        std::dynamic_pointer_cast<SymbolExpr>( trait->name )->set_attribute( SymbolExpr::Attribute::pub );
     } else if ( auto impl = std::dynamic_pointer_cast<ImplExpr>( symbol ); impl != nullptr ) {
-        std::dynamic_pointer_cast<SymbolExpr>( impl->struct_name )->set_public();
+        std::dynamic_pointer_cast<SymbolExpr>( impl->struct_name )->set_attribute( SymbolExpr::Attribute::pub );
     } else if ( auto mod = std::dynamic_pointer_cast<ModuleExpr>( symbol ); mod != nullptr ) {
-        std::dynamic_pointer_cast<SymbolExpr>( mod->symbol )->set_public();
+        std::dynamic_pointer_cast<SymbolExpr>( mod->symbol )->set_attribute( SymbolExpr::Attribute::pub );
     }
 
     anchor = symbol;

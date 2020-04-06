@@ -454,6 +454,15 @@ public:
 // Base class for symbols
 class SymbolExpr : public virtual OperandExpr {
 public:
+    // Types of attributes a symbol can have. This only applies to the local symbol, not the type nor SymbolGraphNode
+    enum class Attribute {
+        pub, // public
+        mut, // mutable
+        ref, // borrowed
+
+        count
+    };
+
     bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<SymbolExpr>( other ) != nullptr; }
 
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
@@ -474,8 +483,14 @@ public:
     // Returns the symbol id of the leftmost sub-expr (used to find the actual parent)
     virtual SymbolId get_left_symbol_id() { return get_symbol_id(); }
 
-    virtual bool is_public() { return false; }
-    virtual void set_public( bool value = true ) {}
+    // Returns if the symbol has a specific attribute
+    virtual bool has_attribute( Attribute attr ) {
+        LOG_ERR( "Virtual function!" );
+        return false;
+    }
+
+    // Set or clear a specific attribute
+    virtual void set_attribute( Attribute attr, bool value = true ) { LOG_ERR( "Virtual function!" ); }
 };
 
 // A simple symbol/identifier (variable, function, etc.)
@@ -484,7 +499,7 @@ public:
     TypeId type;
     String symbol_name;
     SymbolId symbol;
-    bool pub = false; // whether this symbol is public or not
+    bool attrs[static_cast<size_t>( Attribute::count )];
 
     TypeId get_type() override { return type; }
 
@@ -507,9 +522,9 @@ public:
 
     String get_debug_repr() override { return "SYM(" + to_string( symbol ) + ")" + get_additional_debug_data(); }
 
-    virtual bool is_public() { return pub; }
+    virtual bool has_attribute( Attribute attr ) { return attrs[static_cast<size_t>( attr )]; }
 
-    virtual void set_public( bool value = true ) { pub = value; }
+    virtual void set_attribute( Attribute attr, bool value ) { attrs[static_cast<size_t>( attr )] = value; }
 };
 
 // Base class for a simple literal
@@ -1516,9 +1531,13 @@ public:
                get_additional_debug_data();
     }
 
-    virtual bool is_public() { return std::dynamic_pointer_cast<SymbolExpr>( name )->is_public(); }
+    virtual bool has_attribute( Attribute attr ) {
+        return std::dynamic_pointer_cast<SymbolExpr>( name )->has_attribute( attr );
+    }
 
-    virtual void set_public( bool value = true ) { std::dynamic_pointer_cast<SymbolExpr>( name )->set_public( value ); }
+    virtual void set_attribute( Attribute attr, bool value ) {
+        std::dynamic_pointer_cast<SymbolExpr>( name )->set_attribute( attr, value );
+    }
 };
 
 // Borrow a symbol
@@ -1547,9 +1566,41 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
     String get_debug_repr() override { return "REF(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
 };
 
+// Specifies a symbol as mutable
+class MutAttrExpr : public SeparableExpr {
+public:
+    sptr<Expr> symbol;
+
+    MutAttrExpr() {}
+    MutAttrExpr( sptr<Expr> symbol, u32 precedence, std::vector<sptr<Expr>> &original_list ) {
+        this->symbol = symbol;
+        this->precedence = precedence;
+        this->original_list = original_list;
+    }
+
+    TypeId get_type() override { return symbol->get_type(); }
+
+    bool matches( sptr<Expr> other ) override { return std::dynamic_pointer_cast<MutAttrExpr>( other ) != nullptr; }
+
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, sptr<Expr> &anchor, sptr<Expr> parent ) override {
+        bool result = visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
+        if ( anchor != shared_from_this() ) // replaced itself (object is now invalid)
+            return anchor->visit( c_ctx, w_ctx, vpt, anchor, parent );
+        return result && symbol->visit( c_ctx, w_ctx, vpt, symbol, shared_from_this() ) &&
+               post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
+    }
+
+    bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
+
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr> &anchor, sptr<Expr> parent ) override;
+
+    String get_debug_repr() override { return "MUT(" + symbol->get_debug_repr() + ")" + get_additional_debug_data(); }
+};
 
 // Type of operator
 class TypeOfExpr : public SeparableExpr {
@@ -1895,9 +1946,11 @@ public:
         return str + " >" + get_additional_debug_data();
     }
 
-    virtual bool is_public() { return std::dynamic_pointer_cast<SymbolExpr>( symbol )->is_public(); }
+    virtual bool has_attribute( Attribute attr ) {
+        return std::dynamic_pointer_cast<SymbolExpr>( symbol )->has_attribute( attr );
+    }
 
-    virtual void set_public( bool value = true ) {
-        std::dynamic_pointer_cast<SymbolExpr>( symbol )->set_public( value );
+    virtual void set_attribute( Attribute attr, bool value ) {
+        std::dynamic_pointer_cast<SymbolExpr>( symbol )->set_attribute( attr, value );
     }
 };

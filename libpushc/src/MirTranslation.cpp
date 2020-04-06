@@ -134,11 +134,6 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                         auto typed = std::dynamic_pointer_cast<TypedExpr>( entry );
                         parameter_symbol = std::dynamic_pointer_cast<SymbolExpr>( typed->symbol );
                         auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( typed->type );
-                        if ( type_symbol == nullptr ) {
-                            type_symbol = std::dynamic_pointer_cast<SymbolExpr>(
-                                std::dynamic_pointer_cast<ReferenceExpr>( typed->type )->symbol );
-                            new_parameter.ref = true;
-                        }
                         auto types = find_sub_symbol_by_identifier_chain(
                             c_ctx, get_symbol_chain_from_expr( type_symbol ), c_ctx.current_scope );
 
@@ -156,6 +151,8 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                         }
 
                         new_parameter.type = c_ctx.symbol_graph[types.front()].type;
+                        new_parameter.ref = type_symbol->has_attribute( SymbolExpr::Attribute::ref );
+                        new_parameter.mut = type_symbol->has_attribute( SymbolExpr::Attribute::mut );
                     }
 
                     auto symbol_chain = get_symbol_chain_from_expr( parameter_symbol );
@@ -163,8 +160,6 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                         w_ctx.print_msg<MessageType::err_local_variable_scoped>(
                             MessageInfo( parameter_symbol, 0, FmtStr::Color::Red ) );
                     new_parameter.name = symbol_chain->front().name;
-
-                    // TODO parse mut properties
                 }
             }
         }
@@ -172,11 +167,6 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
         // Return value
         if ( expr->return_type != 0 ) {
             auto return_symbol = std::dynamic_pointer_cast<SymbolExpr>( expr->return_type );
-            if ( return_symbol == nullptr ) {
-                return_symbol = std::dynamic_pointer_cast<SymbolExpr>(
-                    std::dynamic_pointer_cast<ReferenceExpr>( expr->return_type )->symbol );
-                symbol.identifier.eval_type.ref = true;
-            }
             auto return_symbols = find_sub_symbol_by_identifier_chain(
                 c_ctx, get_symbol_chain_from_expr( return_symbol ), c_ctx.current_scope );
             if ( return_symbols.empty() ) {
@@ -192,8 +182,8 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     MessageInfo( expr->return_type, 0, FmtStr::Color::Red ), notes );
             }
             symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].type;
-
-            // TODO parse mut and ref properties
+            symbol.identifier.eval_type.ref = return_symbol->has_attribute( SymbolExpr::Attribute::ref );
+            symbol.identifier.eval_type.mut = return_symbol->has_attribute( SymbolExpr::Attribute::mut );
         }
     }
 }
@@ -245,15 +235,11 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         function.params.push_back( id );
         String name = get_full_symbol_name( c_ctx, symbol->get_symbol_id() );
         function.vars[id].name = name;
+        function.vars[id].type = MirVariable::Type::value;
         c_ctx.curr_name_mapping.back()[name] = id;
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
             auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( type );
-            if ( type_symbol == nullptr ) {
-                type_symbol =
-                    std::dynamic_pointer_cast<SymbolExpr>( std::dynamic_pointer_cast<ReferenceExpr>( type )->symbol );
-                function.vars[id].type = MirVariable::Type::p_ref;
-            }
             auto symbols = find_sub_symbol_by_identifier_chain( c_ctx, get_symbol_chain_from_expr( type_symbol ),
                                                                 c_ctx.current_scope );
             if ( symbols.empty() ) {
@@ -269,6 +255,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
             }
 
             function.vars[id].value_type = c_ctx.symbol_graph[symbols.front()].value;
+            function.vars[id].mut = type_symbol->has_attribute( SymbolExpr::Attribute::mut );
+            if ( type_symbol->has_attribute( SymbolExpr::Attribute::ref ) )
+                function.vars[id].type = MirVariable::Type::p_ref;
         }
     }
 
@@ -288,7 +277,7 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         }
 
         // DEBUG print MIR
-        log( "MIR FUNCTIONS -" );
+        log( "MIR FUNCTIONS --" );
         for ( size_t i = 1; i < c_ctx->functions.size(); i++ ) {
             auto &fn = c_ctx->functions[i];
             auto get_var_name = [&fn]( MirVarId id ) -> String {
@@ -367,6 +356,6 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                            : "" ) );
             }
         }
-        log( "--------------" );
+        log( "----------------" );
     } );
 }

@@ -41,6 +41,7 @@ PreludeConfig get_prelude_prelude() {
 
     pc.operators.clear();
     pc.reference_op.clear();
+    pc.mut_op.clear();
     pc.type_of_op.clear();
     pc.struct_to_tuple_op.clear();
     pc.type_op.clear();
@@ -685,6 +686,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->reference_op.push_back( op );
+        } else if ( mci == "MUTABLE_TYPE" ) {
+            Operator op;
+            if ( !parse_operator( op, conf, input, w_ctx ) ) {
+                return false;
+            }
+            conf->mut_op.push_back( op );
         } else if ( mci == "TYPE_OF" ) {
             Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {

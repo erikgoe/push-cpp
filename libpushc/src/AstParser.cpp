@@ -474,14 +474,14 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         w_ctx.do_query( parse_symbols, c_ctx );
 
         // DEBUG print AST
-        log( "AST ----------" );
+        log( "AST ------------" );
         log( " " + c_ctx->ast->get_debug_repr() );
-        log( "SYMBOLS ------" );
+        log( "SYMBOLS --------" );
         for ( size_t i = 1; i < c_ctx->symbol_graph.size(); i++ ) {
             log( " " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, i ) + " - val " +
                  to_string( c_ctx->symbol_graph[i].value ) + " - type " + to_string( c_ctx->symbol_graph[i].type ) );
         }
-        log( "TYPES --------" );
+        log( "TYPES ----------" );
         for ( size_t i = 1; i < c_ctx->type_table.size(); i++ ) {
             auto type = c_ctx->type_table[i];
             log( " " + to_string( i ) + " add_size " + to_string( type.additional_mem_size ) + " - sym " +
@@ -490,7 +490,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                 log( "  member " + m.identifier.name );
             }
         }
-        log( "--------------" );
+        log( "----------------" );
         auto duration = std::chrono::system_clock::now() - start_time;
         log( "Took " + to_string( duration.count() / 1000000 ) + " milliseconds" );
 

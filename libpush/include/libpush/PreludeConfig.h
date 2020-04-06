@@ -129,6 +129,7 @@ struct PreludeConfig {
     std::list<TraitOperator> operators; // all general operators
     std::list<Operator> comma_op; // comma-linking
     std::list<Operator> reference_op; // used for borrowing
+    std::list<Operator> mut_op; // used to specify a symbol as mutable
     std::list<Operator> type_of_op; // returns the type of a expression
     std::list<Operator> struct_to_tuple_op; // translates a struct into a tuple
     std::list<Operator> type_op; // special type defining operator

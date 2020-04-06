@@ -307,6 +307,14 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
         };
         c_ctx.rules.push_back( new_rule );
     }
+    for ( auto &o : pc.mut_op ) {
+        parse_rule( new_rule, lm, o.syntax );
+        copy_syntax_properties( new_rule, o );
+        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
+            return make_shared<MutAttrExpr>( list[lm.at( "type" )], o.precedence, list );
+        };
+        c_ctx.rules.push_back( new_rule );
+    }
     for ( auto &o : pc.type_of_op ) {
         parse_rule( new_rule, lm, o.syntax );
         copy_syntax_properties( new_rule, o );

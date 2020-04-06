@@ -120,7 +120,8 @@ define_mci_rule( NEW_OPERATOR, std::op::negate, 11 BIAS 11, rtl, double_list, "-
 define_mci_rule( NEW_OPERATOR, std::op::positive, 11 BIAS 11, rtl, double_list, "+" -> op, expr -> rvalue ); // define the positive operator (only for symmetry with the negation operator)
 define_mci_rule( NEW_OPERATOR, std::op::increment_prefix, 11, rtl, double_list, "++" -> op, expr -> rvalue ); // define the prefix increment operator
 define_mci_rule( NEW_OPERATOR, std::op::decrement_prefix, 11, rtl, double_list, "--" -> op, expr -> rvalue ); // define the prefix decrement operator
-define_mci_rule( REFERENCE_TYPE, 11, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference or destruct a reference
+define_mci_rule( REFERENCE_TYPE, 11, rtl, double_list, "&" -> op, expr -> type ); // syntax to define a reference
+define_mci_rule( MUTABLE_TYPE, 11, rtl, double_list, "mut", expr -> type ); // syntax to define a mutable symbol
 define_mci_rule( NEW_OPERATOR, std::op::increment_postfix, 12, ltr, double_list, expr -> lvalue, "++" -> op ); // define the postfix increment operator
 define_mci_rule( NEW_OPERATOR, std::op::decrement_postfix, 12, ltr, double_list, expr -> lvalue, "--" -> op ); // define the postfix decrement operator
 define_mci_rule( OPERATION_TYPE, 13, ltr, triple_list, expr -> value, ":" -> op, expr -> type ); // type defining operator
