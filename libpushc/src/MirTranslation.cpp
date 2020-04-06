@@ -128,7 +128,7 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, spt
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {
     auto &symbol = c_ctx.symbol_graph[function];
     if ( function && symbol.value == 0 ) {
-        symbol.value = create_new_type( c_ctx, function );
+        create_new_type( c_ctx, function );
         auto expr = std::dynamic_pointer_cast<FuncExpr>( symbol.original_expr.front() );
         if ( expr == nullptr ) {
             LOG_ERR( "Function to analyse is not a function" );
@@ -233,7 +233,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     analyse_function_signature( c_ctx, w_ctx, symbol_id );
     function.type = symbol.value;
 
-    // Parse parameters
+    // Parse parameters TODO extract this from already existing data from analyse_function_signature()
     auto paren_expr = std::dynamic_pointer_cast<ParenthesisExpr>( expr->parameters );
     for ( auto &entry : paren_expr->get_list() ) {
         auto symbol = std::dynamic_pointer_cast<SymbolExpr>( entry );
@@ -246,10 +246,15 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
         MirVarId id = create_variable( c_ctx, w_ctx, func_id );
         function.params.push_back( id );
-        String name = get_full_symbol_name( c_ctx, symbol->get_symbol_id() );
-        function.vars[id].name = name;
+
+        auto name_chain = get_symbol_chain_from_expr( symbol );
+        if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
+            w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+        }
+
+        function.vars[id].name = name_chain->front().name;
         function.vars[id].type = MirVariable::Type::value;
-        c_ctx.curr_name_mapping.back()[name].push_back( id );
+        c_ctx.curr_name_mapping.back()[name_chain->front().name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
             auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( type );
@@ -276,6 +281,11 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
     // Parse body
     function.ret = expr->body->parse_mir( c_ctx, w_ctx, func_id );
+
+    // Drop parameters
+    for ( auto &p : function.params ) {
+        drop_variable( c_ctx, w_ctx, func_id, expr, p );
+    }
 }
 
 void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {

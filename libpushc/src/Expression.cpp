@@ -159,7 +159,7 @@ bool BlockExpr::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, sptr<Expr>
         anchor = new_decl;
     } else {
         // Insert implicit return type
-        if ( !sub_expr.empty() && std::dynamic_pointer_cast<SingleCompletedExpr>( sub_expr.back() ) != nullptr )
+        if ( sub_expr.empty() || std::dynamic_pointer_cast<SingleCompletedExpr>( sub_expr.back() ) != nullptr )
             sub_expr.push_back( make_shared<UnitExpr>() );
 
         std::vector<sptr<Expr>> annotation_list;
@@ -201,10 +201,10 @@ MirVarId BlockExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId fu
             ( *expr )->parse_mir( c_ctx, w_ctx, func );
         }
     }
-    MirVarId ret = 0;
-    if ( !sub_expr.empty() ) {
-        ret = sub_expr.back()->parse_mir( c_ctx, w_ctx, func );
+    if ( sub_expr.empty() ) {
+        LOG_ERR( "No return value from block" );
     }
+    MirVarId ret = sub_expr.back()->parse_mir( c_ctx, w_ctx, func );
 
     // Drop all created variables
     for ( auto &var : c_ctx.curr_living_vars.back() ) {
