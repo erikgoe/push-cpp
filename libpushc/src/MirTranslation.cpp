@@ -54,10 +54,14 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
         LOG_ERR( "Expected and provided parameter count differ" );
 
     // Create call operation
-    auto &ret =
+    auto &op =
         create_operation( c_ctx, w_ctx, calling_function, original_expr, MirEntry::Type::call, result, parameters );
-    ret.symbol = called_function;
-    c_ctx.functions[calling_function].vars[ret.ret].type = MirVariable::Type::rvalue;
+    op.symbol = called_function;
+    caller.vars[op.ret].type = MirVariable::Type::rvalue;
+    if ( caller.vars[op.ret].value_type == 0 ) {
+        caller.vars[op.ret].value_type = callee.identifier.eval_type.type;
+    }
+
 
     // Handle parameter remains
     for ( size_t i = 0; i < parameters.size(); i++ ) {
@@ -76,7 +80,7 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
         }
     }
 
-    return ret;
+    return op;
 }
 
 MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, const String &name ) {
@@ -163,7 +167,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                                 MessageInfo( type_symbol, 0, FmtStr::Color::Red ), notes );
                         }
 
-                        new_parameter.type = c_ctx.symbol_graph[types.front()].type;
+                        new_parameter.type = c_ctx.symbol_graph[types.front()].value;
                         new_parameter.ref = type_symbol->has_attribute( SymbolExpr::Attribute::ref );
                         new_parameter.mut = type_symbol->has_attribute( SymbolExpr::Attribute::mut );
                     }
@@ -194,7 +198,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                 w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
                     MessageInfo( expr->return_type, 0, FmtStr::Color::Red ), notes );
             }
-            symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].type;
+            symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].value;
             symbol.identifier.eval_type.ref = return_symbol->has_attribute( SymbolExpr::Attribute::ref );
             symbol.identifier.eval_type.mut = return_symbol->has_attribute( SymbolExpr::Attribute::mut );
         }
