@@ -204,7 +204,7 @@ struct CrateCtx {
     std::vector<std::vector<SymbolSubstitution>> current_substitutions; // Substitution rules for each new scope
 
     std::vector<std::vector<MirVarId>> curr_living_vars;
-    std::vector<std::map<String, MirVarId>> curr_name_mapping;
+    std::vector<std::map<String, std::vector<MirVarId>>> curr_name_mapping; // mappes names to stacks of shaddowned vars
 
     CrateCtx() {
         symbol_graph.resize( 2 );

@@ -281,7 +281,7 @@ MirVarId AtomicSymbolExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionIm
 
     for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
         if ( auto var_itr = itr->find( name_chain->front().name ); var_itr != itr->end() ) {
-            return var_itr->second;
+            return var_itr->second.back();
         }
     }
 
@@ -464,7 +464,7 @@ MirVarId OperatorExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId
     auto left_result = lvalue->parse_mir( c_ctx, w_ctx, func );
     auto right_result = rvalue->parse_mir( c_ctx, w_ctx, func );
 
-    auto &op = create_call( c_ctx, w_ctx, func, shared_from_this(), calls.front(), left_result, { right_result } );
+    auto &op = create_call( c_ctx, w_ctx, func, shared_from_this(), calls.front(), 0, { left_result, right_result } );
 
     return op.ret;
 }
@@ -513,6 +513,7 @@ MirVarId SimpleBindExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImpl
 
     // Expr operation
     auto var = assignment->parse_mir( c_ctx, w_ctx, func );
+    drop_variable( c_ctx, w_ctx, func, shared_from_this(), var );
 
     return 0;
 }

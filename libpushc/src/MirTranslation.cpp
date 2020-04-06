@@ -57,6 +57,7 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
     auto &ret =
         create_operation( c_ctx, w_ctx, calling_function, original_expr, MirEntry::Type::call, result, parameters );
     ret.symbol = called_function;
+    c_ctx.functions[calling_function].vars[ret.ret].type = MirVariable::Type::rvalue;
 
     // Handle parameter remains
     for ( size_t i = 0; i < parameters.size(); i++ ) {
@@ -84,7 +85,7 @@ MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
     c_ctx.functions[function].vars[id].name = name;
     c_ctx.curr_living_vars.back().push_back( id );
     if ( !name.empty() ) {
-        c_ctx.curr_name_mapping.back()[name] = id;
+        c_ctx.curr_name_mapping.back()[name].push_back( id );
     }
     return id;
 }
@@ -108,6 +109,18 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, spt
         if ( auto var_itr = std::find( itr->begin(), itr->end(), variable ); var_itr != itr->end() ) {
             itr->erase( var_itr );
             break;
+        }
+    }
+
+    // Remove from name mapping
+    if ( !var.name.empty() ) {
+        for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
+            if ( auto var_itr = itr->find( var.name ); var_itr != itr->end() ) {
+                var_itr->second.pop_back();
+                if ( var_itr->second.empty() )
+                    itr->erase( var_itr );
+                break;
+            }
         }
     }
 }
@@ -236,7 +249,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         String name = get_full_symbol_name( c_ctx, symbol->get_symbol_id() );
         function.vars[id].name = name;
         function.vars[id].type = MirVariable::Type::value;
-        c_ctx.curr_name_mapping.back()[name] = id;
+        c_ctx.curr_name_mapping.back()[name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
             auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( type );
