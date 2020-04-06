@@ -850,6 +850,8 @@ public:
 
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) override;
 
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override;
+
     String get_debug_repr() override {
         return "FN_CALL(" + to_string( type ) + " " + ( parameters ? parameters->get_debug_repr() + " " : "" ) +
                symbol->get_debug_repr() + ")" + get_additional_debug_data();

@@ -437,6 +437,40 @@ bool FuncCallExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
+MirVarId FuncCallExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+    auto calls = find_sub_symbol_by_identifier_chain(
+        c_ctx, get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( symbol ) ) );
+
+    for ( auto &candidate : calls ) {
+        analyse_function_signature( c_ctx, w_ctx, candidate );
+    }
+
+    // TODO select the function based on its signature
+
+    if ( calls.empty() ) {
+        w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ),
+                                                            std::vector<MessageInfo>() );
+    } else if ( calls.size() > 1 ) {
+        std::vector<MessageInfo> notes;
+        for ( auto &c : calls ) {
+            if ( !c_ctx.symbol_graph[c].original_expr.empty() )
+                notes.push_back( MessageInfo( c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
+        }
+        w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ),
+                                                               notes );
+    }
+
+    auto param_exprs = std::dynamic_pointer_cast<ParenthesisExpr>( parameters )->get_list();
+    std::vector<MirVarId> params;
+    for ( auto &pe : param_exprs ) {
+        params.push_back( pe->parse_mir( c_ctx, w_ctx, func ) );
+    }
+
+    auto &op = create_call( c_ctx, w_ctx, func, shared_from_this(), calls.front(), 0, params );
+
+    return op.ret;
+}
+
 MirVarId OperatorExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
     auto calls = find_sub_symbol_by_identifier_chain(
         c_ctx, split_symbol_chain( *fn, w_ctx.unit_ctx()->prelude_conf.scope_access_operator ), c_ctx.current_scope );
@@ -456,8 +490,8 @@ MirVarId OperatorExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId
             if ( !c_ctx.symbol_graph[c].original_expr.empty() )
                 notes.push_back( MessageInfo( c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
         }
-        w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ),
-                                                               notes, *fn, op );
+        w_ctx.print_msg<MessageType::err_operator_symbol_is_ambiguous>(
+            MessageInfo( shared_from_this(), 0, FmtStr::Color::Red ), notes, *fn, op );
     }
 
 
