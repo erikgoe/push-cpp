@@ -44,6 +44,7 @@ enum class MessageType {
     err_symbol_is_ambiguous,
     err_operator_symbol_not_found,
     err_operator_symbol_is_ambiguous,
+    err_member_symbol_is_ambiguous,
     err_orphan_token,
     err_unfinished_expr,
     err_expected_symbol,
@@ -133,6 +134,9 @@ MESSAGE_DEFINITION( MessageType::err_operator_symbol_is_ambiguous, MessageClass:
                     "The symbol identifier '" + GET_ARG( 0 ) + "' for operator '" + GET_ARG( 1 ) +
                         "' does not uniquely specify a symbol.",
                     "", "Possible match defined here" );
+MESSAGE_DEFINITION( MessageType::err_member_symbol_is_ambiguous, MessageClass::Error, "C",
+                    "The member symbol identifier does not uniquely specify a member.", "",
+                    "Possible match defined here" );
 MESSAGE_DEFINITION( MessageType::err_orphan_token, MessageClass::Error, "C",
                     "Orphan token found! Please check the syntax of the sourrounding operations.",
                     "This token could not be merged into an expression" );

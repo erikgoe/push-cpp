@@ -28,7 +28,6 @@ sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, S
     return ret;
 }
 
-// Checks if a symbol identifier matches a symbol identifier pattern
 bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIdentifier &candidate ) {
     if ( candidate.name == pattern.name ) {
         if ( pattern.eval_type.type == 0 || candidate.eval_type == pattern.eval_type ) {

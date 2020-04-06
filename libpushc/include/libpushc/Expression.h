@@ -1470,6 +1470,8 @@ public:
                post_visit_impl( c_ctx, w_ctx, vpt, *this, anchor, parent );
     }
 
+    MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) override;
+
     String get_debug_repr() override {
         return "MEMBER(" + base->get_debug_repr() + "." + name->get_debug_repr() + ")" + get_additional_debug_data();
     }

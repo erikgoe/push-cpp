@@ -18,6 +18,9 @@
 // Splits a symbol string into a chain of strings. NOTE: This is only used for external inputs like the prelude
 sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, String separator );
 
+// Checks if a symbol identifier matches a symbol identifier pattern
+bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIdentifier &candidate );
+
 // Searches for a sub-symbol by name and returns its id
 std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, const SymbolIdentifier &identifier,
                                                      SymbolId parent );

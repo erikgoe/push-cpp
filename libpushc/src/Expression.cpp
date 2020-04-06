@@ -1033,6 +1033,63 @@ bool ImplExpr::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
+MirVarId MemberAccessExpr::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+    auto obj = base->parse_mir( c_ctx, w_ctx, func );
+    auto base_symbol = c_ctx.type_table[c_ctx.functions[func].vars[obj].value_type].symbol;
+
+    // Get member name
+    auto name_chain = get_symbol_chain_from_expr( std::dynamic_pointer_cast<SymbolExpr>( name ) );
+    if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
+        w_ctx.print_msg<MessageType::err_member_in_invalid_scope>( MessageInfo( name, 0, FmtStr::Color::Red ) );
+    }
+
+    // Find attributes
+    auto attrs = find_member_symbol_by_identifier( c_ctx, name_chain->front(), base_symbol );
+
+    // Find methods
+    std::vector<SymbolId> methods;
+    for ( auto &node : c_ctx.symbol_graph[base_symbol].sub_nodes ) {
+        if ( symbol_identifier_matches( name_chain->front(), c_ctx.symbol_graph[node].identifier ) ) {
+            methods.push_back( node );
+        }
+    }
+
+    if ( attrs.empty() && methods.empty() ) {
+        w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( base, 0, FmtStr::Color::Red ) );
+        return false;
+    } else if ( attrs.size() + methods.size() != 1 ) {
+        std::vector<MessageInfo> notes;
+        for ( auto &attr : attrs ) {
+            if ( !c_ctx.symbol_graph[attr].original_expr.empty() )
+                notes.push_back( MessageInfo( c_ctx.symbol_graph[attr].original_expr.front(), 1 ) );
+        }
+        for ( auto &method : methods ) {
+            if ( !c_ctx.symbol_graph[method].original_expr.empty() )
+                notes.push_back( MessageInfo( c_ctx.symbol_graph[method].original_expr.front(), 1 ) );
+        }
+        w_ctx.print_msg<MessageType::err_member_symbol_is_ambiguous>( MessageInfo( base, 0, FmtStr::Color::Red ),
+                                                                      notes );
+    }
+
+    // Create operation
+    MirVarId ret;
+    if ( !attrs.empty() ) {
+        // Access attribute
+        auto &op = create_operation( c_ctx, w_ctx, func, shared_from_this(), MirEntry::Type::member, 0, { obj } );
+        auto &result_var = c_ctx.functions[func].vars[op.ret];
+        result_var.member_idx = attrs.front();
+        result_var.type = MirVariable::Type::l_ref;
+        result_var.ref = obj;
+        result_var.mut = c_ctx.functions[func].vars[obj].mut;
+        result_var.value_type = c_ctx.type_table[c_ctx.symbol_graph[base_symbol].value].members[attrs.front()].value;
+        ret = op.ret;
+    } else {
+        // Call method TODO
+    }
+
+    return ret;
+}
+
 bool ReferenceExpr::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( std::dynamic_pointer_cast<SymbolExpr>( symbol ) == nullptr ) {
         w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
