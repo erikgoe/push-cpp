@@ -292,7 +292,7 @@ TEST_CASE( "Symbol discovery", "[semantic_parser]" ) {
     u32 type_ctr = graph_start_idx;
     std::vector<SymbolGraphNode> expected_graph_nodes = {
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "A" }, {}, false, type_start_idx, c_ctx->struct_type },
-        SymbolGraphNode{ 2, {}, {}, SymbolIdentifier{ "op" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ 3, {}, {}, SymbolIdentifier{ "op" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
             graph_start_idx + 1, {}, {}, SymbolIdentifier{ "Add" }, {}, false, type_start_idx + 1, c_ctx->trait_type },
         SymbolGraphNode{

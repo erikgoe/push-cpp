@@ -163,7 +163,7 @@ struct MirVariable {
     String name; // the original variable name (temporaries have an empty name)
     TypeId value_type = 0; // type of the value of this variable
     bool mut = false; // whether this variable can be updated
-    MirVarId ref = 0; // referred variable (for l_ref)
+    MirVarId ref = 0; // referred variable (for l_ref or for method access)
     size_t member_idx = 0; // used for member access operations
 };
 
@@ -190,6 +190,7 @@ struct CrateCtx {
     TypeId trait_type = 0; // internal trait type
     TypeId fn_type = 0; // internal function type
     TypeId mod_type = 0; // internal module type
+    TypeId unit_type = 0; // type of the unit type
     TypeId int_type = 0; // type of the integer trait
     TypeId str_type = 0; // type of the string trait
 

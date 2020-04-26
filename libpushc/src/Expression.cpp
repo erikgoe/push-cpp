@@ -338,7 +338,7 @@ bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNod
 }
 
 sptr<std::vector<SymbolIdentifier>> AstNode::get_symbol_chain() {
-    if ( !has_prop( ExprProperty::symbol ) ) {
+    if ( !has_prop( ExprProperty::symbol_like ) ) {
         LOG_ERR( "Tried to get symbol chain from non-symbol" );
         return make_shared<std::vector<SymbolIdentifier>>();
     }
@@ -352,6 +352,11 @@ sptr<std::vector<SymbolIdentifier>> AstNode::get_symbol_chain() {
         return base;
     } else if ( type == ExprType::template_postfix ) {
         return named[AstChild::symbol].get_symbol_chain(); // TODO add template arguments
+    } else if ( type == ExprType::unit ) {
+        return make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ "()" } );
+    } else if ( type == ExprType::tuple ) {
+        // TODO ad-hoc type for tuples
+        return make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ "()" } );
     }
 
     LOG_ERR( "Could not parse symbol chain from expr" );

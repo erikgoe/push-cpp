@@ -65,7 +65,7 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
 
     // Handle parameter remains
     for ( size_t i = 0; i < parameters.size(); i++ ) {
-        if ( callee.identifier.parameters[i].ref ) {
+        if ( !callee.identifier.parameters[i].ref ) {
             if ( caller.vars[parameters[i]].type == MirVariable::Type::rvalue ) {
                 drop_variable( c_ctx, w_ctx, calling_function, original_expr, parameters[i] );
             }
@@ -132,7 +132,6 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, Ast
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {
     auto &symbol = c_ctx.symbol_graph[function];
     if ( function && symbol.identifier.eval_type.type == 0 ) {
-        create_new_type( c_ctx, function );
         auto &expr = *symbol.original_expr.front();
         if ( expr.type != ExprType::func ) {
             LOG_ERR( "Function to analyse is not a function" );
@@ -178,10 +177,10 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
         }
 
         // Return value
-        if ( expr.named.find(AstChild::return_type) != expr.named.end() ) {
+        if ( expr.named.find( AstChild::return_type ) != expr.named.end() ) {
             auto return_symbol = expr.named[AstChild::return_type];
-            auto return_symbols = find_sub_symbol_by_identifier_chain(
-                c_ctx, return_symbol.get_symbol_chain(), c_ctx.current_scope );
+            auto return_symbols =
+                find_sub_symbol_by_identifier_chain( c_ctx, return_symbol.get_symbol_chain(), c_ctx.current_scope );
             if ( return_symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>(
                     MessageInfo( return_symbol, 0, FmtStr::Color::Red ) );
@@ -238,9 +237,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     for ( auto &entry : paren_expr.children ) {
         auto *symbol = &entry;
         AstNode *type = nullptr;
-        if ( symbol == nullptr ) {
+        if ( symbol->type == ExprType::typed_op ) {
             symbol = &entry.named[AstChild::left_expr];
-            type = &entry.named[AstChild::left_expr];
+            type = &entry.named[AstChild::right_expr];
         }
 
         MirVarId id = create_variable( c_ctx, w_ctx, func_id );
@@ -256,8 +255,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         c_ctx.curr_name_mapping.back()[name_chain->front().name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
-            auto symbols = find_sub_symbol_by_identifier_chain( c_ctx, type->get_symbol_chain(),
-                                                                c_ctx.current_scope );
+            auto symbols = find_sub_symbol_by_identifier_chain( c_ctx, type->get_symbol_chain(), c_ctx.current_scope );
             if ( symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( *type, 0, FmtStr::Color::Red ) );
             } else if ( symbols.size() > 1 ) {
@@ -266,12 +264,12 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
                     if ( !c_ctx.symbol_graph[s].original_expr.empty() )
                         notes.push_back( MessageInfo( *c_ctx.symbol_graph[s].original_expr.front(), 1 ) );
                 }
-                w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                    MessageInfo( *type, 0, FmtStr::Color::Red ), notes );
+                w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( *type, 0, FmtStr::Color::Red ),
+                                                                       notes );
             }
 
             function.vars[id].value_type = c_ctx.symbol_graph[symbols.front()].value;
-            function.vars[id].mut = type->has_prop(ExprProperty::mut);
+            function.vars[id].mut = type->has_prop( ExprProperty::mut );
             if ( type->has_prop( ExprProperty::ref ) )
                 function.vars[id].type = MirVariable::Type::p_ref;
         }
@@ -292,7 +290,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
         // Generate the Mir function bodies
         for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
-            if ( c_ctx->symbol_graph[i].type == c_ctx->fn_type ) {
+            if ( c_ctx->symbol_graph[i].original_expr.size() == 1 &&
+                 c_ctx->symbol_graph[i].original_expr.front()->type == ExprType::func ) {
                 generate_mir_function_impl( *c_ctx, w_ctx, i );
             }
         }

@@ -436,6 +436,10 @@ void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg ) {
 
     // Most basic types/traits
     SymbolId new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ "()" } ) );
+    c_ctx.unit_type = create_new_type( c_ctx, new_symbol );
+
+    new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ) );
     c_ctx.int_type = create_new_type( c_ctx, new_symbol );
 
