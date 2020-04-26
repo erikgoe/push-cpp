@@ -24,29 +24,32 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
     for ( auto &expr : syntax_list ) {
         lm[expr.second] = ctr;
         if ( expr.first == "expr" ) {
-            sr.expr_list.push_back( make_shared<OperandExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::none, { ExprProperty::operand } } );
         } else if ( expr.first == "symbol" ) {
-            sr.expr_list.push_back( make_shared<SymbolExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::none, { ExprProperty::symbol } } );
+        } else if ( expr.first == "symbol_like" ) {
+            sr.expr_list.push_back( AstNode{ ExprType::none, { ExprProperty::symbol_like } } );
         } else if ( expr.first == "completed" ) {
-            sr.expr_list.push_back( make_shared<CompletedExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::none, { ExprProperty::completed } } );
         } else if ( expr.first == "fn_head" ) {
-            sr.expr_list.push_back( make_shared<FuncHeadExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::func_head } );
         } else if ( expr.first == "comma_list" ) {
-            sr.expr_list.push_back( make_shared<CommaExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::comma_list } );
         } else if ( expr.first == "unit" ) {
-            sr.expr_list.push_back( make_shared<UnitExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::unit } );
         } else if ( expr.first == "term" ) {
-            sr.expr_list.push_back( make_shared<TermExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::term } );
         } else if ( expr.first == "tuple" ) {
-            sr.expr_list.push_back( make_shared<TupleExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::tuple } );
         } else if ( expr.first == "integer" ) {
-            sr.expr_list.push_back( make_shared<BasicBlobLiteralExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::numeric_literal } );
         } else if ( expr.first == "array_spec" ) {
-            sr.expr_list.push_back( make_shared<ArraySpecifierExpr>() );
+            sr.expr_list.push_back( AstNode{ ExprType::array_specifier } );
         } else {
             // Keyword or operator
-            sr.expr_list.push_back( make_shared<TokenExpr>(
-                Token( Token::Type::op, expr.first, nullptr, 0, 0, 0, "", TokenLevel::normal ) ) );
+            auto node = AstNode{ ExprType::token };
+            node.token = Token( Token::Type::op, expr.first, nullptr, 0, 0, 0, "", TokenLevel::normal );
+            sr.expr_list.push_back( node );
         }
         ctr++;
     }
@@ -58,6 +61,66 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
     SyntaxRule new_rule;
     LabelMap lm;
 
+    std::map<String, AstChild> ast_child_map = { { "symbol", AstChild::symbol },
+                                                 { "symbol_like", AstChild::symbol_like },
+                                                 { "struct_symbol", AstChild::struct_symbol },
+                                                 { "trait_symbol", AstChild::trait_symbol },
+                                                 { "condition", AstChild::cond },
+                                                 { "iterator", AstChild::itr },
+                                                 { "selector", AstChild::select },
+                                                 { "parameters", AstChild::parameters },
+                                                 { "return_type", AstChild::return_type },
+                                                 { "left", AstChild::left_expr },
+                                                 { "right", AstChild::right_expr },
+                                                 { "true_expr", AstChild::true_expr },
+                                                 { "false_expr", AstChild::false_expr },
+                                                 { "base", AstChild::base },
+                                                 { "index", AstChild::index },
+                                                 { "member", AstChild::member },
+                                                 { "from", AstChild::from },
+                                                 { "to", AstChild::to } };
+
+    std::map<SyntaxType, ExprType> ast_type_map = {
+        { SyntaxType::op, ExprType::op },
+        { SyntaxType::scope_access, ExprType::scope_access },
+        { SyntaxType::module_spec, ExprType::module },
+        { SyntaxType::member_access, ExprType::member_access },
+        { SyntaxType::array_access, ExprType::array_access },
+        { SyntaxType::func_head, ExprType::func_head },
+        { SyntaxType::func_def, ExprType::func },
+        { SyntaxType::macro, ExprType::macro_call },
+        { SyntaxType::annotation, ExprType::compiler_annotation },
+        { SyntaxType::unsafe_block, ExprType::unsafe },
+        { SyntaxType::static_statement, ExprType::static_statement },
+        { SyntaxType::reference_attr, ExprType::reference },
+        { SyntaxType::mutable_attr, ExprType::mutable_attr },
+        { SyntaxType::typed, ExprType::typed_op },
+        { SyntaxType::type_of, ExprType::typeof_op },
+        { SyntaxType::range, ExprType::range },
+        { SyntaxType::assignment, ExprType::op },
+        { SyntaxType::implication, ExprType::op },
+        { SyntaxType::decl_attr, ExprType::declaration },
+        { SyntaxType::public_attr, ExprType::public_attr },
+        { SyntaxType::comma, ExprType::comma_list },
+        { SyntaxType::structure, ExprType::structure },
+        { SyntaxType::trait, ExprType::trait },
+        { SyntaxType::implementation, ExprType::implementation },
+        { SyntaxType::simple_binding, ExprType::simple_bind },
+        { SyntaxType::alias_binding, ExprType::alias_bind },
+        { SyntaxType::if_cond, ExprType::if_cond },
+        { SyntaxType::if_else, ExprType::if_else },
+        { SyntaxType::pre_cond_loop_continue, ExprType::pre_loop },
+        { SyntaxType::pre_cond_loop_abort, ExprType::pre_loop },
+        { SyntaxType::post_cond_loop_continue, ExprType::post_loop },
+        { SyntaxType::post_cond_loop_abort, ExprType::post_loop },
+        { SyntaxType::inf_loop, ExprType::inf_loop },
+        { SyntaxType::itr_loop, ExprType::itr_loop },
+        { SyntaxType::match, ExprType::match },
+        { SyntaxType::template_postfix, ExprType::template_postfix },
+
+    };
+
+    // TODO move to syntax_handler
     auto copy_syntax_properties = []( SyntaxRule &rule, const Operator &op ) {
         rule.precedence = op.precedence;
         rule.ltr = op.ltr;
@@ -66,337 +129,80 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
         rule.prec_bias = op.prec_bias;
     };
 
-    // Special statements
-    for ( auto &sb : pc.simple_bindings ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<SimpleBindExpr>( list[lm.at( "expression" )], new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.alias_bindings ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<AliasBindExpr>( list[lm.at( "expression" )], new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-
-    // OOP
-    for ( auto &sb : pc.structs ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<StructExpr>(
-                ( lm.find( "name" ) != lm.end() ? list[lm.at( "name" )] : nullptr ),
-                ( lm.find( "body" ) != lm.end() ? std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] )
-                                                : nullptr ),
-                new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.trait ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<TraitExpr>( list[lm.at( "name" )],
-                                           std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
-                                           new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.impl ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<ImplExpr>(
-                list[lm.at( "type" )], ( lm.find( "trait" ) != lm.end() ? list[lm.at( "trait" )] : nullptr ),
-                std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-
-    // Control flow
-    for ( auto &sb : pc.if_condition ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<IfExpr>( list[lm.at( "condition" )], list[lm.at( "exec0" )], new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.if_else_condition ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<IfElseExpr>( list[lm.at( "condition" )], list[lm.at( "exec0" )], list[lm.at( "exec1" )],
-                                            new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.pre_loop ) {
-        parse_rule( new_rule, lm, sb.first.syntax );
-        copy_syntax_properties( new_rule, sb.first );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<PreLoopExpr>( list[lm.at( "condition" )], list[lm.at( "exec" )], sb.second,
-                                             new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.post_loop ) {
-        parse_rule( new_rule, lm, sb.first.syntax );
-        copy_syntax_properties( new_rule, sb.first );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<PostLoopExpr>( list[lm.at( "condition" )], list[lm.at( "exec" )], sb.second,
-                                              new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.inf_loop ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<InfLoopExpr>( list[lm.at( "exec" )], new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.interator_loop ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<ItrLoopExpr>( list[lm.at( "iterator" )], list[lm.at( "exec" )], new_rule.precedence,
-                                             list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.matching ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<MatchExpr>( list[lm.at( "selector" )], list[lm.at( "cases" )], new_rule.precedence,
-                                           list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-
-    // Functions
-    for ( auto &f : pc.fn_head ) {
-        parse_rule( new_rule, lm, f.syntax );
-        copy_syntax_properties( new_rule, f );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<FuncHeadExpr>(
-                list[lm.at( "symbol" )],
-                ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ), new_rule.precedence,
-                list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &f : pc.fn_call ) {
-        parse_rule( new_rule, lm, f.syntax );
-        copy_syntax_properties( new_rule, f );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            auto head = std::dynamic_pointer_cast<FuncHeadExpr>( list[lm.at( "head" )] );
-            return make_shared<FuncCallExpr>( head->symbol, 0, head->parameters, new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &f : pc.fn_definitions ) {
-        parse_rule( new_rule, lm, f.op.syntax );
-        copy_syntax_properties( new_rule, f.op );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            if ( lm.find( "head" ) != lm.end() ) {
-                auto head = std::dynamic_pointer_cast<FuncHeadExpr>( list[lm.at( "head" )] );
-                return make_shared<FuncExpr>( head->symbol, 0, head->parameters,
-                                              ( lm.find( "return" ) == lm.end() ? nullptr : list[lm.at( "return" )] ),
-                                              std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ),
-                                              new_rule.precedence, list );
-            } else {
-                return make_shared<FuncExpr>(
-                    list[lm.at( "symbol" )], 0,
-                    ( lm.find( "parameters" ) == lm.end() ? nullptr : list[lm.at( "parameters" )] ),
-                    ( lm.find( "return" ) == lm.end() ? nullptr : list[lm.at( "return" )] ),
-                    std::dynamic_pointer_cast<CompletedExpr>( list[lm.at( "body" )] ), new_rule.precedence, list );
+    auto syntax_handler = [&]( Operator &op, SyntaxType type ) {
+        parse_rule( new_rule, lm, op.syntax );
+        copy_syntax_properties( new_rule, op );
+        auto ast_type = ast_type_map.at( type );
+        new_rule.create = [=]( std::vector<AstNode> &list, Worker &w_ctx ) {
+            auto node = AstNode{ ast_type };
+            node.generate_new_props();
+            node.precedence = new_rule.precedence;
+            node.original_list = list;
+            for ( auto &mapping : lm ) {
+                if ( mapping.first == "child" ) {
+                    node.children.push_back( list[mapping.second] );
+                } else if ( mapping.first == "head" ) {
+                    if ( ast_type == ExprType::func || ast_type == ExprType::compiler_annotation ) {
+                        auto head = list[mapping.second];
+                        node.named.insert( head.named.begin(), head.named.end() );
+                    } else {
+                        node.children.push_back( list[mapping.second] ); // handle as normal child
+                    }
+                } else if ( mapping.first == "op" ) {
+                    node.token = list[mapping.second].token;
+                } else if ( mapping.first == "op1" ) {
+                    node.token = list[mapping.second].token;
+                    node.token.content = list[mapping.second].token.content + list[lm.at( "op2" )].token.content;
+                } else if ( !mapping.first.empty() && mapping.first != "op2" && mapping.first != "child" ) {
+                    // Special handling
+                    if ( ast_type == ExprType::comma_list ) {
+                        // Merge multiple comma lists
+                        if ( list[mapping.second].type == ExprType::comma_list ) {
+                            node.children.insert( node.children.end(), list[mapping.second].children.begin(),
+                                                  list[mapping.second].children.end() );
+                            // Fix original_list
+                            // The erasing should work, because only one element will ever be removed from the list
+                            node.original_list.erase( node.original_list.begin() + mapping.second );
+                            node.original_list.insert( node.original_list.end(),
+                                                       list[mapping.second].original_list.begin(),
+                                                       list[mapping.second].original_list.end() );
+                        } else {
+                            // Ignore the label of the entries in the prelude
+                            node.children.push_back( list[mapping.second] );
+                        }
+                    } else if ( ast_type == ExprType::array_access &&
+                                ast_child_map.at( mapping.first ) == AstChild::index ) {
+                        // Merge child content
+                        // TODO move this logic into basic_semantic_check and first_transformation passes
+                        if ( list[mapping.second].children.size() != 1 ) {
+                            LOG_ERR( "Array access index contains not exactly one element. Size: " +
+                                     to_string( list[mapping.second].children.size() ) );
+                        } else {
+                            node.named[ast_child_map.at( mapping.first )] = list[mapping.second].children.front();
+                        }
+                    } else {
+                        // Normal named elements
+                        node.named[ast_child_map.at( mapping.first )] = list[mapping.second];
+                    }
+                }
             }
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-
-    // Relative access
-    for ( auto &sb : pc.member_access_op ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<MemberAccessExpr>( list[lm.at( "base" )], list[lm.at( "name" )], new_rule.precedence,
-                                                  list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.scope_access_op ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<ScopeAccessExpr>( ( lm.find( "base" ) != lm.end() ? list[lm.at( "base" )] : nullptr ),
-                                                 list[lm.at( "name" )], new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &sb : pc.array_access_op ) {
-        parse_rule( new_rule, lm, sb.syntax );
-        copy_syntax_properties( new_rule, sb );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            auto index = std::dynamic_pointer_cast<ArraySpecifierExpr>( list[lm.at( "index" )] );
-            if ( index->sub_expr.size() != 1 ) {
-                // Array access must be done with a single index
-                w_ctx.print_msg<MessageType::err_array_access_with_multiple_expr>(
-                    MessageInfo( index->get_position_info(), 0, FmtStr::Color::Red ) );
+            
+            node.symbol_name = op.fn;
+            node.range_type = op.range;
+            if ( ast_type == ExprType::pre_loop || ast_type == ExprType::post_loop ) {
+                if ( type == SyntaxType::pre_cond_loop_abort || type == SyntaxType::post_cond_loop_abort ) {
+                    node.continue_eval = false;
+                }
             }
-            return make_shared<ArrayAccessExpr>( list[lm.at( "value" )], index->sub_expr[0], new_rule.precedence,
-                                                 list );
+            return node;
         };
-        c_ctx.rules.push_back( new_rule );
-    }
+    };
 
-    // Ranges
-    for ( auto &sb : pc.range_op ) {
-        parse_rule( new_rule, lm, sb.op.syntax );
-        copy_syntax_properties( new_rule, sb.op );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<RangeExpr>( ( lm.find( "lvalue" ) != lm.end() ? list[lm.at( "lvalue" )] : nullptr ),
-                                           ( lm.find( "rvalue" ) != lm.end() ? list[lm.at( "rvalue" )] : nullptr ),
-                                           sb.type, new_rule.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-
-    // Operators
-    for ( auto &o : pc.operators ) {
-        parse_rule( new_rule, lm, o.op.syntax );
-        copy_syntax_properties( new_rule, o.op );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            String operator_token;
-            if ( lm.find( "op" ) == lm.end() ) {
-                operator_token = std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op1" )] )->t.content +
-                                 std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op2" )] )->t.content;
-            } else {
-                operator_token = std::dynamic_pointer_cast<TokenExpr>( list[lm.at( "op" )] )->t.content;
-            }
-            return make_shared<OperatorExpr>( operator_token, make_shared<String>( o.fn ),
-                                              ( lm.find( "lvalue" ) == lm.end() ? nullptr : list[lm.at( "lvalue" )] ),
-                                              ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ),
-                                              o.op.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.comma_op ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<CommaExpr>( ( lm.find( "lvalue" ) == lm.end() ? nullptr : list[lm.at( "lvalue" )] ),
-                                           ( lm.find( "rvalue" ) == lm.end() ? nullptr : list[lm.at( "rvalue" )] ),
-                                           o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.reference_op ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<ReferenceExpr>( list[lm.at( "type" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.mut_op ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<MutAttrExpr>( list[lm.at( "type" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.type_of_op ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<TypeOfExpr>( list[lm.at( "type" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.type_op ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<TypedExpr>( list[lm.at( "value" )], list[lm.at( "type" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-
-    // Special specifiers
-    for ( auto &o : pc.modules ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<ModuleExpr>( list[lm.at( "name" )], list[lm.at( "body" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.declaration ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<DeclarationExpr>( list[lm.at( "symbol" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.public_attr ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<PublicAttrExpr>( list[lm.at( "symbol" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.static_statements ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<StaticStatementExpr>( list[lm.at( "body" )] );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.compiler_annotations ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            auto head = std::dynamic_pointer_cast<FuncHeadExpr>( list[lm.at( "head" )] );
-            return make_shared<CompilerAnnotationExpr>( head->symbol, head->parameters, o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.macros ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<MacroExpr>( list[lm.at( "name" )], list[lm.at( "body" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.unsafe ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<UnsafeExpr>( list[lm.at( "body" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
-    }
-    for ( auto &o : pc.templates ) {
-        parse_rule( new_rule, lm, o.syntax );
-        copy_syntax_properties( new_rule, o );
-        new_rule.create = [=]( auto &list, Worker &w_ctx ) {
-            return make_shared<TemplateExpr>( list[lm.at( "name" )], list[lm.at( "attributes" )], o.precedence, list );
-        };
-        c_ctx.rules.push_back( new_rule );
+    for ( auto &syntax : pc.syntaxes ) {
+        for ( auto &op : syntax.second ) {
+            syntax_handler( op, syntax.first );
+            c_ctx.rules.push_back( new_rule );
+        }
     }
 
     // Sort rules after precedence

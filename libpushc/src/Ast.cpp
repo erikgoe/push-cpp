@@ -15,14 +15,21 @@
 #include "libpushc/Ast.h"
 #include "libpushc/Expression.h"
 
-bool SyntaxRule::matches_reversed( std::vector<sptr<Expr>> &rev_list ) {
+bool SyntaxRule::matches_reversed( std::vector<AstNode> &rev_list ) {
     if ( rev_list.size() < expr_list.size() )
         return false;
 
     for ( int i = 0; i < expr_list.size(); i++ ) {
-        if ( !expr_list[expr_list.size() - i - 1]->matches( rev_list[i] ) ) {
+        if ( !rev_list[i].matches( expr_list[expr_list.size() - i - 1] ) ) {
             return false;
         }
     }
     return true;
+}
+
+CrateCtx::CrateCtx() {
+    ast = make_shared<AstNode>();
+    symbol_graph.resize( 2 );
+    type_table.resize( LAST_FIX_TYPE + 1 );
+    functions.resize( 1 );
 }

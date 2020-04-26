@@ -32,20 +32,7 @@ PreludeConfig get_prelude_prelude() {
     pc.unused_prefix.clear();
     pc.string_rules.push_back( StringRule{ "\"", "\"", "", "", "", true, false, true } );
 
-    pc.fn_definitions.clear();
-
-    pc.scope_access_op.clear();
-    // pc.scope_access_op.push_back( Operator{1, true,Syntax{ std::make_pair( "expr", "base" ), std::make_pair( "::", ""
-    // ), std::make_pair( "expr", "name" ) } } );
-    pc.member_access_op.clear();
-
-    pc.operators.clear();
-    pc.reference_op.clear();
-    pc.mut_op.clear();
-    pc.type_of_op.clear();
-    pc.struct_to_tuple_op.clear();
-    pc.type_op.clear();
-    pc.range_op.clear();
+    pc.syntaxes.clear();
 
     pc.special_types.clear();
     pc.memblob_types.clear();
@@ -113,6 +100,19 @@ void load_prelude_file( sptr<String> path, JobsBuilder &jb, UnitCtx &ctx ) {
                 w_ctx.print_msg<MessageType::ferr_failed_prelude>( MessageInfo(), {}, *path );
             }
         }
+
+        // Post-parsing configuration
+        if ( !conf->syntaxes[SyntaxType::scope_access].empty() ) {
+            auto op_idx = std::find_if( conf->syntaxes[SyntaxType::scope_access].back().syntax.begin(),
+                                        conf->syntaxes[SyntaxType::scope_access].back().syntax.end(),
+                                        []( auto &&op ) { return op.second == "op"; } );
+            conf->scope_access_operator = op_idx->first;
+        } else {
+            // use default (is needed)
+            conf->scope_access_operator = "::";
+            LOG_WARN( "Scope access operator is not defined in prelude, using '::'" );
+        }
+
         return conf;
     } );
 }
@@ -509,280 +509,132 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             if ( level == TokenLevel::string ) {
                 conf->string_rules.push_back( string_rule );
             }
-        } else if ( mci == "ALIAS_EXPRESSION" ) {
+        } else if ( mci == "SYNTAX" ) {
             Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->alias_bindings.push_back( op );
-        } else if ( mci == "LET_STATEMENT" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->simple_bindings.push_back( op );
-        } else if ( mci == "STRUCT_DEFINITION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->structs.push_back( op );
-        } else if ( mci == "TRAIT_DEFINITION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->trait.push_back( op );
-        } else if ( mci == "IMPL_DEFINITION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->impl.push_back( op );
-        } else if ( mci == "IF_EXPRESSION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->if_condition.push_back( op );
-        } else if ( mci == "IF_ELSE_EXPRESSION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->if_else_condition.push_back( op );
-        } else if ( mci == "PRE_CONDITION_LOOP" ) {
+            SyntaxType syntax_type;
+
             token = input->get_token();
-            bool evaluation;
-            if ( token.content == "TRUE" ) {
-                evaluation = true;
-            } else if ( token.content == "FALSE" ) {
-                evaluation = false;
+            if ( token.type != Token::Type::identifier ) {
+                create_prelude_error_msg( w_ctx, token );
+                return false;
+            }
+            String syntax_type_str = token.content;
+            CONSUME_COMMA( token );
+
+            if ( syntax_type_str == "OPERATOR" ) {
+                syntax_type = SyntaxType::op;
+
+                token = input->get_token();
+                if ( token.type != Token::Type::identifier ) {
+                    create_prelude_error_msg( w_ctx, token );
+                    return false;
+                }
+                op.fn = token.content;
+                CONSUME_COMMA( token );
+            } else if ( syntax_type_str == "SCOPE_ACCESS" ) {
+                syntax_type = SyntaxType::scope_access;
+            } else if ( syntax_type_str == "MODULE_SPECIFIER" ) {
+                syntax_type = SyntaxType::module_spec;
+            } else if ( syntax_type_str == "MEMBER_ACCESS" ) {
+                syntax_type = SyntaxType::member_access;
+            } else if ( syntax_type_str == "ARRAY_ACCESS" ) {
+                syntax_type = SyntaxType::array_access;
+            } else if ( syntax_type_str == "FUNCTION_HEAD" ) {
+                syntax_type = SyntaxType::func_head;
+            } else if ( syntax_type_str == "FUNCTION_DEFINITION" ) {
+                syntax_type = SyntaxType::func_def;
+
+                token = input->get_token();
+                if ( token.type != Token::Type::identifier ) {
+                    create_prelude_error_msg( w_ctx, token );
+                    return false;
+                }
+                op.fn = token.content;
+                CONSUME_COMMA( token );
+            } else if ( syntax_type_str == "MACRO" ) {
+                syntax_type = SyntaxType::macro;
+            } else if ( syntax_type_str == "ANNOTATION" ) {
+                syntax_type = SyntaxType::annotation;
+            } else if ( syntax_type_str == "UNSAFE_BLOCK" ) {
+                syntax_type = SyntaxType::unsafe_block;
+            } else if ( syntax_type_str == "STATIC_STATEMENT" ) {
+                syntax_type = SyntaxType::static_statement;
+            } else if ( syntax_type_str == "REFERENCE_ATTR" ) {
+                syntax_type = SyntaxType::reference_attr;
+            } else if ( syntax_type_str == "MUTABLE_ATTR" ) {
+                syntax_type = SyntaxType::mutable_attr;
+            } else if ( syntax_type_str == "TYPED" ) {
+                syntax_type = SyntaxType::typed;
+            } else if ( syntax_type_str == "TYPE_OF" ) {
+                syntax_type = SyntaxType::type_of;
+            } else if ( syntax_type_str == "RANGE" ) {
+                syntax_type = SyntaxType::range;
+
+                token = input->get_token();
+                if ( token.content == "EXCLUDING" )
+                    op.range = Operator::RangeOperatorType::exclude;
+                else if ( token.content == "FROM_EXCLUDING" )
+                    op.range = Operator::RangeOperatorType::exclude_from;
+                else if ( token.content == "TO_EXCLUDING" )
+                    op.range = Operator::RangeOperatorType::exclude_to;
+                else if ( token.content == "INCLUDING" )
+                    op.range = Operator::RangeOperatorType::include;
+                else if ( token.content == "TO_INCLUDING" )
+                    op.range = Operator::RangeOperatorType::include_to;
+                else {
+                    create_prelude_error_msg( w_ctx, token );
+                    return false;
+                }
+                CONSUME_COMMA( token );
+            } else if ( syntax_type_str == "ASSIGNMENT" ) {
+                syntax_type = SyntaxType::assignment;
+            } else if ( syntax_type_str == "IMPLICATION" ) {
+                syntax_type = SyntaxType::implication;
+            } else if ( syntax_type_str == "DECLARATION_ATTR" ) {
+                syntax_type = SyntaxType::decl_attr;
+            } else if ( syntax_type_str == "PUBLIC_ATTR" ) {
+                syntax_type = SyntaxType::public_attr;
+            } else if ( syntax_type_str == "COMMA_OPERATOR" ) {
+                syntax_type = SyntaxType::comma;
+            } else if ( syntax_type_str == "STRUCTURE" ) {
+                syntax_type = SyntaxType::structure;
+            } else if ( syntax_type_str == "TRAIT" ) {
+                syntax_type = SyntaxType::trait;
+            } else if ( syntax_type_str == "IMPLEMENTATION" ) {
+                syntax_type = SyntaxType::implementation;
+            } else if ( syntax_type_str == "SIMPLE_BINDING" ) {
+                syntax_type = SyntaxType::simple_binding;
+            } else if ( syntax_type_str == "ALIAS_BINDING" ) {
+                syntax_type = SyntaxType::alias_binding;
+            } else if ( syntax_type_str == "IF_EXPRESSION" ) {
+                syntax_type = SyntaxType::if_cond;
+            } else if ( syntax_type_str == "IF_ELSE_EXPRESSION" ) {
+                syntax_type = SyntaxType::if_else;
+            } else if ( syntax_type_str == "PRE_CONDITION_LOOP_CONTINUE" ) {
+                syntax_type = SyntaxType::pre_cond_loop_continue;
+            } else if ( syntax_type_str == "PRE_CONDITION_LOOP_ABORT" ) {
+                syntax_type = SyntaxType::pre_cond_loop_abort;
+            } else if ( syntax_type_str == "POST_CONDITION_LOOP_CONTINUE" ) {
+                syntax_type = SyntaxType::post_cond_loop_continue;
+            } else if ( syntax_type_str == "POST_CONDITION_LOOP_ABORT" ) {
+                syntax_type = SyntaxType::post_cond_loop_abort;
+            } else if ( syntax_type_str == "INFINITE_LOOP" ) {
+                syntax_type = SyntaxType::inf_loop;
+            } else if ( syntax_type_str == "ITERATOR_LOOP" ) {
+                syntax_type = SyntaxType::itr_loop;
+            } else if ( syntax_type_str == "MATCH_EXPRESSION" ) {
+                syntax_type = SyntaxType::match;
+            } else if ( syntax_type_str == "TEMPLATE_POSTFIX" ) {
+                syntax_type = SyntaxType::template_postfix;
             } else {
                 create_prelude_error_msg( w_ctx, token );
                 return false;
             }
-            CONSUME_COMMA( token );
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->pre_loop.push_back( std::make_pair( op, evaluation ) );
-        } else if ( mci == "POST_CONDITION_LOOP" ) {
-            token = input->get_token();
-            bool evaluation;
-            if ( token.content == "TRUE" ) {
-                evaluation = true;
-            } else if ( token.content == "FALSE" ) {
-                evaluation = false;
-            } else {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            CONSUME_COMMA( token );
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->post_loop.push_back( std::make_pair( op, evaluation ) );
-        } else if ( mci == "INFINITE_LOOP" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->inf_loop.push_back( op );
-        } else if ( mci == "ITR_LOOP_EXPRESSION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->interator_loop.push_back( op );
-        } else if ( mci == "MATCH_EXPRESSION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->matching.push_back( op );
-        } else if ( mci == "FUNCTION_HEAD" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
 
-            conf->fn_head.push_back( op );
-        } else if ( mci == "FUNCTION_DEFINITION" ) {
-            token = input->get_token();
-            if ( token.type != Token::Type::identifier ) {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            auto trait = token.content;
-            CONSUME_COMMA( token );
-
-            token = input->get_token();
-            if ( token.type != Token::Type::identifier ) {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            auto function = token.content;
-            CONSUME_COMMA( token );
-
-            Operator op;
             if ( !parse_operator( op, conf, input, w_ctx ) ) {
                 return false;
             }
-
-            conf->fn_definitions.push_back( FunctionDefinition{ trait, function, op } );
-        } else if ( mci == "FUNCTION_CALL" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-
-            conf->fn_call.push_back( op );
-        } else if ( mci == "SCOPE_ACCESS" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            auto op_idx =
-                std::find_if( op.syntax.begin(), op.syntax.end(), []( auto &&op ) { return op.second == "op"; } );
-            conf->scope_access_operator = op_idx->first;
-            conf->scope_access_op.push_back( op );
-        } else if ( mci == "MEMBER_ACCESS" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->member_access_op.push_back( op );
-        } else if ( mci == "ARRAY_ACCESS" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->array_access_op.push_back( op );
-        } else if ( mci == "NEW_OPERATOR" ) {
-            token = input->get_token();
-            if ( token.type != Token::Type::identifier ) {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            auto fn = token.content;
-
-            CONSUME_COMMA( token );
-
-            Operator op;
-            parse_operator( op, conf, input, w_ctx );
-            conf->operators.push_back( TraitOperator{ op, fn } );
-        } else if ( mci == "COMMA_OPERATOR" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->comma_op.push_back( op );
-        } else if ( mci == "REFERENCE_TYPE" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->reference_op.push_back( op );
-        } else if ( mci == "MUTABLE_TYPE" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->mut_op.push_back( op );
-        } else if ( mci == "TYPE_OF" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->type_of_op.push_back( op );
-        } else if ( mci == "STRUCT_TO_TUPLE" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->struct_to_tuple_op.push_back( op );
-        } else if ( mci == "OPERATION_TYPE" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->type_op.push_back( op );
-        } else if ( mci == "MODULE_SPECIFIER" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->modules.push_back( op );
-        } else if ( mci == "DECLARATION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->declaration.push_back( op );
-        } else if ( mci == "PUBLIC_ATTRIBUTE" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->public_attr.push_back( op );
-        } else if ( mci == "STATIC_STATEMENT" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->static_statements.push_back( op );
-        } else if ( mci == "ANNOTATION" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->compiler_annotations.push_back( op );
-        } else if ( mci == "MACRO" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->macros.push_back( op );
-        } else if ( mci == "UNSAFE_BLOCK" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->unsafe.push_back( op );
-        } else if ( mci == "DEFINE_TEMPLATE" ) {
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-            conf->templates.push_back( op );
-        } else if ( mci == "RANGE_DEFINITION" ) {
-            token = input->get_token();
-            RangeOperator::Type type;
-            if ( token.content == "EXCLUDING" )
-                type = RangeOperator::Type::exclude;
-            else if ( token.content == "FROM_EXCLUDING" )
-                type = RangeOperator::Type::exclude_from;
-            else if ( token.content == "TO_EXCLUDING" )
-                type = RangeOperator::Type::exclude_to;
-            else if ( token.content == "INCLUDING" )
-                type = RangeOperator::Type::include;
-            else if ( token.content == "TO_INCLUDING" )
-                type = RangeOperator::Type::include_to;
-            else {
-                create_prelude_error_msg( w_ctx, token );
-                return false;
-            }
-            CONSUME_COMMA( token );
-
-            Operator op;
-            if ( !parse_operator( op, conf, input, w_ctx ) ) {
-                return false;
-            }
-
-            conf->range_op.push_back( RangeOperator{ type, op } );
+            conf->syntaxes[syntax_type].push_back( op );
         } else if ( mci == "BASE_TRAIT" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {

@@ -12,4 +12,5 @@
 // limitations under the License.
 
 #define CATCH_CONFIG_MAIN // Catch provides main()
+#define CATCH_CONFIG_CONSOLE_WIDTH 120
 #include "catch2/catch.hpp"

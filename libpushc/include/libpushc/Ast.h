@@ -38,8 +38,6 @@ constexpr TypeId TYPE_TYPE = 3; // The initial type type
 constexpr TypeId MODULE_TYPE = 4; // The initial module type
 constexpr TypeId LAST_FIX_TYPE = MODULE_TYPE; // The last not variable type
 
-class Expr;
-
 // Checks if a token list matches a specific expression and translates it
 struct SyntaxRule {
     u32 precedence = 0; // precedence of this syntax matching
@@ -48,13 +46,13 @@ struct SyntaxRule {
     std::pair<u32, u32> prec_class = std::make_pair(
         UINT32_MAX, UINT32_MAX ); // precedence-update class to a path as class-from-pair (if not UINT32_MAX)
     u32 prec_bias = NO_BIAS_VALUE; // optional value to prefer one syntax over another despite the precedence
-    std::vector<sptr<Expr>> expr_list; // list which has to be matched against
+    std::vector<AstNode> expr_list; // list which has to be matched against
 
     // Checks if a reversed expression list matches this syntax rule
-    bool matches_reversed( std::vector<sptr<Expr>> &rev_list );
+    bool matches_reversed( std::vector<AstNode> &rev_list );
 
     // Create a new expression according to this rule.
-    std::function<sptr<Expr>( std::vector<sptr<Expr>> &, Worker &w_ctx )> create;
+    std::function<AstNode( std::vector<AstNode> &, Worker &w_ctx )> create;
 };
 
 // Maps syntax item labels to their position in a syntax
@@ -98,7 +96,8 @@ struct SymbolSubstitution {
 struct SymbolGraphNode {
     SymbolId parent = 0; // parent of this graph node
     std::vector<SymbolId> sub_nodes; // children of this graph node
-    std::vector<sptr<Expr>> original_expr; // Expressions which define this symbol
+    std::vector<AstNode *>
+        original_expr; // Expressions which define this symbol (the ast may not be changed after setting this)
 
     SymbolIdentifier identifier; // identifies this symbol (may be partially defined)
     std::vector<std::pair<TypeId, String>> template_params; // type-name pairs of template parameters
@@ -123,7 +122,7 @@ struct TypeTableEntry {
 
 // Represent s a MIR instruction inside a function
 struct MirEntry {
-    sptr<Expr> original_expr;
+    AstNode *original_expr;
 
     // The type of this instruction
     enum class Type {
@@ -182,7 +181,7 @@ struct FunctionImpl {
 
 // Contains context while building the crate
 struct CrateCtx {
-    sptr<Expr> ast; // the current Abstract Syntax Tree
+    sptr<AstNode> ast; // the current Abstract Syntax Tree
     std::vector<SymbolGraphNode> symbol_graph; // contains all graph nodes, idx 0 is the global root node
     std::vector<TypeTableEntry> type_table; // contains all types
     std::vector<FunctionImpl> functions; // contains all function implementations (MIR)
@@ -206,9 +205,5 @@ struct CrateCtx {
     std::vector<std::vector<MirVarId>> curr_living_vars;
     std::vector<std::map<String, std::vector<MirVarId>>> curr_name_mapping; // mappes names to stacks of shaddowned vars
 
-    CrateCtx() {
-        symbol_graph.resize( 2 );
-        type_table.resize( LAST_FIX_TYPE + 1 );
-        functions.resize( 1 );
-    }
+    CrateCtx();
 };

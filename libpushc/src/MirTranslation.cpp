@@ -18,7 +18,7 @@
 #include "libpushc/SymbolUtil.h"
 
 
-MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, sptr<Expr> original_expr,
+MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
                             MirEntry::Type type, MirVarId result, std::vector<MirVarId> parameters ) {
     MirVarId return_var = result;
     if ( result == 0 ) {
@@ -41,12 +41,12 @@ MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId funct
         }
     }
 
-    auto operation = MirEntry{ original_expr, type, return_var, parameters };
+    auto operation = MirEntry{ &original_expr, type, return_var, parameters };
     c_ctx.functions[function].ops.push_back( operation );
     return c_ctx.functions[function].ops.back();
 }
 
-MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_function, sptr<Expr> original_expr,
+MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_function, AstNode &original_expr,
                        SymbolId called_function, MirVarId result, std::vector<MirVarId> parameters ) {
     FunctionImpl &caller = c_ctx.functions[calling_function];
     SymbolGraphNode &callee = c_ctx.symbol_graph[called_function];
@@ -94,7 +94,7 @@ MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
     return id;
 }
 
-void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, sptr<Expr> original_expr,
+void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
                     MirVarId variable ) {
     if ( variable == 0 )
         return;
@@ -104,7 +104,7 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, spt
     // Create drop operation
     if ( var.type == MirVariable::Type::value || var.type == MirVariable::Type::rvalue ) {
         auto op =
-            MirEntry{ original_expr, MirEntry::Type::call, 0, { variable }, c_ctx.type_table[c_ctx.drop_fn].symbol };
+            MirEntry{ &original_expr, MirEntry::Type::call, 0, { variable }, c_ctx.type_table[c_ctx.drop_fn].symbol };
         c_ctx.functions[function].ops.push_back( op );
     }
 
@@ -131,76 +131,72 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, spt
 
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {
     auto &symbol = c_ctx.symbol_graph[function];
-    if ( function && symbol.value == 0 ) {
+    if ( function && symbol.identifier.eval_type.type == 0 ) {
         create_new_type( c_ctx, function );
-        auto expr = std::dynamic_pointer_cast<FuncExpr>( symbol.original_expr.front() );
-        if ( expr == nullptr ) {
+        auto &expr = *symbol.original_expr.front();
+        if ( expr.type != ExprType::func ) {
             LOG_ERR( "Function to analyse is not a function" );
             return;
         }
 
         // Parameters
-        if ( expr->parameters ) {
-            if ( auto paren_expr = std::dynamic_pointer_cast<ParenthesisExpr>( expr->parameters );
-                 paren_expr != nullptr ) {
-                for ( auto &entry : paren_expr->get_list() ) {
-                    auto &new_parameter = symbol.identifier.parameters.emplace_back();
+        if ( expr.named.find( AstChild::parameters ) != expr.named.end() ) {
+            auto &paren_expr = expr.named[AstChild::parameters];
+            for ( auto &entry : paren_expr.children ) {
+                auto &new_parameter = symbol.identifier.parameters.emplace_back();
+                auto *parameter_symbol = &entry;
+                if ( parameter_symbol->type == ExprType::typed_op ) {
+                    parameter_symbol = &entry.named[AstChild::left_expr];
+                    auto &type_symbol = entry.named[AstChild::right_expr];
+                    auto types = find_sub_symbol_by_identifier_chain( c_ctx, type_symbol.get_symbol_chain(),
+                                                                      c_ctx.current_scope );
 
-                    sptr<SymbolExpr> parameter_symbol = std::dynamic_pointer_cast<SymbolExpr>( entry );
-                    if ( parameter_symbol == nullptr ) {
-                        auto typed = std::dynamic_pointer_cast<TypedExpr>( entry );
-                        parameter_symbol = std::dynamic_pointer_cast<SymbolExpr>( typed->symbol );
-                        auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( typed->type );
-                        auto types = find_sub_symbol_by_identifier_chain(
-                            c_ctx, get_symbol_chain_from_expr( type_symbol ), c_ctx.current_scope );
-
-                        if ( types.empty() ) {
-                            w_ctx.print_msg<MessageType::err_symbol_not_found>(
-                                MessageInfo( type_symbol, 0, FmtStr::Color::Red ) );
-                        } else if ( types.size() > 1 ) {
-                            std::vector<MessageInfo> notes;
-                            for ( auto &t : types ) {
-                                if ( !c_ctx.symbol_graph[t].original_expr.empty() )
-                                    notes.push_back( MessageInfo( c_ctx.symbol_graph[t].original_expr.front(), 1 ) );
-                            }
-                            w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                                MessageInfo( type_symbol, 0, FmtStr::Color::Red ), notes );
+                    if ( types.empty() ) {
+                        w_ctx.print_msg<MessageType::err_symbol_not_found>(
+                            MessageInfo( type_symbol, 0, FmtStr::Color::Red ) );
+                    } else if ( types.size() > 1 ) {
+                        std::vector<MessageInfo> notes;
+                        for ( auto &t : types ) {
+                            if ( !c_ctx.symbol_graph[t].original_expr.empty() )
+                                notes.push_back( MessageInfo( *c_ctx.symbol_graph[t].original_expr.front(), 1 ) );
                         }
-
-                        new_parameter.type = c_ctx.symbol_graph[types.front()].value;
-                        new_parameter.ref = type_symbol->has_attribute( SymbolExpr::Attribute::ref );
-                        new_parameter.mut = type_symbol->has_attribute( SymbolExpr::Attribute::mut );
+                        w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
+                            MessageInfo( type_symbol, 0, FmtStr::Color::Red ), notes );
                     }
 
-                    auto symbol_chain = get_symbol_chain_from_expr( parameter_symbol );
-                    if ( symbol_chain->size() != 1 || !symbol_chain->front().template_values.empty() )
-                        w_ctx.print_msg<MessageType::err_local_variable_scoped>(
-                            MessageInfo( parameter_symbol, 0, FmtStr::Color::Red ) );
-                    new_parameter.name = symbol_chain->front().name;
+                    new_parameter.type = c_ctx.symbol_graph[types.front()].value;
+                    new_parameter.ref = type_symbol.has_prop( ExprProperty::ref );
+                    new_parameter.mut = type_symbol.has_prop( ExprProperty::mut );
                 }
+
+                auto symbol_chain = parameter_symbol->get_symbol_chain();
+                if ( symbol_chain->size() != 1 || !symbol_chain->front().template_values.empty() )
+                    w_ctx.print_msg<MessageType::err_local_variable_scoped>(
+                        MessageInfo( *parameter_symbol, 0, FmtStr::Color::Red ) );
+                new_parameter.name = symbol_chain->front().name;
             }
         }
 
         // Return value
-        if ( expr->return_type != 0 ) {
-            auto return_symbol = std::dynamic_pointer_cast<SymbolExpr>( expr->return_type );
+        if ( expr.named.find(AstChild::return_type) != expr.named.end() ) {
+            auto return_symbol = expr.named[AstChild::return_type];
             auto return_symbols = find_sub_symbol_by_identifier_chain(
-                c_ctx, get_symbol_chain_from_expr( return_symbol ), c_ctx.current_scope );
+                c_ctx, return_symbol.get_symbol_chain(), c_ctx.current_scope );
             if ( return_symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>(
-                    MessageInfo( expr->return_type, 0, FmtStr::Color::Red ) );
+                    MessageInfo( return_symbol, 0, FmtStr::Color::Red ) );
             } else if ( return_symbols.size() > 1 ) {
                 std::vector<MessageInfo> notes;
                 for ( auto &rs : return_symbols ) {
                     if ( !c_ctx.symbol_graph[rs].original_expr.empty() )
-                        notes.push_back( MessageInfo( c_ctx.symbol_graph[rs].original_expr.front(), 1 ) );
+                        notes.push_back( MessageInfo( *c_ctx.symbol_graph[rs].original_expr.front(), 1 ) );
                 }
                 w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                    MessageInfo( expr->return_type, 0, FmtStr::Color::Red ), notes );
+                    MessageInfo( return_symbol, 0, FmtStr::Color::Red ), notes );
             }
             symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].value;
-            symbol.identifier.eval_type.ref = return_symbol->has_attribute( SymbolExpr::Attribute::ref );
-            symbol.identifier.eval_type.mut = return_symbol->has_attribute( SymbolExpr::Attribute::mut );
+            symbol.identifier.eval_type.ref = return_symbol.has_prop( ExprProperty::ref );
+            symbol.identifier.eval_type.mut = return_symbol.has_prop( ExprProperty::mut );
         }
     }
 }
@@ -210,17 +206,17 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
 // Creates a function from a FuncExpr specified by @param symbolId
 void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol_id ) {
     auto &symbol = c_ctx.symbol_graph[symbol_id];
-    auto expr = std::dynamic_pointer_cast<FuncExpr>( symbol.original_expr.front() );
+    auto expr = *symbol.original_expr.front();
 
     // Check if only one definition exists (must be at least one)
     if ( symbol.original_expr.size() > 1 ) {
         std::vector<MessageInfo> notes;
         for ( auto &original : symbol.original_expr ) {
-            notes.push_back( MessageInfo( original, 1 ) );
+            notes.push_back( MessageInfo( *original, 1 ) );
         }
         notes.erase( notes.begin() );
         w_ctx.print_msg<MessageType::err_multiple_fn_definitions>(
-            MessageInfo( symbol.original_expr.front(), 0, FmtStr::Color::Red ), notes );
+            MessageInfo( *symbol.original_expr.front(), 0, FmtStr::Color::Red ), notes );
         return;
     }
 
@@ -238,22 +234,21 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     function.type = symbol.value;
 
     // Parse parameters TODO extract this from already existing data from analyse_function_signature()
-    auto paren_expr = std::dynamic_pointer_cast<ParenthesisExpr>( expr->parameters );
-    for ( auto &entry : paren_expr->get_list() ) {
-        auto symbol = std::dynamic_pointer_cast<SymbolExpr>( entry );
-        sptr<Expr> type = nullptr;
+    auto paren_expr = expr.named[AstChild::parameters];
+    for ( auto &entry : paren_expr.children ) {
+        auto *symbol = &entry;
+        AstNode *type = nullptr;
         if ( symbol == nullptr ) {
-            auto typed = std::dynamic_pointer_cast<TypedExpr>( entry );
-            symbol = std::dynamic_pointer_cast<SymbolExpr>( typed->symbol );
-            type = typed->type;
+            symbol = &entry.named[AstChild::left_expr];
+            type = &entry.named[AstChild::left_expr];
         }
 
         MirVarId id = create_variable( c_ctx, w_ctx, func_id );
         function.params.push_back( id );
 
-        auto name_chain = get_symbol_chain_from_expr( symbol );
+        auto name_chain = symbol->get_symbol_chain();
         if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
-            w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+            w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( *symbol, 0, FmtStr::Color::Red ) );
         }
 
         function.vars[id].name = name_chain->front().name;
@@ -261,30 +256,29 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         c_ctx.curr_name_mapping.back()[name_chain->front().name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
-            auto type_symbol = std::dynamic_pointer_cast<SymbolExpr>( type );
-            auto symbols = find_sub_symbol_by_identifier_chain( c_ctx, get_symbol_chain_from_expr( type_symbol ),
+            auto symbols = find_sub_symbol_by_identifier_chain( c_ctx, type->get_symbol_chain(),
                                                                 c_ctx.current_scope );
             if ( symbols.empty() ) {
-                w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( type_symbol, 0, FmtStr::Color::Red ) );
+                w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( *type, 0, FmtStr::Color::Red ) );
             } else if ( symbols.size() > 1 ) {
                 std::vector<MessageInfo> notes;
                 for ( auto &s : symbols ) {
                     if ( !c_ctx.symbol_graph[s].original_expr.empty() )
-                        notes.push_back( MessageInfo( c_ctx.symbol_graph[s].original_expr.front(), 1 ) );
+                        notes.push_back( MessageInfo( *c_ctx.symbol_graph[s].original_expr.front(), 1 ) );
                 }
                 w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                    MessageInfo( type_symbol, 0, FmtStr::Color::Red ), notes );
+                    MessageInfo( *type, 0, FmtStr::Color::Red ), notes );
             }
 
             function.vars[id].value_type = c_ctx.symbol_graph[symbols.front()].value;
-            function.vars[id].mut = type_symbol->has_attribute( SymbolExpr::Attribute::mut );
-            if ( type_symbol->has_attribute( SymbolExpr::Attribute::ref ) )
+            function.vars[id].mut = type->has_prop(ExprProperty::mut);
+            if ( type->has_prop( ExprProperty::ref ) )
                 function.vars[id].type = MirVariable::Type::p_ref;
         }
     }
 
     // Parse body
-    function.ret = expr->body->parse_mir( c_ctx, w_ctx, func_id );
+    function.ret = expr.children.front().parse_mir( c_ctx, w_ctx, func_id );
 
     // Drop parameters
     for ( auto &p : function.params ) {

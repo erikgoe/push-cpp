@@ -116,12 +116,12 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
 }
 
 // Parses a scope into the ast. Used recursively. @param last_token may be nullptr
-sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, TT end_token, Token *last_token ) {
+AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, TT end_token, Token *last_token ) {
     auto &conf = w_ctx.unit_ctx()->prelude_conf;
-    std::vector<std::pair<std::vector<sptr<Expr>>, std::vector<std::pair<u32, u32>>>>
+    std::vector<std::pair<std::vector<AstNode>, std::vector<std::pair<u32, u32>>>>
         expr_lists; // the paths with their expression lists and precedence lists as class-from-pairs
     expr_lists.push_back( std::make_pair(
-        std::vector<sptr<Expr>>(),
+        std::vector<AstNode>(),
         std::vector<std::pair<u32, u32>>{ std::make_pair( UINT32_MAX, UINT32_MAX ) } ) ); // add a starting path
 
     // Iterate through all tokens in this scope
@@ -131,7 +131,7 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
         auto t = input->preview_token();
 
         // First check what token it is
-        sptr<Expr> add_to_all_paths;
+        AstNode add_to_all_paths{ ExprType::none };
         if ( t.type == end_token ) {
             break;
         } else if ( t.type == TT::eof ) {
@@ -154,61 +154,68 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
             if ( c_ctx.literals_map.find( t.content ) != c_ctx.literals_map.end() ) {
                 // Found a special literal keyword
                 auto literal = c_ctx.literals_map[t.content];
-                auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
-                expr->type = literal.first;
+                auto expr = AstNode{ ExprType::numeric_literal };
+                expr.generate_new_props();
+                // expr.type = literal.first; TODO set type of value already
 
                 TypeMemSize size = c_ctx.type_table[literal.first].additional_mem_size;
-                expr->load_from_number( literal.second, size );
+                expr.literal_number = literal.second;
 
-                expr->pos_info = { t.file, t.line, t.column, t.length };
+                expr.pos_info = { t.file, t.line, t.column, t.length };
 
                 add_to_all_paths = expr;
             } else {
                 // Normal identifier/symbol
-                auto expr = make_shared<AtomicSymbolExpr>();
-                expr->symbol_name = t.content;
-                expr->pos_info = { t.file, t.line, t.column, t.length };
+                auto expr = AstNode{ ExprType::atomic_symbol };
+                expr.generate_new_props();
+                expr.symbol_name = t.content;
+                expr.pos_info = { t.file, t.line, t.column, t.length };
                 add_to_all_paths = expr;
             }
         } else if ( t.type == TT::number ) {
             input->get_token(); // consume
-            auto expr = make_shared<BlobLiteralExpr<sizeof( Number )>>();
-            expr->type = c_ctx.int_type;
+            auto expr = AstNode{ ExprType::numeric_literal };
+            expr.generate_new_props();
+            // expr.type = c_ctx.int_type; TODO set type of value already
 
             Number val = stoull( t.content );
-            expr->load_from_number( val, sizeof( Number ) );
+            expr.literal_number = val;
 
-            expr->pos_info = { t.file, t.line, t.column, t.length };
+            expr.pos_info = { t.file, t.line, t.column, t.length };
 
             add_to_all_paths = expr;
         } else if ( t.type == TT::stat_divider ) {
             input->get_token(); // consume
             for ( auto &expr_list : expr_lists ) {
                 if ( expr_list.first.empty() ) {
-                    if ( expr_list == expr_lists.front() ) { // only error once
+                    if ( &expr_list == &expr_lists.front() ) { // only error once
                         w_ctx.print_msg<MessageType::err_semicolon_without_meaning>(
                             MessageInfo( t, 0, FmtStr::Color::Red ) );
                     }
                 } else {
-                    auto expr = make_shared<SingleCompletedExpr>();
-                    expr->pos_info = { t.file, t.line, t.column, t.length };
-                    expr->sub_expr = expr_list.first.back();
+                    auto expr = AstNode{ ExprType::single_completed };
+                    expr.generate_new_props();
+                    expr.pos_info = { t.file, t.line, t.column, t.length };
+                    expr.children.push_back( expr_list.first.back() );
                     expr_list.first.back() = expr;
                 }
             }
         } else if ( t.type == TT::string_begin ) {
-            auto expr = make_shared<StringLiteralExpr>();
-            expr->str = parse_string( input, w_ctx );
-            expr->type = c_ctx.str_type;
-            expr->pos_info = { t.file, t.line, t.column, t.length };
+            auto expr = AstNode{ ExprType::string_literal };
+            expr.generate_new_props();
+            expr.literal_string = parse_string( input, w_ctx );
+            // expr.type = c_ctx.str_type; TODO set type of value already
+            expr.pos_info = { t.file, t.line, t.column, t.length };
             add_to_all_paths = expr;
         } else {
             input->get_token(); // consume
-            add_to_all_paths = make_shared<TokenExpr>( t );
+            add_to_all_paths.type = ExprType::token;
+            add_to_all_paths.token = t;
+            add_to_all_paths.generate_new_props();
         }
 
         // Update paths with new token
-        if ( add_to_all_paths ) {
+        if ( add_to_all_paths.type != ExprType::none ) {
             for ( auto &expr_list : expr_lists ) {
                 expr_list.first.push_back( add_to_all_paths );
             }
@@ -226,8 +233,8 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
             do {
                 recheck = false;
                 SyntaxRule *best_rule = nullptr;
-                std::vector<sptr<Expr>> best_rule_rev_deep_expr_list;
-                std::vector<sptr<Expr>> best_rule_stst_set;
+                std::vector<AstNode> best_rule_rev_deep_expr_list;
+                std::vector<AstNode> best_rule_stst_set;
                 size_t best_rule_cutout_ctr;
                 // Check each syntax rule
                 for ( auto &rule : c_ctx.rules ) {
@@ -240,23 +247,22 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
                         u8 rule_length = rule.expr_list.size();
 
                         // Prepare backtracing
-                        std::vector<sptr<Expr>> rev_deep_expr_list;
-                        std::vector<sptr<Expr>> stst_set;
+                        std::vector<AstNode> rev_deep_expr_list;
+                        std::vector<AstNode> stst_set;
                         size_t cutout_ctr = 0;
                         for ( auto expr_itr = expr_list->first.rbegin();
                               expr_itr != expr_list->first.rend() && rev_deep_expr_list.size() < rule_length;
                               expr_itr++ ) {
-                            auto stst_expr = std::dynamic_pointer_cast<StaticStatementExpr>( *expr_itr );
-                            if ( stst_expr ) { // is a static statement
-                                stst_set.push_back( stst_expr );
+                            if ( expr_itr->type == ExprType::static_statement ) { // is a static statement
+                                stst_set.push_back( *expr_itr );
                             } else {
-                                auto s_expr = std::dynamic_pointer_cast<SeparableExpr>( *expr_itr );
-                                if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length && s_expr &&
-                                     ( rule.precedence < s_expr->prec() ||
-                                       ( !rule.ltr && rule.precedence == s_expr->prec() ) ) ) {
+                                if ( cutout_ctr >= skip_ctr && rev_deep_expr_list.size() < rule_length &&
+                                     expr_itr->has_prop( ExprProperty::separable ) &&
+                                     ( rule.precedence < expr_itr->precedence ||
+                                       ( !rule.ltr && rule.precedence == expr_itr->precedence ) ) ) {
                                     // Split expr
-                                    s_expr->split_prepend_recursively( rev_deep_expr_list, stst_set, rule.precedence,
-                                                                       rule.ltr, rule_length );
+                                    expr_itr->split_prepend_recursively( rev_deep_expr_list, stst_set, rule.precedence,
+                                                                         rule.ltr, rule_length );
                                 } else { // Don't split expr
                                     rev_deep_expr_list.push_back( *expr_itr );
                                 }
@@ -301,14 +307,15 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
                         best_rule_rev_deep_expr_list.end() );
                     std::reverse( best_rule_rev_deep_expr_list.begin(), best_rule_rev_deep_expr_list.end() );
                     auto result_expr = best_rule->create( best_rule_rev_deep_expr_list, w_ctx );
-                    result_expr->static_statements = best_rule_stst_set;
-                    expr_list->first.push_back( result_expr );
+                    result_expr.static_statements = best_rule_stst_set;
 
-                    if ( auto &&result_expr_separable = std::dynamic_pointer_cast<SeparableExpr>( result_expr );
-                         result_expr && update_precedence_to_path ) { // path precedence overwrites normal precedence
-                        result_expr_separable->update_precedence( best_rule->prec_class.first );
+                    if ( result_expr.has_prop( ExprProperty::separable ) &&
+                         update_precedence_to_path ) { // path precedence overwrites normal precedence
+                        result_expr.precedence = best_rule->prec_class.first;
                     }
 
+                    expr_list->first.push_back( result_expr );
+                    
                     skip_ctr = 1; // 1 will always be desired even though more could technically be skipped
                     recheck = true;
                 }
@@ -356,58 +363,67 @@ sptr<Expr> parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx
 
     // Create block
     if ( end_token == TT::eof ) {
-        auto block = make_shared<DeclExpr>();
-        block->sub_expr = expr_list;
+        auto block = AstNode{ ExprType::decl_scope };
+        block.generate_new_props();
+        block.children = expr_list;
         return block;
     } else if ( end_token == TT::block_end ) {
         PosInfo pos_info = PosInfo{ last_token->file, last_token->line, last_token->column, last_token->length };
-        if ( expr_list.size() == 1 && std::dynamic_pointer_cast<CommaExpr>( expr_list.front() ) ) { // set
-            auto block = make_shared<SetExpr>();
-            block->pos_info = pos_info;
-            block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->sub_expr;
+        if ( expr_list.size() == 1 && expr_list.front().type == ExprType::comma_list ) { // set
+            auto block = AstNode{ ExprType::set };
+            block.generate_new_props();
+            block.pos_info = pos_info;
+            block.children = expr_list.front().children;
             return block;
         } else { // block
-            auto block = make_shared<BlockExpr>();
-            block->pos_info = pos_info;
-            block->sub_expr = expr_list;
+            auto block = AstNode{ ExprType::block };
+            block.generate_new_props();
+            block.pos_info = pos_info;
+            block.children = expr_list;
             return block;
         }
     } else if ( end_token == TT::term_end ) {
         if ( expr_list.size() > 1 ) { // malformed "tuple" or so
             w_ctx.print_msg<MessageType::err_term_with_multiple_expr>(
-                MessageInfo( ( *( expr_list.begin() + 1 ) )->get_position_info(), 0, FmtStr::Color::Red ) );
-            return make_shared<TupleExpr>(); // default
+                MessageInfo( *( expr_list.begin() + 1 ), 0, FmtStr::Color::Red ) );
+            auto block = AstNode{ ExprType::tuple }; // default
+            block.generate_new_props();
+            return block;
         } else { // normal term or tuple
             PosInfo pos_info = merge_pos_infos(
                 PosInfo{ last_token->file, last_token->line, last_token->column, last_token->length },
                 PosInfo{ ending_token.file, ending_token.line, ending_token.column, ending_token.length } );
 
             if ( expr_list.empty() ) { // Unit type
-                auto block = make_shared<UnitExpr>();
-                block->pos_info = pos_info;
+                auto block = AstNode{ ExprType::unit };
+                block.generate_new_props();
+                block.pos_info = pos_info;
                 return block;
-            } else if ( expr_list.size() == 1 && std::dynamic_pointer_cast<CommaExpr>( expr_list.front() ) ) { // tuple
-                auto block = make_shared<TupleExpr>();
-                block->pos_info = pos_info;
-                block->sub_expr = std::dynamic_pointer_cast<CommaExpr>( expr_list.front() )->sub_expr;
+            } else if ( expr_list.front().type == ExprType::comma_list ) { // tuple
+                auto block = AstNode{ ExprType::tuple };
+                block.generate_new_props();
+                block.pos_info = pos_info;
+                block.children = expr_list.front().children;
                 return block;
             } else { // term
-                auto block = make_shared<TermExpr>();
-                block->pos_info = pos_info;
-                block->sub_expr = expr_list.empty() ? nullptr : expr_list.back();
+                auto block = AstNode{ ExprType::term };
+                block.generate_new_props();
+                block.pos_info = pos_info;
+                block.children = expr_list;
                 return block;
             }
         }
     } else if ( end_token == TT::array_end ) {
-        auto block = make_shared<ArraySpecifierExpr>();
-        block->pos_info = merge_pos_infos(
+        auto block = AstNode{ ExprType::array_specifier };
+        block.generate_new_props();
+        block.pos_info = merge_pos_infos(
             PosInfo{ last_token->file, last_token->line, last_token->column, last_token->length },
             PosInfo{ ending_token.file, ending_token.line, ending_token.column, ending_token.length } );
-        block->sub_expr = expr_list;
+        block.children = expr_list;
         return block;
     } else {
         LOG_ERR( "Try to parse a block which is no block" );
-        return nullptr;
+        return AstNode{ ExprType::none };
     }
 }
 
@@ -470,7 +486,7 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         load_syntax_rules( w_ctx, *c_ctx );
 
         // parse global scope
-        c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, TT::eof, nullptr );
+        *c_ctx->ast =  parse_scope( input, w_ctx, *c_ctx, TT::eof, nullptr );
         w_ctx.do_query( parse_symbols, c_ctx );
 
         // DEBUG print AST

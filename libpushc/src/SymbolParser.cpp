@@ -17,15 +17,13 @@
 
 void parse_symbols( sptr<CrateCtx> c_ctx, JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( [c_ctx]( Worker &w_ctx ) {
+        AstNode dummy_root_parent = { ExprType::none };
         bool successful = true;
         if ( successful )
-            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::BASIC_SEMANTIC_CHECK, c_ctx->ast, nullptr );
+            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::BASIC_SEMANTIC_CHECK, dummy_root_parent );
         if ( successful )
-            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::FIRST_TRANSFORMATION, c_ctx->ast, nullptr );
+            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::FIRST_TRANSFORMATION, dummy_root_parent );
         if ( successful )
-            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SYMBOL_DISCOVERY, c_ctx->ast, nullptr );
-        if ( successful )
-            successful =
-                c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SECOND_TRANSFORMATION, c_ctx->ast, nullptr );
+            successful = c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SYMBOL_DISCOVERY, dummy_root_parent );
     } );
 }

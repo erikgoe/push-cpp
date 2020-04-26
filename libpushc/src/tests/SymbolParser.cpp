@@ -31,9 +31,10 @@ static void test_parser( const String &data, sptr<PreludeConfig> config, sptr<st
         load_base_types( *c_ctx, w_ctx.unit_ctx()->prelude_conf );
         load_syntax_rules( w_ctx, *c_ctx );
 
-        c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, Token::Type::eof, nullptr );
+        *c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, Token::Type::eof, nullptr );
+        AstNode dummy_root_parent{ ExprType::none };
         for ( auto &pass : *passes )
-            c_ctx->ast->visit( *c_ctx, w_ctx, pass, c_ctx->ast, nullptr );
+            c_ctx->ast->visit( *c_ctx, w_ctx, pass, dummy_root_parent );
         return c_ctx;
     } );
 }
@@ -179,13 +180,14 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
     std::vector<std::pair<String, String>> test_data = {
         { "{}", "GLOBAL { GLOBAL { } }" },
         { "{{}}{}", "GLOBAL { GLOBAL { GLOBAL { } } GLOBAL { } }" },
-        { "pub fn();", "GLOBAL { FUNC_HEAD(UNIT() SYM()) }" },
+        { "fn();", "GLOBAL { FUNC_DECL(UNIT() SYM()) }" },
+        { "pub fn();", "GLOBAL { FUNC_DECL(UNIT() SYM()) }" },
         { "struct A { pub a, b }", "GLOBAL { STRUCT SYM() GLOBAL { SYM() SYM() } }" },
         { "struct B { pub a, pub b }", "GLOBAL { STRUCT SYM() GLOBAL { SYM() SYM() } }" },
-        { "trait C { pub fn() }", "GLOBAL { TRAIT SYM() GLOBAL { FUNC_HEAD(UNIT() SYM()) } }" },
+        { "trait C { pub fn() }", "GLOBAL { TRAIT SYM() GLOBAL { FUNC_DECL(UNIT() SYM()) } }" },
         { "struct A { {}, a }", "GLOBAL { STRUCT SYM() GLOBAL { GLOBAL { } SYM() } }" },
-        { "fn() { {} a }", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { BLOCK { } SYM() }) }" },
-        { "fn() a;", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { SYM() }) }" },
+        { "fn() { {} a }", "GLOBAL { FUNC(UNIT() SYM() IMP { IMP { UNIT() } SYM() }) }" },
+        { "fn() a;", "GLOBAL { FUNC(UNIT() SYM() IMP { SYM() }) }" },
         { "struct A a;", "GLOBAL { STRUCT SYM() GLOBAL { SYM() } }" },
         { "struct A { a }", "GLOBAL { STRUCT SYM() GLOBAL { SYM() } }" },
         { "struct A a, b;", "GLOBAL { STRUCT SYM() GLOBAL { SYM() SYM() } }" },
@@ -196,17 +198,17 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
           "GLOBAL { MATCH(SYM() WITH SET { OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), }) }" },
         { "match x { 1=>a, 2=>b }",
           "GLOBAL { MATCH(SYM() WITH SET { OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), }) }" },
-        { "if a b; else c;", "GLOBAL { IF(SYM() THEN BLOCK { SYM() } ELSE BLOCK { SYM() } ) }" },
-        { "if a { b; } else { c; }", "GLOBAL { IF(SYM() THEN BLOCK { SYM() UNIT() } ELSE BLOCK { SYM() UNIT() } ) }" },
-        { "fn<A, B>() {}", "GLOBAL { FUNC(0 UNIT() TEMPLATE SYM()<SYM(), SYM(), > BLOCK { }) }" },
-        { "fn() { fn(); }", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { FN_CALL(0 UNIT() SYM()) UNIT() }) }" },
-        { "#annotation() fn() a;", "GLOBAL { FUNC(0 UNIT() SYM() BLOCK { SYM() })#(ANNOTATE(SYM() UNIT()), ) }" },
+        { "if a b; else c;", "GLOBAL { IF(SYM() THEN IMP { SYM() } ELSE IMP { SYM() } ) }" },
+        { "if a { b; } else { c; }", "GLOBAL { IF(SYM() THEN IMP { SYM() UNIT() } ELSE IMP { SYM() UNIT() } ) }" },
+        { "fn<A, B>() {}", "GLOBAL { FUNC(UNIT() TEMPLATE SYM()<SYM(), SYM(), > IMP { UNIT() }) }" },
+        { "fn() { fn(); }", "GLOBAL { FUNC(UNIT() SYM() IMP { FN_CALL(UNIT() SYM()) UNIT() }) }" },
+        { "#annotation() fn() a;", "GLOBAL { FUNC(UNIT() SYM() IMP { SYM() })#(ANNOTATE(SYM() UNIT()), ) }" },
         { "trait C { #annotation() fn() }",
-          "GLOBAL { TRAIT SYM() GLOBAL { FUNC_HEAD(UNIT() SYM())#(ANNOTATE(SYM() UNIT()), ) } }" },
+          "GLOBAL { TRAIT SYM() GLOBAL { FUNC_DECL(UNIT() SYM())#(ANNOTATE(SYM() UNIT()), ) } }" },
         { "use a = b; struct A {}", "GLOBAL { STRUCT SYM() GLOBAL { } }" },
     };
 
-    std::regex symbol_regex( "SYM\\([0-9]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*:[0-9]*\\)" );
+    std::regex symbol_regex( "SYM\\([0-9]* [a-zA-Z0-9_]*\\)" ), blob_literal_regex( "BLOB_LITERAL\\([0-9a-f]*\\)" );
     for ( auto &d : test_data ) {
         auto c_ctx = w_ctx->do_query( test_parser, d.first, config, passes )->jobs.back()->to<sptr<CrateCtx>>();
         String str = c_ctx->ast->get_debug_repr();
@@ -284,7 +286,7 @@ TEST_CASE( "Symbol discovery", "[semantic_parser]" ) {
                       [&graph_start_idx]( const TypeTableEntry &entry ) { return entry.symbol == graph_start_idx; } );
     u32 type_start_idx = type_start - c_ctx->type_table.begin();
     REQUIRE( c_ctx->symbol_graph.end() - graph_start == 26 ); // expected graph element count
-    REQUIRE( c_ctx->type_table.end() - type_start == 9 ); // expected type table element count
+    REQUIRE( c_ctx->type_table.end() - type_start == 10 ); // expected type table element count
 
     // Create expected data
     u32 type_ctr = graph_start_idx;
@@ -293,13 +295,14 @@ TEST_CASE( "Symbol discovery", "[semantic_parser]" ) {
         SymbolGraphNode{ 2, {}, {}, SymbolIdentifier{ "op" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
             graph_start_idx + 1, {}, {}, SymbolIdentifier{ "Add" }, {}, false, type_start_idx + 1, c_ctx->trait_type },
-        SymbolGraphNode{ graph_start_idx + 2, {}, {}, SymbolIdentifier{ "add" }, {}, false, 0, c_ctx->fn_type },
         SymbolGraphNode{
-            graph_start_idx, {}, {}, SymbolIdentifier{ "add" }, {}, false, type_start_idx + 2, c_ctx->fn_type },
+            graph_start_idx + 2, {}, {}, SymbolIdentifier{ "add" }, {}, false, type_start_idx + 2, c_ctx->fn_type },
+        SymbolGraphNode{
+            graph_start_idx, {}, {}, SymbolIdentifier{ "add" }, {}, false, type_start_idx + 3, c_ctx->fn_type },
         SymbolGraphNode{ graph_start_idx + 4, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "submodule" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
-            graph_start_idx + 6, {}, {}, SymbolIdentifier{ "B" }, {}, false, type_start_idx + 3, c_ctx->struct_type },
+            graph_start_idx + 6, {}, {}, SymbolIdentifier{ "B" }, {}, false, type_start_idx + 4, c_ctx->struct_type },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "base" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{ graph_start_idx + 8, {}, {}, SymbolIdentifier{ "B" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{ graph_start_idx + 9, {}, {}, SymbolIdentifier{ "A" }, {}, false, 0, c_ctx->mod_type },
@@ -311,22 +314,22 @@ TEST_CASE( "Symbol discovery", "[semantic_parser]" ) {
                          SymbolIdentifier{ "function" },
                          {},
                          false,
-                         type_start_idx + 4,
+                         type_start_idx + 5,
                          c_ctx->fn_type },
         SymbolGraphNode{ graph_start_idx + 13, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ graph_start_idx + 14, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{
-            graph_start_idx + 14, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 5, c_ctx->fn_type },
+            graph_start_idx + 14, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 6, c_ctx->fn_type },
         SymbolGraphNode{ graph_start_idx + 16, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "sub" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
-            graph_start_idx + 18, {}, {}, SymbolIdentifier{ "new_fn" }, {}, false, type_start_idx + 6, c_ctx->fn_type },
+            graph_start_idx + 18, {}, {}, SymbolIdentifier{ "new_fn" }, {}, false, type_start_idx + 7, c_ctx->fn_type },
         SymbolGraphNode{ graph_start_idx + 19, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
-        SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "other_fn" }, {}, false, type_start_idx + 7, c_ctx->fn_type },
+        SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "other_fn" }, {}, false, type_start_idx + 8, c_ctx->fn_type },
         SymbolGraphNode{ graph_start_idx + 21, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "another_sub" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
-            graph_start_idx + 23, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 8, c_ctx->fn_type },
+            graph_start_idx + 23, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 9, c_ctx->fn_type },
         SymbolGraphNode{ graph_start_idx + 24, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
     };
 
