@@ -29,6 +29,9 @@ endif()
 
 add_definitions(-DCMAKE_PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}")
 
+# profiling
+#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+
 # scripts
 if(BUILD_COTIRE_PROJ)
 	include(${COTIRE_PATH})
