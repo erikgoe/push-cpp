@@ -61,9 +61,8 @@ static void log( const std::string &msg ) {
 }
 // Use this loggers for internal errors etc.
 #define LOG( msg ) log( std::string( "MSG: " ) + msg )
-#define LOG_ERR( msg ) log( std::string( "ERROR: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
-#define LOG_WARN( msg ) \
-    log( std::string( "WARNING: " ) + msg + " (" + to_string( __LINE__ ) + " \"" + __FILE__ + "\")" )
+#define LOG_ERR( msg ) log( std::string( "ERROR: " ) + msg + " (" + __FILE__ + ":" + to_string( __LINE__ ) + ")" )
+#define LOG_WARN( msg ) log( std::string( "WARNING: " ) + msg + " (" + __FILE__ + ":" + to_string( __LINE__ ) + ")" )
 
 #if defined( _WIN32 )
 namespace fs = std::experimental::filesystem;
