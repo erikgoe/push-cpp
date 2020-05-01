@@ -28,7 +28,7 @@ static void test_parser( const String &data, sptr<PreludeConfig> config, sptr<st
         w_ctx.unit_ctx()->prelude_conf = *config;
 
         auto c_ctx = make_shared<CrateCtx>();
-        load_base_types( *c_ctx, w_ctx.unit_ctx()->prelude_conf );
+        load_base_types( *c_ctx, w_ctx, w_ctx.unit_ctx()->prelude_conf );
         load_syntax_rules( w_ctx, *c_ctx );
 
         *c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, Token::Type::eof, nullptr );

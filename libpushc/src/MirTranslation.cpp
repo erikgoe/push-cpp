@@ -147,7 +147,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                 if ( parameter_symbol->type == ExprType::typed_op ) {
                     parameter_symbol = &entry.named[AstChild::left_expr];
                     auto &type_symbol = entry.named[AstChild::right_expr];
-                    auto types = find_sub_symbol_by_identifier_chain( c_ctx, type_symbol.get_symbol_chain(),
+                    auto types = find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, type_symbol.get_symbol_chain(),
                                                                       c_ctx.current_scope );
 
                     if ( types.empty() ) {
@@ -179,8 +179,8 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
         // Return value
         if ( expr.named.find( AstChild::return_type ) != expr.named.end() ) {
             auto return_symbol = expr.named[AstChild::return_type];
-            auto return_symbols =
-                find_sub_symbol_by_identifier_chain( c_ctx, return_symbol.get_symbol_chain(), c_ctx.current_scope );
+            auto return_symbols = find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, return_symbol.get_symbol_chain(),
+                                                                       c_ctx.current_scope );
             if ( return_symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>(
                     MessageInfo( return_symbol, 0, FmtStr::Color::Red ) );
@@ -255,7 +255,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         c_ctx.curr_name_mapping.back()[name_chain->front().name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
-            auto symbols = find_sub_symbol_by_identifier_chain( c_ctx, type->get_symbol_chain(), c_ctx.current_scope );
+            auto symbols =
+                find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, type->get_symbol_chain(), c_ctx.current_scope );
             if ( symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( *type, 0, FmtStr::Color::Red ) );
             } else if ( symbols.size() > 1 ) {
@@ -313,7 +314,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                 return " " + fn.vars[id].name + "%" + type_str + to_string( id );
             };
 
-            log( " fn " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, c_ctx->type_table[fn.type].symbol ) );
+            log( " fn " + to_string( i ) + " - " +
+                 get_full_symbol_name( *c_ctx, w_ctx, c_ctx->type_table[fn.type].symbol ) );
 
             // Parameters
             for ( auto &p : fn.params ) {
@@ -343,7 +345,7 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "cast";
 
                 if ( op.symbol != 0 )
-                    str += " " + get_full_symbol_name( *c_ctx, op.symbol );
+                    str += " " + get_full_symbol_name( *c_ctx, w_ctx, op.symbol );
 
                 if ( op.intrinsic != MirIntrinsic::none )
                     str += " intrinsic " + to_string( static_cast<u32>( op.intrinsic ) );
@@ -370,7 +372,7 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                      ( fn.vars[i].type == MirVariable::Type::l_ref || fn.vars[i].type == MirVariable::Type::p_ref
                            ? "& "
                            : " " ) +
-                     get_full_symbol_name( *c_ctx, c_ctx->type_table[fn.vars[i].value_type].symbol ) +
+                     get_full_symbol_name( *c_ctx, w_ctx, c_ctx->type_table[fn.vars[i].value_type].symbol ) +
                      ( fn.vars[i].ref != 0
                            ? " -> " + get_var_name( fn.vars[i].ref ) + " +" + to_string( fn.vars[i].member_idx )
                            : "" ) );

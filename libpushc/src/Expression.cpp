@@ -794,16 +794,16 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( type == ExprType::imp_scope || type == ExprType::if_cond || type == ExprType::if_else ||
          type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
          type == ExprType::itr_loop || type == ExprType::match || type == ExprType::static_statement ) {
-        SymbolId new_id = create_new_local_symbol( c_ctx, "" );
-        switch_scope_to_symbol( c_ctx, new_id );
+        SymbolId new_id = create_new_local_symbol( c_ctx, w_ctx, "" );
+        switch_scope_to_symbol( c_ctx, w_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( this );
     } else if ( type == ExprType::func_decl || type == ExprType::func || type == ExprType::structure ||
                 type == ExprType::trait || type == ExprType::implementation || type == ExprType::module ) {
         auto &symbol = named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol];
-        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, symbol.get_symbol_chain() );
+        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, w_ctx, symbol.get_symbol_chain(), symbol );
         symbol.update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol.update_symbol_id( new_id );
-        switch_scope_to_symbol( c_ctx, new_id );
+        switch_scope_to_symbol( c_ctx, w_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( this );
         c_ctx.symbol_graph[new_id].pub = symbol.has_prop( ExprProperty::pub );
         if ( type == ExprType::structure ) {
@@ -811,7 +811,7 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
             // Handle type
             if ( c_ctx.symbol_graph[new_id].value == 0 )
-                create_new_type( c_ctx, new_id );
+                create_new_type( c_ctx, w_ctx, new_id );
 
             // Handle Members
             for ( auto &expr : children.front().children ) {
@@ -834,7 +834,7 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                 }
 
                 // Check if symbol doesn't already exits
-                auto indices = find_member_symbol_by_identifier( c_ctx, identifier_list->front(), new_id );
+                auto indices = find_member_symbol_by_identifier( c_ctx, w_ctx, identifier_list->front(), new_id );
                 auto &members = c_ctx.type_table[c_ctx.symbol_graph[new_id].type].members;
                 if ( !indices.empty() ) {
                     std::vector<MessageInfo> notes;
@@ -848,7 +848,7 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                 }
 
                 // Create member
-                auto &new_member = create_new_member_symbol( c_ctx, identifier_list->front(), new_id );
+                auto &new_member = create_new_member_symbol( c_ctx, w_ctx, identifier_list->front(), new_id );
                 new_member.original_expr.push_back( &expr );
                 new_member.pub = symbol.has_prop( ExprProperty::pub );
             }
@@ -856,7 +856,7 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
             c_ctx.symbol_graph[new_id].type = c_ctx.trait_type;
             // Handle type
             if ( c_ctx.symbol_graph[new_id].value == 0 )
-                create_new_type( c_ctx, new_id );
+                create_new_type( c_ctx, w_ctx, new_id );
         } else if ( type == ExprType::implementation ) {
             c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
         } else if ( type == ExprType::module ) {
@@ -865,7 +865,7 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
             c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
             // Handle type
             if ( c_ctx.symbol_graph[new_id].value == 0 )
-                create_new_type( c_ctx, new_id );
+                create_new_type( c_ctx, w_ctx, new_id );
         }
     }
     return true;
@@ -877,11 +877,11 @@ bool AstNode::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( type == ExprType::imp_scope || type == ExprType::if_cond || type == ExprType::if_else ||
          type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
          type == ExprType::itr_loop || type == ExprType::match || type == ExprType::static_statement ) {
-        pop_scope( c_ctx );
+        pop_scope( c_ctx, w_ctx );
     } else if ( type == ExprType::func_head || type == ExprType::func || type == ExprType::structure ||
                 type == ExprType::trait || type == ExprType::implementation || type == ExprType::module ) {
         switch_scope_to_symbol(
-            c_ctx,
+            c_ctx, w_ctx,
             c_ctx
                 .symbol_graph[named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol]
                                   .get_left_symbol_id()]
@@ -979,7 +979,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         return 0;
     }
     case ExprType::func_call: {
-        auto calls = find_sub_symbol_by_identifier_chain( c_ctx, named[AstChild::symbol].get_symbol_chain() );
+        auto calls = find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, named[AstChild::symbol].get_symbol_chain() );
 
         for ( auto &candidate : calls ) {
             analyse_function_signature( c_ctx, w_ctx, candidate );
@@ -1010,7 +1010,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     }
     case ExprType::op: {
         auto calls = find_sub_symbol_by_identifier_chain(
-            c_ctx, split_symbol_chain( symbol_name, w_ctx.unit_ctx()->prelude_conf.scope_access_operator ),
+            c_ctx, w_ctx, split_symbol_chain( symbol_name, w_ctx.unit_ctx()->prelude_conf.scope_access_operator ),
             c_ctx.current_scope );
 
         for ( auto &candidate : calls ) {
@@ -1072,7 +1072,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         }
 
         // Find attributes
-        auto attrs = find_member_symbol_by_identifier( c_ctx, member_chain->front(), base_symbol );
+        auto attrs = find_member_symbol_by_identifier( c_ctx, w_ctx, member_chain->front(), base_symbol );
 
         // Find methods
         std::vector<SymbolId> methods;
@@ -1122,8 +1122,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     case ExprType::typed_op: {
         auto ret = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
 
-        auto type_ids = find_sub_symbol_by_identifier_chain( c_ctx, named[AstChild::right_expr].get_symbol_chain(),
-                                                             c_ctx.current_scope );
+        auto type_ids = find_sub_symbol_by_identifier_chain(
+            c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain(), c_ctx.current_scope );
 
         if ( type_ids.empty() ) {
             w_ctx.print_msg<MessageType::err_symbol_not_found>(

@@ -315,7 +315,7 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
                     }
 
                     expr_list->first.push_back( result_expr );
-                    
+
                     skip_ctr = 1; // 1 will always be desired even though more could technically be skipped
                     recheck = true;
                 }
@@ -427,44 +427,44 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
     }
 }
 
-void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg ) {
+void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
     // Internal types
-    c_ctx.struct_type = create_new_internal_type( c_ctx );
-    c_ctx.trait_type = create_new_internal_type( c_ctx );
-    c_ctx.fn_type = create_new_internal_type( c_ctx );
-    c_ctx.mod_type = create_new_internal_type( c_ctx );
+    c_ctx.struct_type = create_new_internal_type( c_ctx, w_ctx );
+    c_ctx.trait_type = create_new_internal_type( c_ctx, w_ctx );
+    c_ctx.fn_type = create_new_internal_type( c_ctx, w_ctx );
+    c_ctx.mod_type = create_new_internal_type( c_ctx, w_ctx );
 
     // Most basic types/traits
     SymbolId new_symbol = create_new_global_symbol_from_name_chain(
-        c_ctx, make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ "()" } ) );
-    c_ctx.unit_type = create_new_type( c_ctx, new_symbol );
+        c_ctx, w_ctx, make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ "()" } ) );
+    c_ctx.unit_type = create_new_type( c_ctx, w_ctx, new_symbol );
 
     new_symbol = create_new_global_symbol_from_name_chain(
-        c_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ) );
-    c_ctx.int_type = create_new_type( c_ctx, new_symbol );
+        c_ctx, w_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ) );
+    c_ctx.int_type = create_new_type( c_ctx, w_ctx, new_symbol );
 
     new_symbol = create_new_global_symbol_from_name_chain(
-        c_ctx, split_symbol_chain( cfg.string_trait, cfg.scope_access_operator ) );
-    c_ctx.str_type = create_new_type( c_ctx, new_symbol );
+        c_ctx, w_ctx, split_symbol_chain( cfg.string_trait, cfg.scope_access_operator ) );
+    c_ctx.str_type = create_new_type( c_ctx, w_ctx, new_symbol );
 
     // Most basic functions
     // TODO move std::drop into prelude
-    new_symbol =
-        create_new_global_symbol_from_name_chain( c_ctx, split_symbol_chain( "std::drop", cfg.scope_access_operator ) );
-    c_ctx.drop_fn = create_new_type( c_ctx, new_symbol );
+    new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, w_ctx, split_symbol_chain( "std::drop", cfg.scope_access_operator ) );
+    c_ctx.drop_fn = create_new_type( c_ctx, w_ctx, new_symbol );
 
     // Memblob types
     for ( auto &mbt : cfg.memblob_types ) {
         new_symbol = create_new_global_symbol_from_name_chain(
-            c_ctx, split_symbol_chain( mbt.first, cfg.scope_access_operator ) );
-        TypeId new_type = create_new_type( c_ctx, new_symbol );
+            c_ctx, w_ctx, split_symbol_chain( mbt.first, cfg.scope_access_operator ) );
+        TypeId new_type = create_new_type( c_ctx, w_ctx, new_symbol );
         c_ctx.type_table[new_type].additional_mem_size = mbt.second;
     }
 
     // Literals
     for ( auto &lit : cfg.literals ) {
         SymbolId type_symbol = find_sub_symbol_by_identifier_chain(
-                                   c_ctx, split_symbol_chain( lit.second.first, cfg.scope_access_operator ) )
+                                   c_ctx, w_ctx, split_symbol_chain( lit.second.first, cfg.scope_access_operator ) )
                                    .front();
         c_ctx.literals_map[lit.first] = std::make_pair( type_symbol, lit.second.second );
     }
@@ -486,11 +486,11 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
         // Create a new crate context
         sptr<CrateCtx> c_ctx = make_shared<CrateCtx>();
-        load_base_types( *c_ctx, w_ctx.unit_ctx()->prelude_conf );
+        load_base_types( *c_ctx, w_ctx, w_ctx.unit_ctx()->prelude_conf );
         load_syntax_rules( w_ctx, *c_ctx );
 
         // parse global scope
-        *c_ctx->ast =  parse_scope( input, w_ctx, *c_ctx, TT::eof, nullptr );
+        *c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, TT::eof, nullptr );
         w_ctx.do_query( parse_symbols, c_ctx );
 
         // DEBUG print AST
@@ -498,14 +498,14 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         log( " " + c_ctx->ast->get_debug_repr() );
         log( "SYMBOLS --------" );
         for ( size_t i = 1; i < c_ctx->symbol_graph.size(); i++ ) {
-            log( " " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, i ) + " - val " +
+            log( " " + to_string( i ) + " - " + get_full_symbol_name( *c_ctx, w_ctx, i ) + " - val " +
                  to_string( c_ctx->symbol_graph[i].value ) + " - type " + to_string( c_ctx->symbol_graph[i].type ) );
         }
         log( "TYPES ----------" );
         for ( size_t i = 1; i < c_ctx->type_table.size(); i++ ) {
             auto type = c_ctx->type_table[i];
             log( " " + to_string( i ) + " add_size " + to_string( type.additional_mem_size ) + " - sym " +
-                 get_full_symbol_name( *c_ctx, type.symbol ) );
+                 get_full_symbol_name( *c_ctx, w_ctx, type.symbol ) );
             for ( const auto &m : c_ctx->type_table[i].members ) {
                 log( "  member " + m.identifier.name );
             }

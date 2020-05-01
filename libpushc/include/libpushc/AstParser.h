@@ -29,4 +29,4 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
                         Token *last_token );
 
 // NOT A QUERY. Loads basic types like int, string, etc
-void load_base_types( CrateCtx &c_ctx, PreludeConfig &cfg );
+void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg );

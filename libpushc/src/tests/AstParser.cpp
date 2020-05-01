@@ -27,7 +27,7 @@ static void test_parser( const String &data, sptr<PreludeConfig> config, JobsBui
         w_ctx.unit_ctx()->prelude_conf = *config;
 
         CrateCtx c_ctx;
-        load_base_types( c_ctx, w_ctx.unit_ctx()->prelude_conf );
+        load_base_types( c_ctx, w_ctx, w_ctx.unit_ctx()->prelude_conf );
         load_syntax_rules( w_ctx, c_ctx );
 
         return parse_scope( input, w_ctx, c_ctx, Token::Type::eof, nullptr );
