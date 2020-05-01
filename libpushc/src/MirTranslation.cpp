@@ -153,6 +153,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     if ( types.empty() ) {
                         w_ctx.print_msg<MessageType::err_symbol_not_found>(
                             MessageInfo( type_symbol, 0, FmtStr::Color::Red ) );
+                        continue;
                     } else if ( types.size() > 1 ) {
                         std::vector<MessageInfo> notes;
                         for ( auto &t : types ) {
@@ -161,6 +162,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                         }
                         w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
                             MessageInfo( type_symbol, 0, FmtStr::Color::Red ), notes );
+                        continue;
                     }
 
                     new_parameter.type = c_ctx.symbol_graph[types.front()].value;
@@ -169,9 +171,11 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                 }
 
                 auto symbol_chain = parameter_symbol->get_symbol_chain();
-                if ( symbol_chain->size() != 1 || !symbol_chain->front().template_values.empty() )
+                if ( symbol_chain->size() != 1 || !symbol_chain->front().template_values.empty() ) {
                     w_ctx.print_msg<MessageType::err_local_variable_scoped>(
                         MessageInfo( *parameter_symbol, 0, FmtStr::Color::Red ) );
+                    continue;
+                }
                 new_parameter.name = symbol_chain->front().name;
             }
         }
@@ -184,6 +188,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
             if ( return_symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>(
                     MessageInfo( return_symbol, 0, FmtStr::Color::Red ) );
+                return;
             } else if ( return_symbols.size() > 1 ) {
                 std::vector<MessageInfo> notes;
                 for ( auto &rs : return_symbols ) {
@@ -192,6 +197,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                 }
                 w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
                     MessageInfo( return_symbol, 0, FmtStr::Color::Red ), notes );
+                return;
             }
             symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].value;
             symbol.identifier.eval_type.ref = return_symbol.has_prop( ExprProperty::ref );
@@ -248,6 +254,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         auto name_chain = symbol->get_symbol_chain();
         if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
             w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( *symbol, 0, FmtStr::Color::Red ) );
+            continue;
         }
 
         function.vars[id].name = name_chain->front().name;
@@ -259,6 +266,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
                 find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, type->get_symbol_chain(), c_ctx.current_scope );
             if ( symbols.empty() ) {
                 w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( *type, 0, FmtStr::Color::Red ) );
+                continue;
             } else if ( symbols.size() > 1 ) {
                 std::vector<MessageInfo> notes;
                 for ( auto &s : symbols ) {
@@ -267,6 +275,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
                 }
                 w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( *type, 0, FmtStr::Color::Red ),
                                                                        notes );
+                continue;
             }
 
             function.vars[id].value_type = c_ctx.symbol_graph[symbols.front()].value;
