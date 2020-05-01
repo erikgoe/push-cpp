@@ -141,7 +141,7 @@ enum class AstChild {
 
 // The nodes of which the AST is build up
 struct AstNode {
-    ExprType type;
+    ExprType type = ExprType::none;
     std::set<ExprProperty> props;
 
     PosInfo pos_info;
@@ -156,7 +156,8 @@ struct AstNode {
 
     Token token; // only for token and operator
     String symbol_name; // only for atomic symbol and operator (called function)
-    SymbolId symbol; // only for atomic symbol
+    SymbolId symbol = 0; // only for atomic symbol
+    SymbolId scope_symbol = 0; // only for scope exprs TODO make scope a prop (symbol and anonymous)
     Number literal_number = 0; // only for numeric/boolean literals
     String literal_string; // only for string literals
     bool continue_eval = true; // only for loops (for what value the loop is continued)

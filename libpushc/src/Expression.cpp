@@ -795,12 +795,14 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
          type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
          type == ExprType::itr_loop || type == ExprType::match || type == ExprType::static_statement ) {
         SymbolId new_id = create_new_local_symbol( c_ctx, w_ctx, "" );
+        scope_symbol = new_id;
         switch_scope_to_symbol( c_ctx, w_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( this );
     } else if ( type == ExprType::func_decl || type == ExprType::func || type == ExprType::structure ||
                 type == ExprType::trait || type == ExprType::implementation || type == ExprType::module ) {
         auto &symbol = named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol];
         SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, w_ctx, symbol.get_symbol_chain(), symbol );
+        scope_symbol = new_id;
         symbol.update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol.update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, w_ctx, new_id );
@@ -937,6 +939,12 @@ SymbolId AstNode::get_left_symbol_id() {
 }
 
 MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
+    // Switch scope if needed
+    auto parent_scope_symbol = c_ctx.current_scope;
+    if ( scope_symbol != 0 )
+        switch_scope_to_symbol( c_ctx, w_ctx, scope_symbol );
+
+    // Create the mir instructions
     switch ( type ) {
     case ExprType::imp_scope: {
         c_ctx.curr_living_vars.emplace_back();
@@ -1152,6 +1160,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         LOG_ERR( "NOT IMPLEMENTED: parse_mir of type " + to_string( static_cast<size_t>( type ) ) );
         return 0;
     }
+
+    // Switch back to parent scope if needed
+    if ( scope_symbol != 0 )
+        switch_scope_to_symbol( c_ctx, w_ctx, scope_symbol );
 }
 
 String AstNode::get_debug_repr() const {
