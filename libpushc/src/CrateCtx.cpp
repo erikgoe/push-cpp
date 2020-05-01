@@ -12,7 +12,7 @@
 // limitations under the License.
 
 #include "libpushc/stdafx.h"
-#include "libpushc/Ast.h"
+#include "libpushc/CrateCtx.h"
 #include "libpushc/Expression.h"
 
 bool SyntaxRule::matches_reversed( std::vector<AstNode> &rev_list ) {

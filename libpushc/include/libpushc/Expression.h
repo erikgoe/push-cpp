@@ -14,7 +14,7 @@
 #pragma once
 #include "libpushc/stdafx.h"
 #include "libpushc/Util.h"
-#include "libpushc/Ast.h"
+#include "libpushc/CrateCtx.h"
 #include "libpushc/MirTranslation.h"
 
 struct AstNode;

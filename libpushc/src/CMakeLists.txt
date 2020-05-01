@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.6)
 
 # add files
 add_library(${LIB_NAME}
-    Ast.cpp
     AstParser.cpp
     AstSyntaxRules.cpp
     Backend.cpp
     Compiler.cpp
+    CrateCtx.cpp
     Expression.cpp
     Linker.cpp
     MirTranslation.cpp
