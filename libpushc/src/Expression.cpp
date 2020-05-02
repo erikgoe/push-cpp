@@ -520,11 +520,20 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
                 }
             }
         }
+    } else if ( type == ExprType::reference ) {
+        // may not contain another reference or mutable
+        if ( named[AstChild::symbol_like].type == ExprType::reference ) {
+            w_ctx.print_msg<MessageType::err_double_ref_op>(
+                MessageInfo( named[AstChild::symbol_like], 0, FmtStr::Color::Red ) );
+        }
+        if ( named[AstChild::symbol_like].type == ExprType::mutable_attr ) {
+            w_ctx.print_msg<MessageType::err_mut_ref_wrong_order>(
+                MessageInfo( named[AstChild::symbol_like], 0, FmtStr::Color::Red ) );
+        }
     } else if ( type == ExprType::mutable_attr ) {
-        // must be a symbol (not just symbol_like) or reference
-        if ( !named[AstChild::symbol_like].has_prop( ExprProperty::symbol ) &&
-             named[AstChild::symbol_like].type != ExprType::reference ) {
-            w_ctx.print_msg<MessageType::err_expected_symbol>(
+        // may not contain another mutable
+        if ( named[AstChild::symbol_like].type == ExprType::mutable_attr ) {
+            w_ctx.print_msg<MessageType::err_double_mut_keyword>(
                 MessageInfo( named[AstChild::symbol_like], 0, FmtStr::Color::Red ) );
         }
     } else if ( type == ExprType::public_attr ) {
@@ -758,9 +767,11 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
             children.front().generate_new_props();
         }
     } else if ( type == ExprType::reference ) {
-        auto tmp = named[AstChild::symbol];
+        auto tmp = named[AstChild::symbol_like];
+        if ( props.find( ExprProperty::mut ) != props.end() )
+            tmp.props.insert( ExprProperty::mut );
+        tmp.props.insert( ExprProperty::ref );
         *this = tmp;
-        props.insert( ExprProperty::ref );
         return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
     } else if ( type == ExprType::mutable_attr ) {
         auto tmp = named[AstChild::symbol_like];
@@ -973,7 +984,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     }
     case ExprType::atomic_symbol: {
         auto name_chain = get_symbol_chain();
-        if(!expect_unscoped_variable(c_ctx, w_ctx, *name_chain, *this))
+        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *this ) )
             return 0;
 
         for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
@@ -1339,7 +1350,7 @@ String AstNode::get_debug_repr() const {
                ( named.find( AstChild::to ) != named.end() ? named.at( AstChild::to ).get_debug_repr() : "" ) +
                add_debug_data;
     case ExprType::reference:
-        return "REF(" + named.at( AstChild::symbol ).get_debug_repr() + ")" + add_debug_data;
+        return "REF(" + named.at( AstChild::symbol_like ).get_debug_repr() + ")" + add_debug_data;
     case ExprType::mutable_attr:
         return "MUT(" + named.at( AstChild::symbol_like ).get_debug_repr() + ")" + add_debug_data;
     case ExprType::typeof_op:

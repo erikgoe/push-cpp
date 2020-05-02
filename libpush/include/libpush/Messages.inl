@@ -64,6 +64,9 @@ enum class MessageType {
     err_local_variable_scoped,
     err_ambiguous_symbol_substitution,
     err_implicit_scope_not_module,
+    err_double_mut_keyword,
+    err_double_ref_op,
+    err_mut_ref_wrong_order,
 
     warning = 5000,
 
@@ -184,6 +187,12 @@ MESSAGE_DEFINITION(
 MESSAGE_DEFINITION( MessageType::err_implicit_scope_not_module, MessageClass::Error, "C",
                     "Implicit scope is not a module", "at this implicit module specification",
                     "Definition of the not-module symbol" );
+MESSAGE_DEFINITION( MessageType::err_double_mut_keyword, MessageClass::Error, "C", "Two mutable keywords found",
+                    "only one mut keyword allowed" );
+MESSAGE_DEFINITION( MessageType::err_double_ref_op, MessageClass::Error, "C", "Two reference operators found",
+                    "only one reference operator allowed" );
+MESSAGE_DEFINITION( MessageType::err_mut_ref_wrong_order, MessageClass::Error, "C",
+                    "Mutable reference in wrong order specified", "swap the '&' and the 'mut'" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

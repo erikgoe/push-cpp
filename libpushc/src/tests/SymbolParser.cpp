@@ -77,7 +77,6 @@ TEST_CASE( "Basic semantic check", "[semantic_parser]" ) {
         { "fn(1,b){}", MessageType::err_expected_symbol },
         { "fn()->T{}", MessageType::count },
         { "fn(a,b)->T{}", MessageType::count },
-        { "fn()->1{}", MessageType::err_expected_symbol },
         { "let a = 4;", MessageType::count },
         { "let a;", MessageType::err_expected_assignment },
         { "let 1:T=1;", MessageType::err_expected_symbol },

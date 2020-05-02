@@ -101,11 +101,11 @@ define_mci_rule( SYNTAX, FUNCTION_HEAD, 7, rtl, double_list, array_spec -> symbo
 define_mci_rule( SYNTAX, FUNCTION_HEAD, 7, rtl, double_list, array_spec -> symbol, tuple -> parameters ); // lambda syntax with multiple parameters
 
 define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, double_list, array_spec -> symbol, completed -> child ); // lambda without an explicit return type nor parameters
-define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, array_spec -> symbol, "->", expr -> return_type, completed -> child ); // lambda with an explicit return type, but no parameters
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, array_spec -> symbol, "->", symbol_like -> return_type, completed -> child ); // lambda with an explicit return type, but no parameters
 define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8 BIAS 11, rtl, double_list, symbol -> symbol, completed -> child ); // function without an explicit return type nor parameters
-define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, symbol -> symbol, "->", expr -> return_type, completed -> child ); // function with an explicit return type, but no parameters
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, symbol -> symbol, "->", symbol_like -> return_type, completed -> child ); // function with an explicit return type, but no parameters
 define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, double_list, fn_head -> head, completed -> child ); // function without an explicit return type
-define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, fn_head -> head, "->", expr -> return_type, completed -> child ); // function with an explicit return type
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, fn_head -> head, "->", symbol_like -> return_type, completed -> child ); // function with an explicit return type
 
 // Special specifiers
 define_mci_rule( SYNTAX, MACRO, 8, rtl, triple_list, symbol -> symbol, "!", expr -> child ); // macro
@@ -120,7 +120,7 @@ define_mci_rule( SYNTAX, OPERATOR, std::op::negate, 11 BIAS 11, rtl, double_list
 define_mci_rule( SYNTAX, OPERATOR, std::op::positive, 11 BIAS 11, rtl, double_list, "+" -> op, expr -> right ); // define the positive operator (only for symmetry with the negation operator)
 define_mci_rule( SYNTAX, OPERATOR, std::op::increment_prefix, 11, rtl, double_list, "++" -> op, expr -> right ); // define the prefix increment operator
 define_mci_rule( SYNTAX, OPERATOR, std::op::decrement_prefix, 11, rtl, double_list, "--" -> op, expr -> right ); // define the prefix decrement operator
-define_mci_rule( SYNTAX, REFERENCE_ATTR, 11, rtl, double_list, "&" -> op, symbol -> symbol ); // syntax to define a reference
+define_mci_rule( SYNTAX, REFERENCE_ATTR, 11, rtl, double_list, "&" -> op, symbol_like -> symbol_like ); // syntax to define a reference
 define_mci_rule( SYNTAX, MUTABLE_ATTR, 11, rtl, double_list, "mut", symbol_like -> symbol_like ); // syntax to define a mutable symbol
 define_mci_rule( SYNTAX, OPERATOR, std::op::increment_postfix, 12, ltr, double_list, expr -> left, "++" -> op ); // define the postfix increment operator
 define_mci_rule( SYNTAX, OPERATOR, std::op::decrement_postfix, 12, ltr, double_list, expr -> left, "--" -> op ); // define the postfix decrement operator
