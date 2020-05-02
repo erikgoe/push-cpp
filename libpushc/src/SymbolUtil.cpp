@@ -64,10 +64,14 @@ std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, Worker &w_
     return ret;
 }
 
-// TODO split into global, relative and local implementations (including aliasing)
-std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx, Worker &w_ctx,
-                                                           sptr<std::vector<SymbolIdentifier>> identifier_chain,
-                                                           SymbolId parent ) {
+std::vector<SymbolId> find_global_symbol_by_identifier_chain( CrateCtx &c_ctx, Worker &w_ctx,
+                                                              sptr<std::vector<SymbolIdentifier>> identifier_chain ) {
+    return find_relative_symbol_by_identifier_chain( c_ctx, w_ctx, identifier_chain, ROOT_SYMBOL );
+}
+
+std::vector<SymbolId> find_relative_symbol_by_identifier_chain( CrateCtx &c_ctx, Worker &w_ctx,
+                                                                sptr<std::vector<SymbolIdentifier>> identifier_chain,
+                                                                SymbolId parent ) {
     SymbolId search_scope = parent;
     // Search in local scope first and then progress to outer scopes
     while ( true ) {
@@ -87,6 +91,11 @@ std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx, Work
                 return std::vector<SymbolId>();
         }
     }
+}
+
+std::vector<SymbolId> find_local_symbol_by_identifier_chain( CrateCtx &c_ctx, Worker &w_ctx,
+                                                             sptr<std::vector<SymbolIdentifier>> identifier_chain ) {
+    return find_relative_symbol_by_identifier_chain( c_ctx, w_ctx, identifier_chain, c_ctx.current_scope );
 }
 
 std::vector<size_t> find_member_symbol_by_identifier( CrateCtx &c_ctx, Worker &w_ctx,

@@ -25,10 +25,18 @@ bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIde
 std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &identifier,
                                                      SymbolId parent );
 
-// Searches for a sub-symbol by name chain and returns its id
-std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx, Worker &w_ctx,
-                                                           sptr<std::vector<SymbolIdentifier>> identifier_chain,
-                                                           SymbolId parent = ROOT_SYMBOL );
+// Searches for a global sub-symbol by name chain and returns its id
+std::vector<SymbolId> find_global_symbol_by_identifier_chain( CrateCtx &c_ctx, Worker &w_ctx,
+                                                              sptr<std::vector<SymbolIdentifier>> identifier_chain );
+
+// Searches for a relative sub-symbol by name chain and returns its id
+std::vector<SymbolId> find_relative_symbol_by_identifier_chain( CrateCtx &c_ctx, Worker &w_ctx,
+                                                                sptr<std::vector<SymbolIdentifier>> identifier_chain,
+                                                                SymbolId parent );
+
+// Searches for a local (and global) sub-symbol by name chain and returns its id
+std::vector<SymbolId> find_local_symbol_by_identifier_chain( CrateCtx &c_ctx, Worker &w_ctx,
+                                                             sptr<std::vector<SymbolIdentifier>> identifier_chain );
 
 // Returns a list of indices of members which match the identifier
 std::vector<size_t> find_member_symbol_by_identifier( CrateCtx &c_ctx, Worker &w_ctx,

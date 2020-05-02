@@ -463,7 +463,7 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
 
     // Literals
     for ( auto &lit : cfg.literals ) {
-        SymbolId type_symbol = find_sub_symbol_by_identifier_chain(
+        SymbolId type_symbol = find_global_symbol_by_identifier_chain(
                                    c_ctx, w_ctx, split_symbol_chain( lit.second.first, cfg.scope_access_operator ) )
                                    .front();
         c_ctx.literals_map[lit.first] = std::make_pair( type_symbol, lit.second.second );

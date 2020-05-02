@@ -982,7 +982,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         return 0;
     }
     case ExprType::func_call: {
-        auto calls = find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, named[AstChild::symbol].get_symbol_chain() );
+        auto calls = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, named[AstChild::symbol].get_symbol_chain() );
 
         for ( auto &candidate : calls ) {
             analyse_function_signature( c_ctx, w_ctx, candidate );
@@ -1003,9 +1003,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         return op.ret;
     }
     case ExprType::op: {
-        auto calls = find_sub_symbol_by_identifier_chain(
-            c_ctx, w_ctx, split_symbol_chain( symbol_name, w_ctx.unit_ctx()->prelude_conf.scope_access_operator ),
-            c_ctx.current_scope );
+        auto calls = find_global_symbol_by_identifier_chain(
+            c_ctx, w_ctx, split_symbol_chain( symbol_name, w_ctx.unit_ctx()->prelude_conf.scope_access_operator ) );
 
         for ( auto &candidate : calls ) {
             analyse_function_signature( c_ctx, w_ctx, candidate );
@@ -1118,8 +1117,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     case ExprType::typed_op: {
         auto ret = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
 
-        auto type_ids = find_sub_symbol_by_identifier_chain(
-            c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain(), c_ctx.current_scope );
+        auto type_ids =
+            find_local_symbol_by_identifier_chain( c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain() );
 
         if ( !expect_exactly_one_symbol( c_ctx, w_ctx, type_ids, named[AstChild::right_expr] ) )
             return ret;
