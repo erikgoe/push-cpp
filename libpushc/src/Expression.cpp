@@ -1020,6 +1020,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         if ( calls.empty() ) {
             w_ctx.print_msg<MessageType::err_operator_symbol_not_found>(
                 MessageInfo( *this, 0, FmtStr::Color::Red ), std::vector<MessageInfo>(), symbol_name, token.content );
+            return 0;
         } else if ( calls.size() > 1 ) {
             std::vector<MessageInfo> notes;
             for ( auto &c : calls ) {
@@ -1028,6 +1029,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             }
             w_ctx.print_msg<MessageType::err_operator_symbol_is_ambiguous>( MessageInfo( *this, 0, FmtStr::Color::Red ),
                                                                             notes, symbol_name, token.content );
+            return 0;
         }
 
 
@@ -1095,6 +1097,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             }
             w_ctx.print_msg<MessageType::err_member_symbol_is_ambiguous>(
                 MessageInfo( named[AstChild::base], 0, FmtStr::Color::Red ), notes );
+            return false;
         }
 
         // Create operation

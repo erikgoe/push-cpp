@@ -75,12 +75,12 @@ std::vector<SymbolId> find_sub_symbol_by_identifier_chain( CrateCtx &c_ctx, Work
         for ( size_t i = 0; i < identifier_chain->size(); i++ ) {
             curr_symbols =
                 find_sub_symbol_by_identifier( c_ctx, w_ctx, ( *identifier_chain )[i], curr_symbols.front() );
+            if ( curr_symbols.empty() && search_scope != 0 ) {
+                // Search one scope upwards
+                search_scope = c_ctx.symbol_graph[search_scope].parent;
+                break;
+            }
             if ( i == identifier_chain->size() - 1 ) {
-                if ( curr_symbols.empty() && search_scope != 0 ) {
-                    // Search one scope upwards
-                    search_scope = c_ctx.symbol_graph[search_scope].parent;
-                    break;
-                }
                 return curr_symbols;
             }
             if ( curr_symbols.size() != 1 )
