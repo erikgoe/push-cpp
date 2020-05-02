@@ -150,20 +150,8 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     auto types = find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, type_symbol.get_symbol_chain(),
                                                                       c_ctx.current_scope );
 
-                    if ( types.empty() ) {
-                        w_ctx.print_msg<MessageType::err_symbol_not_found>(
-                            MessageInfo( type_symbol, 0, FmtStr::Color::Red ) );
+                    if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, type_symbol ) )
                         continue;
-                    } else if ( types.size() > 1 ) {
-                        std::vector<MessageInfo> notes;
-                        for ( auto &t : types ) {
-                            if ( !c_ctx.symbol_graph[t].original_expr.empty() )
-                                notes.push_back( MessageInfo( *c_ctx.symbol_graph[t].original_expr.front(), 1 ) );
-                        }
-                        w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                            MessageInfo( type_symbol, 0, FmtStr::Color::Red ), notes );
-                        continue;
-                    }
 
                     new_parameter.type = c_ctx.symbol_graph[types.front()].value;
                     new_parameter.ref = type_symbol.has_prop( ExprProperty::ref );
@@ -171,11 +159,8 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                 }
 
                 auto symbol_chain = parameter_symbol->get_symbol_chain();
-                if ( symbol_chain->size() != 1 || !symbol_chain->front().template_values.empty() ) {
-                    w_ctx.print_msg<MessageType::err_local_variable_scoped>(
-                        MessageInfo( *parameter_symbol, 0, FmtStr::Color::Red ) );
+                if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, *parameter_symbol ) )
                     continue;
-                }
                 new_parameter.name = symbol_chain->front().name;
             }
         }
@@ -185,20 +170,10 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
             auto return_symbol = expr.named[AstChild::return_type];
             auto return_symbols = find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, return_symbol.get_symbol_chain(),
                                                                        c_ctx.current_scope );
-            if ( return_symbols.empty() ) {
-                w_ctx.print_msg<MessageType::err_symbol_not_found>(
-                    MessageInfo( return_symbol, 0, FmtStr::Color::Red ) );
+
+            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, return_symbols, return_symbol ) )
                 return;
-            } else if ( return_symbols.size() > 1 ) {
-                std::vector<MessageInfo> notes;
-                for ( auto &rs : return_symbols ) {
-                    if ( !c_ctx.symbol_graph[rs].original_expr.empty() )
-                        notes.push_back( MessageInfo( *c_ctx.symbol_graph[rs].original_expr.front(), 1 ) );
-                }
-                w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                    MessageInfo( return_symbol, 0, FmtStr::Color::Red ), notes );
-                return;
-            }
+
             symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].value;
             symbol.identifier.eval_type.ref = return_symbol.has_prop( ExprProperty::ref );
             symbol.identifier.eval_type.mut = return_symbol.has_prop( ExprProperty::mut );
@@ -252,10 +227,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         function.params.push_back( id );
 
         auto name_chain = symbol->get_symbol_chain();
-        if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
-            w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( *symbol, 0, FmtStr::Color::Red ) );
+        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *symbol ) )
             continue;
-        }
 
         function.vars[id].name = name_chain->front().name;
         function.vars[id].type = MirVariable::Type::value;
@@ -264,19 +237,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         if ( type != nullptr ) {
             auto symbols =
                 find_sub_symbol_by_identifier_chain( c_ctx, w_ctx, type->get_symbol_chain(), c_ctx.current_scope );
-            if ( symbols.empty() ) {
-                w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( *type, 0, FmtStr::Color::Red ) );
+
+            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *type ) )
                 continue;
-            } else if ( symbols.size() > 1 ) {
-                std::vector<MessageInfo> notes;
-                for ( auto &s : symbols ) {
-                    if ( !c_ctx.symbol_graph[s].original_expr.empty() )
-                        notes.push_back( MessageInfo( *c_ctx.symbol_graph[s].original_expr.front(), 1 ) );
-                }
-                w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( *type, 0, FmtStr::Color::Red ),
-                                                                       notes );
-                continue;
-            }
 
             function.vars[id].value_type = c_ctx.symbol_graph[symbols.front()].value;
             function.vars[id].mut = type->has_prop( ExprProperty::mut );

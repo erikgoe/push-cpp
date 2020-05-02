@@ -973,9 +973,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     }
     case ExprType::atomic_symbol: {
         auto name_chain = get_symbol_chain();
-        if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
-            w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( *this, 0, FmtStr::Color::Red ) );
-        }
+        if(!expect_unscoped_variable(c_ctx, w_ctx, *name_chain, *this))
+            return 0;
 
         for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
             if ( auto var_itr = itr->find( name_chain->front().name ); var_itr != itr->end() ) {
@@ -995,17 +994,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // TODO select the function based on its signature
 
-        if ( calls.empty() ) {
-            w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( *this, 0, FmtStr::Color::Red ),
-                                                                std::vector<MessageInfo>() );
-        } else if ( calls.size() > 1 ) {
-            std::vector<MessageInfo> notes;
-            for ( auto &c : calls ) {
-                if ( !c_ctx.symbol_graph[c].original_expr.empty() )
-                    notes.push_back( MessageInfo( *c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
-            }
-            w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( *this, 0, FmtStr::Color::Red ), notes );
-        }
+        if ( !expect_exactly_one_symbol( c_ctx, w_ctx, calls, *this ) )
+            return 0; // Should be the unit symbol
 
         std::vector<MirVarId> params;
         for ( auto &pe : named[AstChild::parameters].children ) {
@@ -1055,9 +1045,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         }
 
         auto name_chain = symbol.get_symbol_chain();
-        if ( name_chain->size() != 1 || !name_chain->front().template_values.empty() ) {
-            w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
-        }
+        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, symbol ) )
+            return 0;
 
         // Create variable
         create_variable( c_ctx, w_ctx, func, name_chain->front().name );
@@ -1133,19 +1122,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto type_ids = find_sub_symbol_by_identifier_chain(
             c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain(), c_ctx.current_scope );
 
-        if ( type_ids.empty() ) {
-            w_ctx.print_msg<MessageType::err_symbol_not_found>(
-                MessageInfo( named[AstChild::right_expr], 0, FmtStr::Color::Red ) );
-            return false;
-        } else if ( type_ids.size() != 1 ) {
-            std::vector<MessageInfo> notes;
-            for ( auto &tid : type_ids ) {
-                if ( !c_ctx.symbol_graph[tid].original_expr.empty() )
-                    notes.push_back( MessageInfo( *c_ctx.symbol_graph[tid].original_expr.front(), 1 ) );
-            }
-            w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>(
-                MessageInfo( named[AstChild::right_expr], 0, FmtStr::Color::Red ), notes );
-        }
+        if ( !expect_exactly_one_symbol( c_ctx, w_ctx, type_ids, named[AstChild::right_expr] ) )
+            return ret;
 
         // Set type
         auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );

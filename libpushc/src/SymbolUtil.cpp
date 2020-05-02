@@ -311,3 +311,31 @@ void pop_scope( CrateCtx &c_ctx, Worker &w_ctx ) {
     }
     switch_scope_to_symbol( c_ctx, w_ctx, c_ctx.symbol_graph[c_ctx.current_scope].parent );
 }
+
+bool expect_exactly_one_symbol( CrateCtx &c_ctx, Worker &w_ctx, std::vector<SymbolId> &container,
+                                const AstNode &symbol ) {
+    if ( container.empty() ) {
+        w_ctx.print_msg<MessageType::err_symbol_not_found>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+        return false;
+    } else if ( container.size() > 1 ) {
+        std::vector<MessageInfo> notes;
+        for ( auto &t : container ) {
+            if ( !c_ctx.symbol_graph[t].original_expr.empty() )
+                notes.push_back( MessageInfo( *c_ctx.symbol_graph[t].original_expr.front(), 1 ) );
+        }
+        w_ctx.print_msg<MessageType::err_symbol_is_ambiguous>( MessageInfo( symbol, 0, FmtStr::Color::Red ), notes );
+        return false;
+    } else {
+        return true;
+    }
+}
+
+bool expect_unscoped_variable( CrateCtx &c_ctx, Worker &w_ctx, std::vector<SymbolIdentifier> &symbol_chain,
+                               const AstNode &symbol ) {
+    if ( symbol_chain.size() != 1 || !symbol_chain.front().template_values.empty() ) {
+        w_ctx.print_msg<MessageType::err_local_variable_scoped>( MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+        return false;
+    } else {
+        return true;
+    }
+}

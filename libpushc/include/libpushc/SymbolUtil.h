@@ -82,3 +82,11 @@ void switch_scope_to_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId new_scope 
 
 // Sets the current scope symbol to its parent scope
 void pop_scope( CrateCtx &c_ctx, Worker &w_ctx );
+
+// Checks if the symbol container contains exactly one element and prints an error otherwise (and returns false)
+bool expect_exactly_one_symbol( CrateCtx &c_ctx, Worker &w_ctx, std::vector<SymbolId> &container,
+                                const AstNode &symbol );
+
+// Checks if the variable is not scoped and errors otherwise (and returns false)
+bool expect_unscoped_variable( CrateCtx &c_ctx, Worker &w_ctx, std::vector<SymbolIdentifier> &symbol_chain,
+                               const AstNode &symbol );
