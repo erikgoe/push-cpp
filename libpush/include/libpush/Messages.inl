@@ -50,7 +50,6 @@ enum class MessageType {
     err_unfinished_expr,
     err_expected_symbol,
     err_expected_parametes,
-    err_expected_assignment,
     err_expected_comma_list,
     err_expected_implication,
     err_expected_only_one_parameter,
@@ -155,8 +154,6 @@ MESSAGE_DEFINITION( MessageType::err_expected_symbol, MessageClass::Error, "C", 
                     "replace this by a valid symbol please" );
 MESSAGE_DEFINITION( MessageType::err_expected_parametes, MessageClass::Error, "C", "Expected parameters in parenthesis",
                     "sourround this with parenthesis please" );
-MESSAGE_DEFINITION( MessageType::err_expected_assignment, MessageClass::Error, "C", "Expected an assignment",
-                    "replace this by an assignment please" );
 MESSAGE_DEFINITION( MessageType::err_expected_comma_list, MessageClass::Error, "C",
                     "Expected a list of comma-separated entries", "" );
 MESSAGE_DEFINITION( MessageType::err_expected_implication, MessageClass::Error, "C",

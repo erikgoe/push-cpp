@@ -521,8 +521,15 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             String syntax_type_str = token.content;
             CONSUME_COMMA( token );
 
-            if ( syntax_type_str == "OPERATOR" ) {
-                syntax_type = SyntaxType::op;
+            if ( syntax_type_str == "OPERATOR" || syntax_type_str == "ASSIGNMENT" ||
+                 syntax_type_str == "IMPLICATION" ) {
+                if ( syntax_type_str == "ASSIGNMENT" ) {
+                    syntax_type = SyntaxType::assignment;
+                } else if ( syntax_type_str == "IMPLICATION" ) {
+                    syntax_type = SyntaxType::implication;
+                } else {
+                    syntax_type = SyntaxType::op;
+                }
 
                 token = input->get_token();
                 if ( token.type != Token::Type::identifier ) {
@@ -530,6 +537,8 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     return false;
                 }
                 op.fn = token.content;
+
+
                 CONSUME_COMMA( token );
             } else if ( syntax_type_str == "SCOPE_ACCESS" ) {
                 syntax_type = SyntaxType::scope_access;
@@ -586,10 +595,6 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                     return false;
                 }
                 CONSUME_COMMA( token );
-            } else if ( syntax_type_str == "ASSIGNMENT" ) {
-                syntax_type = SyntaxType::assignment;
-            } else if ( syntax_type_str == "IMPLICATION" ) {
-                syntax_type = SyntaxType::implication;
             } else if ( syntax_type_str == "DECLARATION_ATTR" ) {
                 syntax_type = SyntaxType::decl_attr;
             } else if ( syntax_type_str == "PUBLIC_ATTR" ) {

@@ -25,9 +25,9 @@ MessageInfo::MessageInfo( const AstNode &expr, u32 message_idx, FmtStr::Color co
 // Used with alias statements. Returns the list of the subsitutions rules from the alias expr
 std::vector<SymbolSubstitution> get_substitutions( AstNode &expr ) {
     std::vector<SymbolSubstitution> result;
-    if ( auto &assignment = expr.children[0]; assignment.type == ExprType::op ) {
-        result.push_back( { assignment.named[AstChild::left_expr].get_symbol_chain(),
-                            assignment.named[AstChild::right_expr].get_symbol_chain() } );
+    if ( expr.children[0].has_prop( ExprProperty::assignment ) ) {
+        result.push_back( { expr.children[0].named[AstChild::left_expr].get_symbol_chain(),
+                            expr.children[0].named[AstChild::right_expr].get_symbol_chain() } );
     } else {
         auto chain = expr.children[0].get_symbol_chain();
         result.push_back( { make_shared<std::vector<SymbolIdentifier>>( 1, chain->back() ), chain } );
@@ -396,13 +396,6 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
             return false;
         }
     } else if ( type == ExprType::simple_bind ) {
-        // check assignment
-        // TODO make "=" operator not hard coded
-        if ( children.empty() || children.front().type != ExprType::op || children.front().token.content != "=" ) {
-            w_ctx.print_msg<MessageType::err_expected_assignment>(
-                MessageInfo( ( children.empty() ? *this : children.front() ), 0, FmtStr::Color::Red ) );
-            return false;
-        }
         auto &left = children.front().named[AstChild::left_expr];
         if ( left.type == ExprType::typed_op ) {
             if ( !left.named[AstChild::left_expr].has_prop( ExprProperty::symbol ) ) {
@@ -420,13 +413,6 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
             return false;
         }
     } else if ( type == ExprType::alias_bind ) {
-        // check assignment
-        // TODO make "=" operator not hard coded
-        if ( children.empty() || children.front().type != ExprType::op || children.front().token.content != "=" ) {
-            w_ctx.print_msg<MessageType::err_expected_assignment>(
-                MessageInfo( ( children.empty() ? *this : children.front() ), 0, FmtStr::Color::Red ) );
-            return false;
-        }
         auto &left = children.front().named[AstChild::left_expr];
         auto &right = children.front().named[AstChild::right_expr];
         if ( !left.has_prop( ExprProperty::symbol ) ) {
@@ -449,8 +435,7 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
             list = &list->front().children;
         }
         for ( auto &b : *list ) {
-            // TODO make "=>" operator not hard coded
-            if ( b.type != ExprType::op || b.token.content != "=>" ) {
+            if ( !b.has_prop( ExprProperty::implication ) ) {
                 w_ctx.print_msg<MessageType::err_expected_implication>( MessageInfo( b, 0, FmtStr::Color::Red ) );
                 return false;
             }

@@ -31,6 +31,10 @@ void parse_rule( SyntaxRule &sr, LabelMap &lm, Syntax &syntax_list ) {
             sr.expr_list.push_back( AstNode{ ExprType::none, { ExprProperty::symbol_like } } );
         } else if ( expr.first == "completed" ) {
             sr.expr_list.push_back( AstNode{ ExprType::none, { ExprProperty::completed } } );
+        } else if ( expr.first == "assignment" ) {
+            sr.expr_list.push_back( AstNode{ ExprType::none, { ExprProperty::assignment } } );
+        } else if ( expr.first == "implication" ) {
+            sr.expr_list.push_back( AstNode{ ExprType::none, { ExprProperty::implication } } );
         } else if ( expr.first == "fn_head" ) {
             sr.expr_list.push_back( AstNode{ ExprType::func_head } );
         } else if ( expr.first == "comma_list" ) {
@@ -186,14 +190,19 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
                     }
                 }
             }
-            
+
             node.symbol_name = op.fn;
             node.range_type = op.range;
             if ( ast_type == ExprType::pre_loop || ast_type == ExprType::post_loop ) {
                 if ( type == SyntaxType::pre_cond_loop_abort || type == SyntaxType::post_cond_loop_abort ) {
                     node.continue_eval = false;
                 }
+            } else if ( type == SyntaxType::assignment ) {
+                node.props.insert( ExprProperty::assignment );
+            } else if ( type == SyntaxType::implication ) {
+                node.props.insert( ExprProperty::implication );
             }
+
             return node;
         };
     };

@@ -108,6 +108,9 @@ enum class ExprProperty {
     separable, // can be divided into its sub-exprs
     decl_parent, // children are in a decl scope
 
+    assignment, // specialization of an operator
+    implication, // specialization of an operator
+
     pub, // public (symbol)
     mut, // mutable (symbol)
     ref, // borrowed (symbol)
