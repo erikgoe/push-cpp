@@ -131,8 +131,6 @@ enum class AstChild {
     return_type, // func
     left_expr, // operator, typed
     right_expr, // operator, typed
-    true_expr, // if, if-else TODO move into children?
-    false_expr, // if-else TODO move into children?
     base, // array/member/scope access
     index, // array access
     member, // member/scope access

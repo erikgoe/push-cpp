@@ -139,7 +139,7 @@ define_mci_rule( SYNTAX, OPERATOR, std::op::bit_and, 17, ltr, triple_list, expr 
 define_mci_rule( SYNTAX, OPERATOR, std::op::bit_xor, 18, ltr, triple_list, expr -> left, "\'" -> op, expr -> right ); // basic bit xor operator
 define_mci_rule( SYNTAX, OPERATOR, std::op::bit_or, 19, ltr, triple_list, expr -> left, "|" -> op, expr -> right ); // basic bit or operator
 define_mci_rule( SYNTAX, OPERATOR, std::op::bit_shift_left, 20, ltr, triple_list, expr -> left, "<<" -> op, expr -> right ); // basic left bit shift operator
-define_mci_rule( SYNTAX, OPERATOR, std::op::bit_shift_right, 20, ltr, quadruple_list, expr -> left, ">" -> op1, ">" -> op2, expr -> right ); // basic right bit shift operator
+define_mci_rule( SYNTAX, OPERATOR, std::op::bit_shift_right, 20, ltr, quadruple_list, expr -> left, ">" -> op0, ">" -> op1, expr -> right ); // basic right bit shift operator
 
 define_mci_rule( SYNTAX, RANGE, EXCLUDING, 21 BIAS 9, rtl, triple_list, expr -> from, ".." -> op, expr -> to ); // range operator for 0..5
 define_mci_rule( SYNTAX, RANGE, FROM_EXCLUDING, 21, rtl, double_list, expr -> from, ".." -> op ); // range operator 5..
@@ -194,8 +194,8 @@ define_mci_rule( SYNTAX, ALIAS_BINDING, 32, rtl, double_list, "use", assignment 
 define_mci_rule( SYNTAX, SIMPLE_BINDING, 32, rtl, double_list, "let", assignment -> child ); // let keyword which starts a new variable binding
 
 // Control flow
-define_mci_rule( SYNTAX, IF_EXPRESSION, 33 BIAS 9, rtl, triple_list, "if", expr -> condition, completed -> true_expr ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
-define_mci_rule( SYNTAX, IF_ELSE_EXPRESSION, 33 BIAS 9, rtl, quintuple_list, "if", expr -> condition, completed -> true_expr, "else", completed -> false_expr ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and an alternative executable block
+define_mci_rule( SYNTAX, IF_EXPRESSION, 33 BIAS 9, rtl, triple_list, "if", expr -> condition, completed -> child ); // if expressions/statements are defined with the keyword "if" a condition expression and a executable block
+define_mci_rule( SYNTAX, IF_ELSE_EXPRESSION, 33 BIAS 9, rtl, quintuple_list, "if", expr -> condition, completed -> child0, "else", completed -> child1 ); // if-else expressions/statements are defined with the keyword "if" a condition expression, a executable block, the "else" keyword and an alternative executable block
 define_mci_rule( SYNTAX, PRE_CONDITION_LOOP_CONTINUE, 33 BIAS 9, rtl, triple_list, "while", expr -> condition, completed -> child ); // regular while loop
 define_mci_rule( SYNTAX, PRE_CONDITION_LOOP_ABORT, 33 BIAS 9, rtl, triple_list, "until", expr -> condition, completed -> child ); // regular while loop with negated condition
 define_mci_rule( SYNTAX, POST_CONDITION_LOOP_CONTINUE, 33 BIAS 9, rtl, quadruple_list, "do", completed -> child, "while", expr -> condition ); // regular do-while loop

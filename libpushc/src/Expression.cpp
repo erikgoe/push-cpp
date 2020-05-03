@@ -749,17 +749,17 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
             children.front().generate_new_props();
         }
     } else if ( type == ExprType::if_cond || type == ExprType::if_else ) {
-        if ( named[AstChild::true_expr].type == ExprType::single_completed ) {
+        if ( children[0].type == ExprType::single_completed ) {
             // resolve single completed
-            named[AstChild::true_expr].type = ExprType::imp_scope;
-            named[AstChild::true_expr].props.clear();
-            named[AstChild::true_expr].generate_new_props();
+            children[0].type = ExprType::imp_scope;
+            children[0].props.clear();
+            children[0].generate_new_props();
         }
-        if ( type == ExprType::if_else && named[AstChild::false_expr].type == ExprType::single_completed ) {
+        if ( type == ExprType::if_else && children[1].type == ExprType::single_completed ) {
             // resolve single completed
-            named[AstChild::false_expr].type = ExprType::imp_scope;
-            named[AstChild::false_expr].props.clear();
-            named[AstChild::false_expr].generate_new_props();
+            children[1].type = ExprType::imp_scope;
+            children[1].props.clear();
+            children[1].generate_new_props();
         }
     } else if ( type == ExprType::match ) {
         if ( children.front().type == ExprType::single_completed || children.front().type == ExprType::block ) {
@@ -1293,11 +1293,11 @@ String AstNode::get_debug_repr() const {
 
     case ExprType::if_cond:
         return "IF(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " +
-               named.at( AstChild::true_expr ).get_debug_repr() + " )" + add_debug_data;
+               children.front().get_debug_repr() + " )" + add_debug_data;
     case ExprType::if_else:
         return "IF(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " +
-               named.at( AstChild::true_expr ).get_debug_repr() + " ELSE " +
-               named.at( AstChild::false_expr ).get_debug_repr() + " )" + add_debug_data;
+               children.front().get_debug_repr() + " ELSE " +
+               children.at( 1 ).get_debug_repr() + " )" + add_debug_data;
     case ExprType::pre_loop:
         return "PRE_LOOP(" + String( continue_eval ? "TRUE: " : "FALSE: " ) +
                named.at( AstChild::cond ).get_debug_repr() + " DO " + children.front().get_debug_repr() + " )" +

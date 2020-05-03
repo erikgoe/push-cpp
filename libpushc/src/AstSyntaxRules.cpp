@@ -76,8 +76,6 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
                                                  { "return_type", AstChild::return_type },
                                                  { "left", AstChild::left_expr },
                                                  { "right", AstChild::right_expr },
-                                                 { "true_expr", AstChild::true_expr },
-                                                 { "false_expr", AstChild::false_expr },
                                                  { "base", AstChild::base },
                                                  { "index", AstChild::index },
                                                  { "member", AstChild::member },
@@ -143,7 +141,7 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
             node.precedence = new_rule.precedence;
             node.original_list = list;
             for ( auto &mapping : lm ) {
-                if ( mapping.first == "child" ) {
+                if ( mapping.first == "child" || mapping.first == "child0" || mapping.first == "child1" ) {
                     node.children.push_back( list[mapping.second] );
                 } else if ( mapping.first == "head" ) {
                     if ( ast_type == ExprType::func || ast_type == ExprType::compiler_annotation ) {
@@ -154,10 +152,10 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
                     }
                 } else if ( mapping.first == "op" ) {
                     node.token = list[mapping.second].token;
-                } else if ( mapping.first == "op1" ) {
+                } else if ( mapping.first == "op0" ) {
                     node.token = list[mapping.second].token;
-                    node.token.content = list[mapping.second].token.content + list[lm.at( "op2" )].token.content;
-                } else if ( !mapping.first.empty() && mapping.first != "op2" && mapping.first != "child" ) {
+                    node.token.content = list[mapping.second].token.content + list[lm.at( "op1" )].token.content;
+                } else if ( !mapping.first.empty() && mapping.first != "op1" && mapping.first != "child" ) {
                     // Special handling
                     if ( ast_type == ExprType::comma_list ) {
                         // Merge multiple comma lists
