@@ -49,6 +49,7 @@ void AstNode::generate_new_props() {
     case ExprType::imp_scope:
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::braces );
+        props.insert( ExprProperty::anonymous_scope );
         break;
     case ExprType::single_completed:
         props.insert( ExprProperty::shallow );
@@ -116,10 +117,12 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::named_scope );
         break;
     case ExprType::func_decl:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::named_scope );
         break;
     case ExprType::func_call:
         props.insert( ExprProperty::operand );
@@ -143,36 +146,43 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::anonymous_scope );
         break;
     case ExprType::if_else:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::anonymous_scope );
         break;
     case ExprType::pre_loop:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::anonymous_scope );
         break;
     case ExprType::post_loop:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::anonymous_scope );
         break;
     case ExprType::inf_loop:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::anonymous_scope );
         break;
     case ExprType::itr_loop:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::anonymous_scope );
         break;
     case ExprType::match:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::anonymous_scope );
         break;
 
     case ExprType::structure:
@@ -180,18 +190,21 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
         props.insert( ExprProperty::decl_parent );
+        props.insert( ExprProperty::named_scope );
         break;
     case ExprType::trait:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
         props.insert( ExprProperty::decl_parent );
+        props.insert( ExprProperty::named_scope );
         break;
     case ExprType::implementation:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
         props.insert( ExprProperty::decl_parent );
+        props.insert( ExprProperty::named_scope );
         break;
 
     case ExprType::member_access:
@@ -241,6 +254,7 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::completed );
         props.insert( ExprProperty::separable );
         props.insert( ExprProperty::decl_parent );
+        props.insert( ExprProperty::named_scope );
         break;
     case ExprType::declaration:
         props.insert( ExprProperty::shallow );
@@ -254,6 +268,7 @@ void AstNode::generate_new_props() {
         break;
     case ExprType::static_statement:
         props.insert( ExprProperty::shallow );
+        props.insert( ExprProperty::anonymous_scope );
         break;
     case ExprType::compiler_annotation:
         props.insert( ExprProperty::shallow );
@@ -813,15 +828,12 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
 bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     c_ctx.current_substitutions.push_back( substitutions );
 
-    if ( type == ExprType::imp_scope || type == ExprType::if_cond || type == ExprType::if_else ||
-         type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
-         type == ExprType::itr_loop || type == ExprType::match || type == ExprType::static_statement ) {
+    if ( has_prop( ExprProperty::anonymous_scope ) ) {
         SymbolId new_id = create_new_local_symbol( c_ctx, w_ctx, SymbolIdentifier{} );
         scope_symbol = new_id;
         switch_scope_to_symbol( c_ctx, w_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( this );
-    } else if ( type == ExprType::func_decl || type == ExprType::func || type == ExprType::structure ||
-                type == ExprType::trait || type == ExprType::implementation || type == ExprType::module ) {
+    } else if ( has_prop( ExprProperty::named_scope ) ) {
         auto &symbol = named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol];
         SymbolId new_id =
             create_new_local_symbol_from_name_chain( c_ctx, w_ctx, symbol.get_symbol_chain( c_ctx, w_ctx ), symbol );
@@ -899,12 +911,9 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool AstNode::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     c_ctx.current_substitutions.pop_back();
 
-    if ( type == ExprType::imp_scope || type == ExprType::if_cond || type == ExprType::if_else ||
-         type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
-         type == ExprType::itr_loop || type == ExprType::match || type == ExprType::static_statement ) {
+    if ( has_prop( ExprProperty::anonymous_scope ) ) {
         pop_scope( c_ctx, w_ctx );
-    } else if ( type == ExprType::func_head || type == ExprType::func || type == ExprType::structure ||
-                type == ExprType::trait || type == ExprType::implementation || type == ExprType::module ) {
+    } else if ( has_prop( ExprProperty::named_scope ) ) {
         switch_scope_to_symbol(
             c_ctx, w_ctx,
             c_ctx
@@ -1292,12 +1301,11 @@ String AstNode::get_debug_repr() const {
         return "ALIAS(" + children.front().get_debug_repr() + ")" + add_debug_data;
 
     case ExprType::if_cond:
-        return "IF(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " +
-               children.front().get_debug_repr() + " )" + add_debug_data;
+        return "IF(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " + children.front().get_debug_repr() +
+               " )" + add_debug_data;
     case ExprType::if_else:
-        return "IF(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " +
-               children.front().get_debug_repr() + " ELSE " +
-               children.at( 1 ).get_debug_repr() + " )" + add_debug_data;
+        return "IF(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " + children.front().get_debug_repr() +
+               " ELSE " + children.at( 1 ).get_debug_repr() + " )" + add_debug_data;
     case ExprType::pre_loop:
         return "PRE_LOOP(" + String( continue_eval ? "TRUE: " : "FALSE: " ) +
                named.at( AstChild::cond ).get_debug_repr() + " DO " + children.front().get_debug_repr() + " )" +

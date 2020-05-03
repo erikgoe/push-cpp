@@ -107,6 +107,8 @@ enum class ExprProperty {
     literal, // is a literal
     separable, // can be divided into its sub-exprs
     decl_parent, // children are in a decl scope
+    named_scope, // creates a new named scope
+    anonymous_scope, // creates a new anonymous scope
 
     assignment, // specialization of an operator
     implication, // specialization of an operator
@@ -158,7 +160,7 @@ struct AstNode {
     Token token; // only for token and operator
     String symbol_name; // only for atomic symbol and operator (called function)
     SymbolId symbol = 0; // only for atomic symbol
-    SymbolId scope_symbol = 0; // only for scope exprs TODO make scope a prop (symbol and anonymous)
+    SymbolId scope_symbol = 0; // only for scope exprs
     Number literal_number = 0; // only for numeric/boolean literals
     String literal_string; // only for string literals
     bool continue_eval = true; // only for loops (for what value the loop is continued)
