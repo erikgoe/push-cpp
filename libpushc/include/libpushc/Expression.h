@@ -201,7 +201,7 @@ struct AstNode {
     bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNode &parent );
 
     // Creates a symbol chain from this expression which contains symbols or scoped symbols
-    sptr<std::vector<SymbolIdentifier>> get_symbol_chain();
+    sptr<std::vector<SymbolIdentifier>> get_symbol_chain( CrateCtx &c_ctx, Worker &w_ctx );
 
     // Checks very basic semantic conditions on an expr. Returns false when an error has been found
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx );

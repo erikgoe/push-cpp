@@ -23,13 +23,13 @@ MessageInfo::MessageInfo( const AstNode &expr, u32 message_idx, FmtStr::Color co
 
 
 // Used with alias statements. Returns the list of the subsitutions rules from the alias expr
-std::vector<SymbolSubstitution> get_substitutions( AstNode &expr ) {
+std::vector<SymbolSubstitution> get_substitutions( CrateCtx &c_ctx, Worker &w_ctx, AstNode &expr ) {
     std::vector<SymbolSubstitution> result;
     if ( expr.children[0].has_prop( ExprProperty::assignment ) ) {
-        result.push_back( { expr.children[0].named[AstChild::left_expr].get_symbol_chain(),
-                            expr.children[0].named[AstChild::right_expr].get_symbol_chain() } );
+        result.push_back( { expr.children[0].named[AstChild::left_expr].get_symbol_chain( c_ctx, w_ctx ),
+                            expr.children[0].named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx ) } );
     } else {
-        auto chain = expr.children[0].get_symbol_chain();
+        auto chain = expr.children[0].get_symbol_chain( c_ctx, w_ctx );
         result.push_back( { make_shared<std::vector<SymbolIdentifier>>( 1, chain->back() ), chain } );
     }
     return result;
@@ -337,7 +337,7 @@ bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNod
     return result;
 }
 
-sptr<std::vector<SymbolIdentifier>> AstNode::get_symbol_chain() {
+sptr<std::vector<SymbolIdentifier>> AstNode::get_symbol_chain( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( !has_prop( ExprProperty::symbol_like ) ) {
         LOG_ERR( "Tried to get symbol chain from non-symbol" );
         return make_shared<std::vector<SymbolIdentifier>>();
@@ -346,17 +346,43 @@ sptr<std::vector<SymbolIdentifier>> AstNode::get_symbol_chain() {
     if ( type == ExprType::atomic_symbol ) {
         return make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ symbol_name } );
     } else if ( type == ExprType::scope_access ) {
-        auto base = named[AstChild::base].get_symbol_chain();
-        auto member = named[AstChild::member].get_symbol_chain();
+        auto base = named[AstChild::base].get_symbol_chain( c_ctx, w_ctx );
+        auto member = named[AstChild::member].get_symbol_chain( c_ctx, w_ctx );
         base->insert( base->end(), member->begin(), member->end() );
         return base;
     } else if ( type == ExprType::template_postfix ) {
-        return named[AstChild::symbol].get_symbol_chain(); // TODO add template arguments
+        std::vector<std::pair<TypeId, ConstValue>> template_values;
+        for ( auto &c : children ) {
+            TypeId type = c_ctx.type_type;
+            if ( c.type == ExprType::typed_op ) {
+                auto types = find_local_symbol_by_identifier_chain(
+                    c_ctx, w_ctx, c.named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx ) );
+                if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, c ) )
+                    return nullptr;
+                type = types.front();
+            }
+
+            template_values.push_back( std::make_pair( type, ConstValue() ) ); // TODO insert default values here
+        }
+
+        auto chain = named[AstChild::symbol].get_symbol_chain( c_ctx, w_ctx );
+        chain->back().template_values = template_values;
+        return chain;
     } else if ( type == ExprType::unit ) {
         return make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ "()" } );
     } else if ( type == ExprType::tuple ) {
-        // TODO ad-hoc type for tuples
-        return make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ "()" } );
+        std::vector<std::pair<TypeId, ConstValue>> template_values;
+        for ( auto &c : children ) {
+            auto types = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, c.get_symbol_chain( c_ctx, w_ctx ) );
+            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, c ) )
+                return nullptr;
+            template_values.push_back(
+                std::make_pair( c_ctx.type_type, ConstValue( c_ctx.symbol_graph[types.front()].value ) ) );
+        }
+
+        SymbolId new_symbol =
+            instantiate_template( c_ctx, w_ctx, c_ctx.type_table[c_ctx.tuple_type].symbol, template_values );
+        return get_symbol_chain_from_symbol( c_ctx, w_ctx, new_symbol );
     }
 
     LOG_ERR( "Could not parse symbol chain from expr" );
@@ -646,7 +672,7 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
                     continue;
                 } else if ( expr.type == ExprType::alias_bind ) {
                     // Resolve alias statements
-                    auto subs = get_substitutions( expr );
+                    auto subs = get_substitutions( c_ctx, w_ctx, expr );
                     substitutions.insert( substitutions.end(), subs.begin(), subs.end() );
                     children.erase( children.begin() + i );
                     i--;
@@ -790,14 +816,15 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( type == ExprType::imp_scope || type == ExprType::if_cond || type == ExprType::if_else ||
          type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
          type == ExprType::itr_loop || type == ExprType::match || type == ExprType::static_statement ) {
-        SymbolId new_id = create_new_local_symbol( c_ctx, w_ctx, "" );
+        SymbolId new_id = create_new_local_symbol( c_ctx, w_ctx, SymbolIdentifier{} );
         scope_symbol = new_id;
         switch_scope_to_symbol( c_ctx, w_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( this );
     } else if ( type == ExprType::func_decl || type == ExprType::func || type == ExprType::structure ||
                 type == ExprType::trait || type == ExprType::implementation || type == ExprType::module ) {
         auto &symbol = named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol];
-        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, w_ctx, symbol.get_symbol_chain(), symbol );
+        SymbolId new_id =
+            create_new_local_symbol_from_name_chain( c_ctx, w_ctx, symbol.get_symbol_chain( c_ctx, w_ctx ), symbol );
         scope_symbol = new_id;
         symbol.update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol.update_symbol_id( new_id );
@@ -824,7 +851,7 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                 }
 
                 // Check if scope is right
-                auto identifier_list = symbol.get_symbol_chain();
+                auto identifier_list = symbol.get_symbol_chain( c_ctx, w_ctx );
                 if ( identifier_list->size() != 1 ) {
                     w_ctx.print_msg<MessageType::err_member_in_invalid_scope>(
                         MessageInfo( symbol, 0, FmtStr::Color::Red ) );
@@ -968,7 +995,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         return ret;
     }
     case ExprType::atomic_symbol: {
-        auto name_chain = get_symbol_chain();
+        auto name_chain = get_symbol_chain( c_ctx, w_ctx );
         if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *this ) )
             return 0;
 
@@ -982,7 +1009,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         return 0;
     }
     case ExprType::func_call: {
-        auto calls = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, named[AstChild::symbol].get_symbol_chain() );
+        auto calls = find_local_symbol_by_identifier_chain( c_ctx, w_ctx,
+                                                            named[AstChild::symbol].get_symbol_chain( c_ctx, w_ctx ) );
 
         for ( auto &candidate : calls ) {
             analyse_function_signature( c_ctx, w_ctx, candidate );
@@ -1041,7 +1069,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             symbol = symbol.named[AstChild::left_expr];
         }
 
-        auto name_chain = symbol.get_symbol_chain();
+        auto name_chain = symbol.get_symbol_chain( c_ctx, w_ctx );
         if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, symbol ) )
             return 0;
 
@@ -1059,7 +1087,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto base_symbol = c_ctx.type_table[c_ctx.functions[func].vars[obj].value_type].symbol;
 
         // Get member name
-        auto member_chain = named[AstChild::member].get_symbol_chain();
+        auto member_chain = named[AstChild::member].get_symbol_chain( c_ctx, w_ctx );
         if ( member_chain->size() != 1 || !member_chain->front().template_values.empty() ) {
             w_ctx.print_msg<MessageType::err_member_in_invalid_scope>(
                 MessageInfo( named[AstChild::member], 0, FmtStr::Color::Red ) );
@@ -1117,8 +1145,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     case ExprType::typed_op: {
         auto ret = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
 
-        auto type_ids =
-            find_local_symbol_by_identifier_chain( c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain() );
+        auto type_ids = find_local_symbol_by_identifier_chain(
+            c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx ) );
 
         if ( !expect_exactly_one_symbol( c_ctx, w_ctx, type_ids, named[AstChild::right_expr] ) )
             return ret;

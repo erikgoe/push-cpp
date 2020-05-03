@@ -61,9 +61,35 @@ using LabelMap = std::map<String, size_t>;
 using TypeMemSize = u64; // stores size of a type in bytes
 
 // Represents the value of an expression which had been evaluated at compile time
-struct ConstValue {
-    u8 *data; // the data blob of the value
-    size_t data_size; // size of the data array
+class ConstValue {
+    std::vector<u8> _data; // the data blob
+
+public:
+    // Creates an empty value
+    ConstValue() {}
+    // Stores some arbitrary data
+    template <typename T>
+    ConstValue( const T &data ) {
+        _data.resize( sizeof( T ) );
+        for ( size_t i = 0; i < sizeof( T ); i++ )
+            _data[i] = reinterpret_cast<const u8 *>( &data )[i];
+    }
+    // Returns the data interpreted as a specific type if the type sizes match
+    template <typename T>
+    std::optional<const T &> get() const {
+        if ( sizeof( T ) == _data.size() )
+            return nullptr;
+        else
+            return reinterpret_cast<T>( _data.data() );
+    }
+    // Returns the raw data
+    const std::vector<u8> &get_raw() const { return _data; }
+    // Returns whether the value contains no data
+    bool is_empty() const { return _data.empty(); }
+
+    bool operator==( const ConstValue &other ) const {
+        return _data == other._data;
+    }
 };
 
 // Identifies a local symbol (must be chained to get a full symbol identification)
@@ -186,6 +212,7 @@ struct CrateCtx {
     std::vector<TypeTableEntry> type_table; // contains all types
     std::vector<FunctionImpl> functions; // contains all function implementations (MIR)
 
+    TypeId type_type = 0; // internal type of types
     TypeId struct_type = 0; // internal struct type
     TypeId trait_type = 0; // internal trait type
     TypeId fn_type = 0; // internal function type
@@ -193,6 +220,7 @@ struct CrateCtx {
     TypeId unit_type = 0; // type of the unit type
     TypeId int_type = 0; // type of the integer trait
     TypeId str_type = 0; // type of the string trait
+    TypeId tuple_type = 0; // type of the tuple template type
 
     TypeId drop_fn = 0; // the function which is called on variable drop
 

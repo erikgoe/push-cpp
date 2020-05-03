@@ -110,6 +110,27 @@ std::vector<size_t> find_member_symbol_by_identifier( CrateCtx &c_ctx, Worker &w
     return ret;
 }
 
+std::vector<SymbolId> find_template_instantiations( CrateCtx &c_ctx, Worker &w_ctx, SymbolId template_symbol ) {
+    // Check if it's a template
+    if ( c_ctx.symbol_graph[template_symbol].identifier.template_values.empty() ) {
+        LOG_ERR( "Attempted to find template instances of a non-template" );
+        return std::vector<SymbolId>();
+    }
+
+    auto &identifier = c_ctx.symbol_graph[template_symbol].identifier;
+    auto &parent = c_ctx.symbol_graph[c_ctx.symbol_graph[template_symbol].parent];
+    std::vector<SymbolId> ret;
+
+    for ( auto &sub : parent.sub_nodes ) {
+        // Don't check template_values
+        if ( c_ctx.symbol_graph[sub].identifier.name == identifier.name &&
+             c_ctx.symbol_graph[sub].identifier.eval_type == identifier.eval_type &&
+             c_ctx.symbol_graph[sub].identifier.parameters == identifier.parameters )
+            ret.push_back( sub );
+    }
+    return ret;
+}
+
 String get_local_symbol_name( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol ) {
     if ( symbol == 0 )
         return "";
@@ -126,8 +147,8 @@ String get_local_symbol_name( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol ) 
     if ( !ident.template_values.empty() ) {
         ret += "<";
         for ( size_t i = 0; i < ident.template_values.size(); i++ ) {
-            for ( size_t j = 0; j < ident.template_values[i].second.data_size; j++ ) {
-                ret += to_string( ident.template_values[i].second.data[j] );
+            for ( size_t j = 0; j < ident.template_values[i].second.get_raw().size(); j++ ) {
+                ret += to_string( ident.template_values[i].second.get_raw()[j] );
             }
             ret +=
                 ":" + to_string( ident.template_values[i].first ) + ( i < ident.template_values.size() - 1 ? "," : "" );
@@ -159,6 +180,16 @@ String get_full_symbol_name( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol ) {
         curr_symbol_id = c_ctx.symbol_graph[curr_symbol_id].parent;
     }
     return symbol_str;
+}
+
+sptr<std::vector<SymbolIdentifier>> get_symbol_chain_from_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol ) {
+    auto curr_symbol = symbol;
+    auto ret = make_shared<std::vector<SymbolIdentifier>>();
+    while ( curr_symbol != ROOT_SYMBOL ) {
+        ret->insert( ret->begin(), c_ctx.symbol_graph[curr_symbol].identifier );
+        curr_symbol = c_ctx.symbol_graph[curr_symbol].parent;
+    }
+    return ret;
 }
 
 // Merges the names of the symbol chain entries. Does not append the parameters, etc
@@ -219,22 +250,23 @@ SymbolId create_new_global_symbol( CrateCtx &c_ctx, Worker &w_ctx, const String 
     return sym_id;
 }
 
-SymbolId create_new_relative_symbol( CrateCtx &c_ctx, Worker &w_ctx, const String &name, SymbolId parent_symbol ) {
-    if ( !name.empty() &&
-         !find_sub_symbol_by_identifier( c_ctx, w_ctx, SymbolIdentifier{ name }, parent_symbol ).empty() ) {
-        LOG_ERR( "Attempted to create an existing non-anonymous relative symbol '" + name + "' to parent '" +
+SymbolId create_new_relative_symbol( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &identifier,
+                                     SymbolId parent_symbol ) {
+    if ( !identifier.name.empty() &&
+         !find_sub_symbol_by_identifier( c_ctx, w_ctx, identifier, parent_symbol ).empty() ) {
+        LOG_ERR( "Attempted to create an existing non-anonymous relative symbol '" + identifier.name + "' to parent '" +
                  to_string( parent_symbol ) + "'" );
     }
     SymbolId sym_id = c_ctx.symbol_graph.size();
     c_ctx.symbol_graph.emplace_back();
     c_ctx.symbol_graph[sym_id].parent = parent_symbol;
     c_ctx.symbol_graph[parent_symbol].sub_nodes.push_back( sym_id );
-    c_ctx.symbol_graph[sym_id].identifier.name = name;
+    c_ctx.symbol_graph[sym_id].identifier = identifier;
     return sym_id;
 }
 
-SymbolId create_new_local_symbol( CrateCtx &c_ctx, Worker &w_ctx, const String &name ) {
-    return create_new_relative_symbol( c_ctx, w_ctx, name, c_ctx.current_scope );
+SymbolId create_new_local_symbol( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &identifier ) {
+    return create_new_relative_symbol( c_ctx, w_ctx, identifier, c_ctx.current_scope );
 }
 
 SymbolId create_new_global_symbol_from_name_chain( CrateCtx &c_ctx, Worker &w_ctx,
@@ -261,7 +293,7 @@ SymbolId create_new_relative_symbol_from_name_chain( CrateCtx &c_ctx, Worker &w_
                 return 0;
             }
         } else if ( sub_symbols.empty() ) { // create new symbol
-            curr_symbol = create_new_relative_symbol( c_ctx, w_ctx, ( *symbol_chain )[i].name, curr_symbol );
+            curr_symbol = create_new_relative_symbol( c_ctx, w_ctx, ( *symbol_chain )[i], curr_symbol );
             c_ctx.symbol_graph[curr_symbol].type = c_ctx.mod_type;
         } else {
             std::vector<MessageInfo> notes;
@@ -307,6 +339,48 @@ TypeId create_new_type( CrateCtx &c_ctx, Worker &w_ctx, SymbolId from_symbol ) {
     c_ctx.type_table[type_id].symbol = from_symbol;
     c_ctx.symbol_graph[from_symbol].value = type_id;
     return type_id;
+}
+
+SymbolId instantiate_template( CrateCtx &c_ctx, Worker &w_ctx, SymbolId from_template,
+                               std::vector<std::pair<TypeId, ConstValue>> &template_values ) {
+    // Search for an existing template instantiation
+    auto existing_tuple_types = find_template_instantiations( c_ctx, w_ctx, c_ctx.type_table[c_ctx.tuple_type].symbol );
+    if ( existing_tuple_types.empty() ) {
+        // Its not a template (error is already generated by find_template_instantiations). Normally the template
+        // itself is included in the list
+        return 0;
+    }
+    auto first = std::find_if( existing_tuple_types.begin(), existing_tuple_types.end(), [&]( SymbolId s ) {
+        return c_ctx.symbol_graph[s].identifier.template_values == template_values;
+    } );
+
+    if ( first != existing_tuple_types.end() ) {
+        // Template already instantiated
+        return *first;
+    } else {
+        // Create a new template instance
+        // TODO maybe extract this into a clone-function
+        auto identifier = c_ctx.symbol_graph[from_template].identifier;
+        identifier.template_values = template_values;
+        auto &parent = c_ctx.symbol_graph[from_template].parent;
+        auto new_symbol = create_new_relative_symbol( c_ctx, w_ctx, identifier, parent );
+        auto new_type = create_new_type( c_ctx, w_ctx, new_symbol );
+
+        // Copy symbol information
+        auto &symbol = c_ctx.symbol_graph[new_symbol];
+        symbol.identifier = identifier;
+        symbol.original_expr = c_ctx.symbol_graph[from_template].original_expr;
+        symbol.pub = c_ctx.symbol_graph[from_template].pub;
+        symbol.sub_nodes = c_ctx.symbol_graph[from_template].sub_nodes; // TODO instantiate template methods aswell?
+        symbol.type = c_ctx.symbol_graph[from_template].type;
+
+        // Copy type information
+        c_ctx.type_table[new_type] = c_ctx.type_table[from_template];
+        c_ctx.type_table[new_type].symbol = new_symbol; // fix symbol
+        // TODO handle subtype & supertype relations
+
+        return new_symbol;
+    }
 }
 
 void switch_scope_to_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId new_scope ) {

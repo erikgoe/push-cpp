@@ -429,6 +429,7 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
 
 void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
     // Internal types
+    c_ctx.type_type = create_new_internal_type( c_ctx, w_ctx );
     c_ctx.struct_type = create_new_internal_type( c_ctx, w_ctx );
     c_ctx.trait_type = create_new_internal_type( c_ctx, w_ctx );
     c_ctx.fn_type = create_new_internal_type( c_ctx, w_ctx );
@@ -446,6 +447,12 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.string_trait, cfg.scope_access_operator ) );
     c_ctx.str_type = create_new_type( c_ctx, w_ctx, new_symbol );
+
+    new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, w_ctx, split_symbol_chain( cfg.tuple_trait, cfg.scope_access_operator ) );
+    c_ctx.tuple_type = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].identifier.template_values.push_back(
+        std::make_pair( c_ctx.type_type, ConstValue() ) ); // Make it a template TODO make variadic
 
     // Most basic functions
     // TODO move std::drop into prelude

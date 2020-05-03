@@ -147,7 +147,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                 if ( parameter_symbol->type == ExprType::typed_op ) {
                     parameter_symbol = &entry.named[AstChild::left_expr];
                     auto &type_symbol = entry.named[AstChild::right_expr];
-                    auto types = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type_symbol.get_symbol_chain() );
+                    auto types = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type_symbol.get_symbol_chain(c_ctx, w_ctx) );
 
                     if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, type_symbol ) )
                         continue;
@@ -157,7 +157,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     new_parameter.mut = type_symbol.has_prop( ExprProperty::mut );
                 }
 
-                auto symbol_chain = parameter_symbol->get_symbol_chain();
+                auto symbol_chain = parameter_symbol->get_symbol_chain(c_ctx, w_ctx);
                 if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, *parameter_symbol ) )
                     continue;
                 new_parameter.name = symbol_chain->front().name;
@@ -168,7 +168,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
         if ( expr.named.find( AstChild::return_type ) != expr.named.end() ) {
             auto return_symbol = expr.named[AstChild::return_type];
             auto return_symbols =
-                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, return_symbol.get_symbol_chain() );
+                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, return_symbol.get_symbol_chain(c_ctx, w_ctx) );
 
             if ( !expect_exactly_one_symbol( c_ctx, w_ctx, return_symbols, return_symbol ) )
                 return;
@@ -225,7 +225,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         MirVarId id = create_variable( c_ctx, w_ctx, func_id );
         function.params.push_back( id );
 
-        auto name_chain = symbol->get_symbol_chain();
+        auto name_chain = symbol->get_symbol_chain(c_ctx, w_ctx);
         if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *symbol ) )
             continue;
 
@@ -234,7 +234,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         c_ctx.curr_name_mapping.back()[name_chain->front().name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
-            auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type->get_symbol_chain() );
+            auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type->get_symbol_chain(c_ctx, w_ctx) );
 
             if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *type ) )
                 continue;

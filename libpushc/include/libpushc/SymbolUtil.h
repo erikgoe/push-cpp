@@ -42,11 +42,17 @@ std::vector<SymbolId> find_local_symbol_by_identifier_chain( CrateCtx &c_ctx, Wo
 std::vector<size_t> find_member_symbol_by_identifier( CrateCtx &c_ctx, Worker &w_ctx,
                                                       const SymbolIdentifier &identifier, SymbolId parent_symbol );
 
+// Returns a list with all instantiations of a specific template. The result includes the template itself
+std::vector<SymbolId> find_template_instantiations( CrateCtx &c_ctx, Worker &w_ctx, SymbolId template_symbol );
+
 // Returns only the head of a symbol
 String get_local_symbol_name( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol );
 
 // Returns the full symbol path for a symbol
 String get_full_symbol_name( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol );
+
+// Generates the global symbol identifier from a symbol id
+sptr<std::vector<SymbolIdentifier>> get_symbol_chain_from_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol );
 
 // Applies local alias rules to a name chain. Returns false on error
 bool alias_name_chain( CrateCtx &c_ctx, Worker &w_ctx, std::vector<SymbolIdentifier> &symbol_chain,
@@ -56,10 +62,11 @@ bool alias_name_chain( CrateCtx &c_ctx, Worker &w_ctx, std::vector<SymbolIdentif
 SymbolId create_new_global_symbol( CrateCtx &c_ctx, Worker &w_ctx, const String &name );
 
 // Creates a new symbol from a relative name. @param name may not contain scope operators
-SymbolId create_new_relative_symbol( CrateCtx &c_ctx, Worker &w_ctx, const String &name, SymbolId parent_symbol );
+SymbolId create_new_relative_symbol( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &identifier,
+                                     SymbolId parent_symbol );
 
 // Creates a new symbol from a local name. @param name may not contain scope operators
-SymbolId create_new_local_symbol( CrateCtx &c_ctx, Worker &w_ctx, const String &name );
+SymbolId create_new_local_symbol( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &identifier );
 
 // Creates a new global symbol from a symbol chain. Existing symbols are skipped
 SymbolId create_new_global_symbol_from_name_chain( CrateCtx &c_ctx, Worker &w_ctx,
@@ -84,6 +91,10 @@ TypeId create_new_internal_type( CrateCtx &c_ctx, Worker &w_ctx );
 
 // Creates a new type from a existing symbol
 TypeId create_new_type( CrateCtx &c_ctx, Worker &w_ctx, SymbolId from_symbol );
+
+// Instantiates a template, by creating a new type and symbol if necessary
+SymbolId instantiate_template( CrateCtx &c_ctx, Worker &w_ctx, SymbolId from_template,
+                               std::vector<std::pair<TypeId, ConstValue>> &template_values );
 
 // Changes the current scope symbol to be @param new_scope
 void switch_scope_to_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId new_scope );
