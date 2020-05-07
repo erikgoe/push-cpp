@@ -133,7 +133,7 @@ void create_not_supported_error_msg( Worker &w_ctx, const Token &token, const St
 String parse_string_literal( sptr<SourceInput> &input, Worker &w_ctx ) {
     auto token = input->preview_token();
     if ( token.type == Token::Type::string_begin ) { // regular string
-        return parse_string( input, w_ctx );
+        return parse_string( *input, w_ctx );
     } else if ( token.type == Token::Type::identifier ) { // named string
         input->get_token(); // consume
         if ( token.content == "semicolon" )
@@ -208,7 +208,7 @@ bool parse_syntax( Syntax &output, sptr<PreludeConfig> &conf, size_t list_size, 
         auto token = input->preview_token();
         String type; // or operator/keyword
         if ( token.type == Token::Type::string_begin ) {
-            type = parse_string( input, w_ctx );
+            type = parse_string( *input, w_ctx );
 
             if ( is_operator_token( type ) )
                 conf->token_conf.operators.push_back( type );

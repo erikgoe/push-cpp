@@ -43,24 +43,6 @@ Token expect_token_or_comment( TT type, SourceInput &input, Worker &w_ctx ) {
     return t;
 }
 
-// Parse a following string. Including the string begin and end tokens TODO use impl in Util.h
-String extract_string( SourceInput &input, Worker &w_ctx ) {
-    expect_token_or_comment<MessageType::err_expected_string>( TT::string_begin, input, w_ctx );
-
-    String content;
-    Token t;
-    while ( ( t = input.get_token() ).type != TT::string_end ) {
-        if ( t.type == TT::eof ) {
-            w_ctx.print_msg<MessageType::err_unexpected_eof_after>( MessageInfo( t, 0, FmtStr::Color::Red ) );
-            break;
-        }
-        content += t.leading_ws + t.content;
-    }
-    content += t.leading_ws;
-
-    return content;
-}
-
 // Checks if a prelude is defined and loads the proper prelude.
 // Should be called at the beginning of a file
 void select_prelude( SourceInput &input, Worker &w_ctx ) {
@@ -93,7 +75,7 @@ void select_prelude( SourceInput &input, Worker &w_ctx ) {
             input.get_token(); // consume
             p_conf = w_ctx.do_query( load_prelude, make_shared<String>( t.content ) )->jobs.back()->to<PreludeConfig>();
         } else if ( t.type == TT::string_begin ) {
-            String path = extract_string( input, w_ctx );
+            String path = parse_string( input, w_ctx );
             p_conf = *w_ctx.do_query( load_prelude_file, make_shared<String>( path ) )
                           ->jobs.back()
                           ->to<sptr<PreludeConfig>>();
@@ -202,7 +184,7 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
         } else if ( t.type == TT::string_begin ) {
             auto expr = AstNode{ ExprType::string_literal };
             expr.generate_new_props();
-            expr.literal_string = parse_string( input, w_ctx );
+            expr.literal_string = parse_string( *input, w_ctx );
             // expr.type = c_ctx.str_type; TODO set type of value already
             expr.pos_info = { t.file, t.line, t.column, t.length };
             add_to_all_paths = expr;
