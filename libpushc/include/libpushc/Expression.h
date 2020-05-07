@@ -161,6 +161,7 @@ struct AstNode {
     String symbol_name; // only for atomic symbol and operator (called function)
     SymbolId symbol = 0; // only for atomic symbol
     SymbolId scope_symbol = 0; // only for scope exprs
+    TypeId literal_type = 0; // only for literals whose type is known
     Number literal_number = 0; // only for numeric/boolean literals
     String literal_string; // only for string literals
     bool continue_eval = true; // only for loops (for what value the loop is continued)

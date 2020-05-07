@@ -137,7 +137,7 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
                 auto literal = c_ctx.literals_map[t.content];
                 auto expr = AstNode{ ExprType::numeric_literal };
                 expr.generate_new_props();
-                // expr.type = literal.first; TODO set type of value already
+                expr.literal_type = literal.first;
 
                 TypeMemSize size = c_ctx.type_table[literal.first].additional_mem_size;
                 expr.literal_number = literal.second;
@@ -157,7 +157,7 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
             input->get_token(); // consume
             auto expr = AstNode{ ExprType::numeric_literal };
             expr.generate_new_props();
-            // expr.type = c_ctx.int_type; TODO set type of value already
+            expr.literal_type = c_ctx.int_type;
 
             Number val = stoull( t.content );
             expr.literal_number = val;
@@ -185,7 +185,7 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
             auto expr = AstNode{ ExprType::string_literal };
             expr.generate_new_props();
             expr.literal_string = parse_string( *input, w_ctx );
-            // expr.type = c_ctx.str_type; TODO set type of value already
+            expr.literal_type = c_ctx.str_type;
             expr.pos_info = { t.file, t.line, t.column, t.length };
             add_to_all_paths = expr;
         } else {
