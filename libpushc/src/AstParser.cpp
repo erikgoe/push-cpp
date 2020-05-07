@@ -21,7 +21,7 @@
 
 using TT = Token::Type;
 
-// Consume any amount of comments if any TODO use impl in Util.h
+// Consume any amount of comments if any TODO use impl in Util.h. First fix nested line comments
 void consume_comment( SourceInput &input ) {
     while ( input.preview_token().type == TT::comment_begin ) {
         input.get_token(); // consume consume comment begin
@@ -143,7 +143,6 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
             }
             break;
         } else if ( t.type == TT::block_begin || t.type == TT::term_begin || t.type == TT::array_begin ) {
-            // TODO change c_ctx.next_symbol.name_chain to proceed into the new scope
             input->get_token(); // consume
             add_to_all_paths = parse_scope(
                 input, w_ctx, c_ctx,

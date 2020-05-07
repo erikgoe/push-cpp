@@ -1180,7 +1180,6 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 }
 
 String AstNode::get_debug_repr() const {
-    // TODO generalize this (with named elements)
     String add_debug_data;
     if ( !annotations.empty() ) {
         add_debug_data += "#(";

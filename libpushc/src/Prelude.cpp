@@ -302,8 +302,6 @@ bool parse_operator( Operator &output, sptr<PreludeConfig> &conf, sptr<SourceInp
     if ( !parse_syntax( output.syntax, conf, list_size, input, w_ctx ) )
         return false;
 
-    // TODO add keywords and operators to prelude config
-
     return true;
 }
 
