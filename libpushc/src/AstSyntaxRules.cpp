@@ -151,7 +151,7 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
                 } else if ( mapping.first == "op0" ) {
                     node.token = list[mapping.second].token;
                     node.token.content = list[mapping.second].token.content + list[lm.at( "op1" )].token.content;
-                } else if ( !mapping.first.empty() && mapping.first != "op1" && mapping.first != "child" ) {
+                } else if ( !mapping.first.empty() && mapping.first != "op1" ) {
                     // Special handling
                     if ( ast_type == ExprType::comma_list ) {
                         // Merge multiple comma lists
