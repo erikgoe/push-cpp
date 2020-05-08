@@ -168,16 +168,6 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
                             // Ignore the label of the entries in the prelude
                             node.children.push_back( list[mapping.second] );
                         }
-                    } else if ( ast_type == ExprType::array_access &&
-                                ast_child_map.at( mapping.first ) == AstChild::index ) {
-                        // Merge child content
-                        // TODO move this logic into basic_semantic_check and first_transformation passes
-                        if ( list[mapping.second].children.size() != 1 ) {
-                            LOG_ERR( "Array access index contains not exactly one element. Size: " +
-                                     to_string( list[mapping.second].children.size() ) );
-                        } else {
-                            node.named[ast_child_map.at( mapping.first )] = list[mapping.second].children.front();
-                        }
                     } else {
                         // Normal named elements
                         node.named[ast_child_map.at( mapping.first )] = list[mapping.second];

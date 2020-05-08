@@ -52,6 +52,7 @@ enum class MessageType {
     err_expected_parametes,
     err_expected_comma_list,
     err_expected_implication,
+    err_expected_one_array_parameter,
     err_expected_only_one_parameter,
     err_expected_function_head,
     err_expected_function_definition,
@@ -158,6 +159,8 @@ MESSAGE_DEFINITION( MessageType::err_expected_comma_list, MessageClass::Error, "
                     "Expected a list of comma-separated entries", "" );
 MESSAGE_DEFINITION( MessageType::err_expected_implication, MessageClass::Error, "C",
                     "Expected an implication \"=>\" operator", "instead of this expression" );
+MESSAGE_DEFINITION( MessageType::err_expected_one_array_parameter, MessageClass::Error, "C",
+                    "Expected an array parameter", "insert one parameter here" );
 MESSAGE_DEFINITION( MessageType::err_expected_only_one_parameter, MessageClass::Error, "C",
                     "Only one parameter allowed", "insert only one parameter here" );
 MESSAGE_DEFINITION( MessageType::err_expected_function_head, MessageClass::Error, "C", "Expected a function head",

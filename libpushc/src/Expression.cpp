@@ -651,9 +651,14 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     }
     if ( named.find( AstChild::index ) != named.end() ) {
         // Check if only one expr
-        if ( named[AstChild::index].type == ExprType::comma_list ) {
-            w_ctx.print_msg<MessageType::err_expected_only_one_parameter>(
+        if ( named[AstChild::index].children.empty() ) {
+            w_ctx.print_msg<MessageType::err_expected_one_array_parameter>(
                 MessageInfo( named[AstChild::index], 0, FmtStr::Color::Red ) );
+            return false;
+        } else if ( named[AstChild::index].children.size() > 1 ||
+                    named[AstChild::index].children.front().type == ExprType::comma_list ) {
+            w_ctx.print_msg<MessageType::err_expected_only_one_parameter>(
+                MessageInfo( named[AstChild::index].children.front(), 0, FmtStr::Color::Red ) );
             return false;
         }
     }
@@ -792,6 +797,10 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
             children.front().props.clear();
             children.front().generate_new_props();
         }
+    } else if ( type == ExprType::array_access ) {
+        // Replace the array specifier with its content
+        auto tmp = named[AstChild::index].children.front();
+        named[AstChild::index] = tmp;
     } else if ( type == ExprType::reference ) {
         auto tmp = named[AstChild::symbol_like];
         if ( props.find( ExprProperty::mut ) != props.end() )
@@ -1003,7 +1012,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         c_ctx.curr_living_vars.pop_back();
         return ret;
     }
-    case ExprType::numeric_literal:{
+    case ExprType::numeric_literal: {
         auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
         op.data = literal_number;
         c_ctx.functions[func].vars[op.ret].value_type = literal_type;
@@ -1011,7 +1020,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         return op.ret;
     }
-     case ExprType::atomic_symbol: {
+    case ExprType::atomic_symbol: {
         auto name_chain = get_symbol_chain( c_ctx, w_ctx );
         if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *this ) )
             return 0;
