@@ -122,18 +122,14 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
 
     };
 
-    // TODO move to syntax_handler
-    auto copy_syntax_properties = []( SyntaxRule &rule, const Operator &op ) {
-        rule.precedence = op.precedence;
-        rule.ltr = op.ltr;
-        rule.ambiguous = op.ambiguous;
-        rule.prec_class = op.prec_class;
-        rule.prec_bias = op.prec_bias;
-    };
-
     auto syntax_handler = [&]( Operator &op, SyntaxType type ) {
         parse_rule( new_rule, lm, op.syntax );
-        copy_syntax_properties( new_rule, op );
+        new_rule.precedence = op.precedence;
+        new_rule.ltr = op.ltr;
+        new_rule.ambiguous = op.ambiguous;
+        new_rule.prec_class = op.prec_class;
+        new_rule.prec_bias = op.prec_bias;
+
         auto ast_type = ast_type_map.at( type );
         new_rule.create = [=]( std::vector<AstNode> &list, Worker &w_ctx ) {
             auto node = AstNode{ ast_type };
