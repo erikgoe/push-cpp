@@ -32,7 +32,7 @@ private:
     std::queue<Token> back_buffer; // contains token which have only been previewed
 
     // Load the next characters from the stream. Returns false if eof reached or failed
-    bool load_next_chars( String &buffer, size_t count = 1 ); // TODO rename to char
+    bool load_next_chars( String &buffer, size_t count = 1 );
 
     // implementation of the *_token() methods. @param whitespace is used internally
     Token get_token_impl( String whitespace = "" );
