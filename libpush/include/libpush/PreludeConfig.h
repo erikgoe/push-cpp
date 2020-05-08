@@ -129,9 +129,10 @@ struct PreludeConfig {
 
     String integer_trait; // Basic trait to define an integer
     String string_trait; // Basic trait to define a string
-    String tuple_trait; // Basic trait to define a tuple
+    String tuple_trait; // Basic struct template to define a tuple
     String implication_trait; // Basic trait to define an implication
     String never_trait; // Basic trait to define the never type
+    String drop_fn; // Basic function to define the drop operation
     std::map<String, String> special_types; // maps special type keywords/operators to their meaning
     std::map<String, u8> memblob_types; // maps type names to their memory size
     std::map<String, std::pair<String, u64>> literals; // each literal keyword is mapped to its type and memory_value

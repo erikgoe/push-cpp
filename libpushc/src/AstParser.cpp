@@ -436,9 +436,8 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
         std::make_pair( c_ctx.type_type, ConstValue() ) ); // Make it a template TODO make variadic
 
     // Most basic functions
-    // TODO move std::drop into prelude
     new_symbol = create_new_global_symbol_from_name_chain(
-        c_ctx, w_ctx, split_symbol_chain( "std::drop", cfg.scope_access_operator ) );
+        c_ctx, w_ctx, split_symbol_chain( cfg.drop_fn, cfg.scope_access_operator ) );
     c_ctx.drop_fn = create_new_type( c_ctx, w_ctx, new_symbol );
 
     // Memblob types
