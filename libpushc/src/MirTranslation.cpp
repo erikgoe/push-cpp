@@ -36,14 +36,16 @@ MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId funct
             }
         }
         if ( !valid ) {
-            // TODO maybe add a note where the variable was dropped
             auto original_expr = c_ctx.functions[function].vars[param].original_expr;
+            auto drop_expr = c_ctx.functions[function].drop_list[param];
             if ( !original_expr ) {
                 LOG_ERR( "Unit variable accessed out of its lifetime" );
+            } else if ( !drop_expr ) {
+                LOG_ERR( "Variable dropped at unknown expr" );
             } else {
                 // TODO test this
-                w_ctx.print_msg<MessageType::err_var_not_living>(
-                    MessageInfo( *original_expr, 0, FmtStr::Color::Red ) );
+                w_ctx.print_msg<MessageType::err_var_not_living>( MessageInfo( *original_expr, 0, FmtStr::Color::Red ),
+                                                                  { MessageInfo( *drop_expr, 1 ) } );
             }
         }
     }
@@ -136,6 +138,12 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, Ast
             }
         }
     }
+
+    // Add to drop list
+    if ( c_ctx.functions[function].drop_list.size() <= variable )
+        c_ctx.functions[function].drop_list.resize( variable + 1 );
+    if ( c_ctx.functions[function].drop_list[variable] == 0 )
+        c_ctx.functions[function].drop_list[variable] = &original_expr;
 }
 
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {
