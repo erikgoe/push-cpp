@@ -198,8 +198,6 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
     }
 }
 
-
-
 // Creates a function from a FuncExpr specified by @param symbolId
 void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol_id ) {
     auto &symbol = c_ctx.symbol_graph[symbol_id];
@@ -230,39 +228,26 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     analyse_function_signature( c_ctx, w_ctx, symbol_id );
     function.type = symbol.value;
 
-    // Parse parameters TODO extract this from already existing data from analyse_function_signature()
+    // Parse parameters
     auto paren_expr = expr.named[AstChild::parameters];
+    size_t entry_ctr = 0;
     for ( auto &entry : paren_expr.children ) {
-        auto *symbol = &entry;
-        AstNode *type = nullptr;
-        if ( symbol->type == ExprType::typed_op ) {
-            symbol = &entry.named[AstChild::left_expr];
-            type = &entry.named[AstChild::right_expr];
-        }
-
+        auto &entry_symbol = symbol.identifier.parameters[entry_ctr];
         MirVarId id = create_variable( c_ctx, w_ctx, func_id, &entry );
         function.params.push_back( id );
 
-        auto name_chain = symbol->get_symbol_chain( c_ctx, w_ctx );
-        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *symbol ) )
-            continue;
+        function.vars[id].name = entry_symbol.name;
+        function.vars[id].value_type = entry_symbol.type;
+        function.vars[id].mut = entry_symbol.mut;
+        if ( entry_symbol.ref )
+            function.vars[id].type = MirVariable::Type::p_ref;
+        else
+            function.vars[id].type = MirVariable::Type::value;
 
-        function.vars[id].name = name_chain->front().name;
-        function.vars[id].type = MirVariable::Type::value;
-        c_ctx.curr_name_mapping.back()[name_chain->front().name].push_back( id );
+        c_ctx.curr_name_mapping.back()[function.vars[id].name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
-        if ( type != nullptr ) {
-            auto symbols =
-                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type->get_symbol_chain( c_ctx, w_ctx ) );
 
-            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *type ) )
-                continue;
-
-            function.vars[id].value_type = c_ctx.symbol_graph[symbols.front()].value;
-            function.vars[id].mut = type->has_prop( ExprProperty::mut );
-            if ( type->has_prop( ExprProperty::ref ) )
-                function.vars[id].type = MirVariable::Type::p_ref;
-        }
+        entry_ctr++;
     }
 
     // Parse body
