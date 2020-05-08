@@ -22,7 +22,7 @@ MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId funct
                             MirEntry::Type type, MirVarId result, std::vector<MirVarId> parameters ) {
     MirVarId return_var = result;
     if ( result == 0 ) {
-        return_var = create_variable( c_ctx, w_ctx, function, "" );
+        return_var = create_variable( c_ctx, w_ctx, function, &original_expr, "" );
     }
 
     // Check if parameters are valid
@@ -36,8 +36,15 @@ MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId funct
             }
         }
         if ( !valid ) {
-            // TODO detect which variable in the operation and add a note where the variable ended
-            w_ctx.print_msg<MessageType::err_var_not_living>( MessageInfo( original_expr, 0, FmtStr::Color::Red ) );
+            // TODO maybe add a note where the variable was dropped
+            auto original_expr = c_ctx.functions[function].vars[param].original_expr;
+            if ( !original_expr ) {
+                LOG_ERR( "Unit variable accessed out of its lifetime" );
+            } else {
+                // TODO test this
+                w_ctx.print_msg<MessageType::err_var_not_living>(
+                    MessageInfo( *original_expr, 0, FmtStr::Color::Red ) );
+            }
         }
     }
 
@@ -83,10 +90,12 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
     return op;
 }
 
-MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, const String &name ) {
+MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode *original_expr,
+                          const String &name ) {
     MirVarId id = c_ctx.functions[function].vars.size();
     c_ctx.functions[function].vars.emplace_back();
     c_ctx.functions[function].vars[id].name = name;
+    c_ctx.functions[function].vars[id].original_expr = original_expr;
     c_ctx.curr_living_vars.back().push_back( id );
     if ( !name.empty() ) {
         c_ctx.curr_name_mapping.back()[name].push_back( id );
@@ -147,7 +156,8 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                 if ( parameter_symbol->type == ExprType::typed_op ) {
                     parameter_symbol = &entry.named[AstChild::left_expr];
                     auto &type_symbol = entry.named[AstChild::right_expr];
-                    auto types = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type_symbol.get_symbol_chain(c_ctx, w_ctx) );
+                    auto types = find_local_symbol_by_identifier_chain( c_ctx, w_ctx,
+                                                                        type_symbol.get_symbol_chain( c_ctx, w_ctx ) );
 
                     if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, type_symbol ) )
                         continue;
@@ -157,7 +167,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     new_parameter.mut = type_symbol.has_prop( ExprProperty::mut );
                 }
 
-                auto symbol_chain = parameter_symbol->get_symbol_chain(c_ctx, w_ctx);
+                auto symbol_chain = parameter_symbol->get_symbol_chain( c_ctx, w_ctx );
                 if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, *parameter_symbol ) )
                     continue;
                 new_parameter.name = symbol_chain->front().name;
@@ -168,7 +178,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
         if ( expr.named.find( AstChild::return_type ) != expr.named.end() ) {
             auto return_symbol = expr.named[AstChild::return_type];
             auto return_symbols =
-                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, return_symbol.get_symbol_chain(c_ctx, w_ctx) );
+                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, return_symbol.get_symbol_chain( c_ctx, w_ctx ) );
 
             if ( !expect_exactly_one_symbol( c_ctx, w_ctx, return_symbols, return_symbol ) )
                 return;
@@ -208,7 +218,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     FunctionImplId func_id = c_ctx.functions.size();
     c_ctx.functions.emplace_back();
     FunctionImpl &function = c_ctx.functions.back();
-    create_variable( c_ctx, w_ctx, func_id, "" ); // unit return value
+    create_variable( c_ctx, w_ctx, func_id, nullptr, "" ); // unit return value
     analyse_function_signature( c_ctx, w_ctx, symbol_id );
     function.type = symbol.value;
 
@@ -222,10 +232,10 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
             type = &entry.named[AstChild::right_expr];
         }
 
-        MirVarId id = create_variable( c_ctx, w_ctx, func_id );
+        MirVarId id = create_variable( c_ctx, w_ctx, func_id, &entry );
         function.params.push_back( id );
 
-        auto name_chain = symbol->get_symbol_chain(c_ctx, w_ctx);
+        auto name_chain = symbol->get_symbol_chain( c_ctx, w_ctx );
         if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *symbol ) )
             continue;
 
@@ -234,7 +244,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         c_ctx.curr_name_mapping.back()[name_chain->front().name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
         if ( type != nullptr ) {
-            auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type->get_symbol_chain(c_ctx, w_ctx) );
+            auto symbols =
+                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type->get_symbol_chain( c_ctx, w_ctx ) );
 
             if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *type ) )
                 continue;

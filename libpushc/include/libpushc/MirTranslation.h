@@ -29,7 +29,8 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
                        SymbolId called_function, MirVarId result, std::vector<MirVarId> parameters );
 
 // Creates a new local variable and returns its id
-MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, const String &name = "" );
+MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode *original_expr,
+                          const String &name = "" );
 
 // Destroys a local variable in a function
 void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,

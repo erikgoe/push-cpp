@@ -191,6 +191,7 @@ struct MirVariable {
     bool mut = false; // whether this variable can be updated
     MirVarId ref = 0; // referred variable (for l_ref or for method access)
     size_t member_idx = 0; // used for member access operations
+    AstNode *original_expr = nullptr; // refers to the original variable or expression
 };
 
 // Represents the content of a function

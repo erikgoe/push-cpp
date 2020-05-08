@@ -1100,7 +1100,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             return 0;
 
         // Create variable
-        create_variable( c_ctx, w_ctx, func, name_chain->front().name );
+        create_variable( c_ctx, w_ctx, func, this, name_chain->front().name );
 
         // Expr operation
         auto var = children.front().parse_mir( c_ctx, w_ctx, func );
