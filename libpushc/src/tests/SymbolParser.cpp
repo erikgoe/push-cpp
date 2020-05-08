@@ -198,6 +198,7 @@ TEST_CASE( "First transformation", "[semantic_parser]" ) {
           "GLOBAL { MATCH(SYM() WITH SET { OP(BLOB_LITERAL() => SYM()), OP(BLOB_LITERAL() => SYM()), }) }" },
         { "if a b; else c;", "GLOBAL { IF(SYM() THEN IMP { SYM() } ELSE IMP { SYM() } ) }" },
         { "if a { b; } else { c; }", "GLOBAL { IF(SYM() THEN IMP { SYM() UNIT() } ELSE IMP { SYM() UNIT() } ) }" },
+        { "a[1];", "GLOBAL { ARR_ACC SYM()[BLOB_LITERAL()] }" },
         { "fn<A, B>() {}", "GLOBAL { FUNC(UNIT() TEMPLATE SYM()<SYM(), SYM(), > IMP { UNIT() }) }" },
         { "fn() { fn(); }", "GLOBAL { FUNC(UNIT() SYM() IMP { FN_CALL(UNIT() SYM()) UNIT() }) }" },
         { "#annotation() fn() a;", "GLOBAL { FUNC(UNIT() SYM() IMP { SYM() })#(ANNOTATE(SYM() UNIT()), ) }" },

@@ -81,8 +81,8 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
         { "do { function(c, d); } until true;",
           "GLOBAL { SC POST_LOOP(FALSE: BLOB_LITERAL() DO BLOCK { SC FUNC_HEAD(TUPLE( SYM(), SYM(), ) SYM()); } ); }" },
         { "function { let var[4] = [0,1,2,3]; var[2] } ",
-          "GLOBAL { FUNC(SYM() BLOCK { SC BINDING(OP(ARR_ACC SYM()[BLOB_LITERAL()] = ARRAY[ COMMA( BLOB_LITERAL(), "
-          "BLOB_LITERAL(), BLOB_LITERAL(), BLOB_LITERAL(), ) ])); ARR_ACC SYM()[BLOB_LITERAL()] }) }" },
+          "GLOBAL { FUNC(SYM() BLOCK { SC BINDING(OP(ARR_ACC SYM()[ARRAY[ BLOB_LITERAL() ]] = ARRAY[ COMMA( BLOB_LITERAL(), "
+          "BLOB_LITERAL(), BLOB_LITERAL(), BLOB_LITERAL(), ) ])); ARR_ACC SYM()[ARRAY[ BLOB_LITERAL() ]] }) }" },
         { "function { if true { let val = 4; } else { let val = 3; } if true  let val = 4; if false let val = 6; else "
           "let val = 5; let var = (if true 4; else 5;); if true let v = 3; else let v = 2; }",
           "GLOBAL { FUNC(SYM() BLOCK { IF(BLOB_LITERAL() THEN BLOCK { SC BINDING(OP(SYM() = BLOB_LITERAL())); } ELSE "
@@ -135,7 +135,7 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
           "GLOBAL { FUNC(TERM( SYM() ) SCOPE(SCOPE(SYM()::SYM())::SYM()) BLOCK { SC FUNC_HEAD(UNIT() "
           "MEMBER(SYM().SYM())); }) FUNC(SYM() BLOCK { }) FUNC(TUPLE( TYPED(SYM():SYM()), TYPED(SYM():SYM()), ) "
           "SYM() -> SYM() BLOCK { FUNC(UNIT() ARRAY[ TOKEN 14 \"&\" ] BLOCK { OP(SYM() ++) }) SC ARR_ACC "
-          "SYM()[BLOB_LITERAL()]; }) }" },
+          "SYM()[ARRAY[ BLOB_LITERAL() ]]; }) }" },
         { "#not_inline() fn { println!(\"Hello World\"); } ",
           "GLOBAL { ANNOTATE(SYM() UNIT()) FUNC(SYM() BLOCK { SC MACRO(SYM()! TERM( STR \"Hello World\" )); }) }" },
         { "#not_inline() #other_annotation() fn {  } ",
