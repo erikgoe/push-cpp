@@ -1111,17 +1111,17 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         break;
     }
     case ExprType::simple_bind: {
-        AstNode &symbol = children.front().named[AstChild::left_expr];
-        if ( symbol.type == ExprType::typed_op ) {
-            symbol = symbol.named[AstChild::left_expr];
+        AstNode *symbol = &children.front().named[AstChild::left_expr];
+        if ( symbol->type == ExprType::typed_op ) {
+            symbol = &symbol->named[AstChild::left_expr];
         }
 
-        auto name_chain = symbol.get_symbol_chain( c_ctx, w_ctx );
-        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, symbol ) )
+        auto name_chain = symbol->get_symbol_chain( c_ctx, w_ctx );
+        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *symbol ) )
             break;
 
         // Create variable
-        create_variable( c_ctx, w_ctx, func, &symbol, name_chain->front().name );
+        create_variable( c_ctx, w_ctx, func, symbol, name_chain->front().name );
 
         // Expr operation
         auto var = children.front().parse_mir( c_ctx, w_ctx, func );
