@@ -985,6 +985,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     if ( scope_symbol != 0 )
         switch_scope_to_symbol( c_ctx, w_ctx, scope_symbol );
 
+    MirVarId ret = 0; // initialize with invalid value
+
     // Create the mir instructions
     switch ( type ) {
     case ExprType::imp_scope: {
@@ -1000,7 +1002,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         if ( children.empty() ) {
             LOG_ERR( "No return value from block" );
         }
-        MirVarId ret = children.back().parse_mir( c_ctx, w_ctx, func );
+        ret = children.back().parse_mir( c_ctx, w_ctx, func );
 
         // Drop all created variables
         for ( auto &var : c_ctx.curr_living_vars.back() ) {
@@ -1010,7 +1012,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         c_ctx.curr_name_mapping.pop_back();
         c_ctx.curr_living_vars.pop_back();
-        return ret;
+        break;
     }
     case ExprType::numeric_literal: {
         auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
@@ -1018,21 +1020,26 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         c_ctx.functions[func].vars[op.ret].value_type = literal_type;
         c_ctx.functions[func].vars[op.ret].type = MirVariable::Type::rvalue;
 
-        return op.ret;
+        ret = op.ret;
+        break;
     }
     case ExprType::atomic_symbol: {
         auto name_chain = get_symbol_chain( c_ctx, w_ctx );
         if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *this ) )
-            return 0;
+            break;
 
+        bool found = false;
         for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
             if ( auto var_itr = itr->find( name_chain->front().name ); var_itr != itr->end() ) {
-                return var_itr->second.back();
+                ret = var_itr->second.back();
+                found = true;
+                break;
             }
         }
 
-        LOG_ERR( "Atomic symbol not found" );
-        return 0;
+        if ( !found )
+            LOG_ERR( "Atomic symbol not found" );
+        break;
     }
     case ExprType::func_call: {
         auto calls = find_local_symbol_by_identifier_chain( c_ctx, w_ctx,
@@ -1045,7 +1052,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // TODO select the function based on its signature
 
         if ( !expect_exactly_one_symbol( c_ctx, w_ctx, calls, *this ) )
-            return 0; // Should be the unit symbol
+            break; // Should be the unit symbol
 
         std::vector<MirVarId> params;
         for ( auto &pe : named[AstChild::parameters].children ) {
@@ -1054,7 +1061,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         auto &op = create_call( c_ctx, w_ctx, func, *this, calls.front(), 0, params );
 
-        return op.ret;
+        ret = op.ret;
+        break;
     }
     case ExprType::op: {
         auto calls = find_global_symbol_by_identifier_chain(
@@ -1069,7 +1077,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         if ( calls.empty() ) {
             w_ctx.print_msg<MessageType::err_operator_symbol_not_found>(
                 MessageInfo( *this, 0, FmtStr::Color::Red ), std::vector<MessageInfo>(), symbol_name, token.content );
-            return 0;
+            break;
         } else if ( calls.size() > 1 ) {
             std::vector<MessageInfo> notes;
             for ( auto &c : calls ) {
@@ -1078,7 +1086,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             }
             w_ctx.print_msg<MessageType::err_operator_symbol_is_ambiguous>( MessageInfo( *this, 0, FmtStr::Color::Red ),
                                                                             notes, symbol_name, token.content );
-            return 0;
+            break;
         }
 
 
@@ -1087,7 +1095,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         auto &op = create_call( c_ctx, w_ctx, func, *this, calls.front(), 0, { left_result, right_result } );
 
-        return op.ret;
+        ret = op.ret;
+        break;
     }
     case ExprType::simple_bind: {
         AstNode &symbol = children.front().named[AstChild::left_expr];
@@ -1097,16 +1106,16 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         auto name_chain = symbol.get_symbol_chain( c_ctx, w_ctx );
         if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, symbol ) )
-            return 0;
+            break;
 
         // Create variable
-        create_variable( c_ctx, w_ctx, func, this, name_chain->front().name );
+        create_variable( c_ctx, w_ctx, func, &symbol, name_chain->front().name );
 
         // Expr operation
         auto var = children.front().parse_mir( c_ctx, w_ctx, func );
         drop_variable( c_ctx, w_ctx, func, *this, var );
 
-        return 0;
+        break;
     }
     case ExprType::member_access: {
         auto obj = named[AstChild::base].parse_mir( c_ctx, w_ctx, func );
@@ -1133,7 +1142,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         if ( attrs.empty() && methods.empty() ) {
             w_ctx.print_msg<MessageType::err_symbol_not_found>(
                 MessageInfo( named[AstChild::base], 0, FmtStr::Color::Red ) );
-            return false;
+            break;
         } else if ( attrs.size() + methods.size() != 1 ) {
             std::vector<MessageInfo> notes;
             for ( auto &attr : attrs ) {
@@ -1146,11 +1155,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             }
             w_ctx.print_msg<MessageType::err_member_symbol_is_ambiguous>(
                 MessageInfo( named[AstChild::base], 0, FmtStr::Color::Red ), notes );
-            return false;
+            break;
         }
 
         // Create operation
-        MirVarId ret;
         if ( !attrs.empty() ) {
             // Access attribute
             auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::member, 0, { obj } );
@@ -1166,16 +1174,16 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             // Call method TODO
         }
 
-        return ret;
+        break;
     }
     case ExprType::typed_op: {
-        auto ret = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
+        ret = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
 
         auto type_ids = find_local_symbol_by_identifier_chain(
             c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx ) );
 
         if ( !expect_exactly_one_symbol( c_ctx, w_ctx, type_ids, named[AstChild::right_expr] ) )
-            return ret;
+            break;
 
         // Set type
         auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
@@ -1184,16 +1192,18 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             c_ctx.functions[func].vars[ret].value_type = c_ctx.symbol_graph[type_ids.front()].value;
         }
 
-        return ret;
+        break;
     }
     default:
         LOG_ERR( "NOT IMPLEMENTED: parse_mir of type " + to_string( static_cast<size_t>( type ) ) );
-        return 0;
+        break;
     }
 
     // Switch back to parent scope if needed
     if ( scope_symbol != 0 )
         switch_scope_to_symbol( c_ctx, w_ctx, scope_symbol );
+
+    return ret;
 }
 
 String AstNode::get_debug_repr() const {

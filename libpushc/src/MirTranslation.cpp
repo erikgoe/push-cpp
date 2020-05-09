@@ -74,7 +74,7 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
 
     // Handle parameter remains
     for ( size_t i = 0; i < parameters.size(); i++ ) {
-        if ( !callee.identifier.parameters[i].ref ) {
+        if ( callee.identifier.parameters[i].ref ) {
             if ( caller.vars[parameters[i]].type == MirVariable::Type::rvalue ) {
                 drop_variable( c_ctx, w_ctx, calling_function, original_expr, parameters[i] );
             }
