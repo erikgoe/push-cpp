@@ -230,10 +230,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
     // Parse parameters
     auto paren_expr = expr.named[AstChild::parameters];
-    size_t entry_ctr = 0;
-    for ( auto &entry : paren_expr.children ) {
-        auto &entry_symbol = symbol.identifier.parameters[entry_ctr];
-        MirVarId id = create_variable( c_ctx, w_ctx, func_id, &entry );
+    for ( size_t i = 0 ; i < paren_expr.children.size(); i++ ) {
+        auto &entry_symbol = symbol.identifier.parameters[i];
+        MirVarId id = create_variable( c_ctx, w_ctx, func_id, &paren_expr.children[i]);
         function.params.push_back( id );
 
         function.vars[id].name = entry_symbol.name;
@@ -246,8 +245,6 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
         c_ctx.curr_name_mapping.back()[function.vars[id].name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
-
-        entry_ctr++;
     }
 
     // Parse body
