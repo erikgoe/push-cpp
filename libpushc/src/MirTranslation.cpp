@@ -148,7 +148,8 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, Ast
 
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {
     auto &symbol = c_ctx.symbol_graph[function];
-    if ( function && symbol.identifier.eval_type.type == 0 ) {
+    // TODO find a better method to prevent multiple checks of the same function
+    if ( function && symbol.identifier.eval_type.type == 0 && symbol.identifier.parameters.empty() ) {
         auto &expr = *symbol.original_expr.front();
         if ( expr.type != ExprType::func ) {
             LOG_ERR( "Function to analyse is not a function" );
@@ -230,9 +231,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
     // Parse parameters
     auto paren_expr = expr.named[AstChild::parameters];
-    for ( size_t i = 0 ; i < paren_expr.children.size(); i++ ) {
+    for ( size_t i = 0; i < paren_expr.children.size(); i++ ) {
         auto &entry_symbol = symbol.identifier.parameters[i];
-        MirVarId id = create_variable( c_ctx, w_ctx, func_id, &paren_expr.children[i]);
+        MirVarId id = create_variable( c_ctx, w_ctx, func_id, &paren_expr.children[i] );
         function.params.push_back( id );
 
         function.vars[id].name = entry_symbol.name;
@@ -281,7 +282,9 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                                               ? "l"
                                               : fn.vars[id].type == MirVariable::Type::p_ref
                                                     ? "p"
-                                                    : fn.vars[id].type == MirVariable::Type::label ? "b" : "" );
+                                                    : fn.vars[id].type == MirVariable::Type::label
+                                                          ? "b"
+                                                          : fn.vars[id].type == MirVariable::Type::symbol ? "s" : "" );
                 return " " + fn.vars[id].name + "%" + type_str + to_string( id );
             };
 

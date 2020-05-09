@@ -1014,6 +1014,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         c_ctx.curr_living_vars.pop_back();
         break;
     }
+    case ExprType::unit: {
+        ret = 0; // set the unit variable
+        break;
+    }
     case ExprType::numeric_literal: {
         auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
         op.data = literal_number;
@@ -1029,6 +1033,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             break;
 
         bool found = false;
+        // Search for a local variable
         for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
             if ( auto var_itr = itr->find( name_chain->front().name ); var_itr != itr->end() ) {
                 ret = var_itr->second.back();
@@ -1037,31 +1042,38 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             }
         }
 
+        if ( !found ) {
+            // Search for a symbol
+            auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, name_chain );
+
+            // TODO allow multiple symbols (e. g. for function overloading)
+            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *this ) )
+                break; // Should be the unit symbol
+
+            ret = create_variable( c_ctx, w_ctx, func, this );
+            c_ctx.functions[func].vars[ret].type = MirVariable::Type::symbol;
+            c_ctx.functions[func].vars[ret].accessed_symbol = symbols.front();
+            found = true;
+        }
+
         if ( !found )
             LOG_ERR( "Atomic symbol not found" );
         break;
     }
     case ExprType::func_call: {
-        auto calls = find_local_symbol_by_identifier_chain( c_ctx, w_ctx,
-                                                            named[AstChild::symbol].get_symbol_chain( c_ctx, w_ctx ) );
-
-        for ( auto &candidate : calls ) {
-            analyse_function_signature( c_ctx, w_ctx, candidate );
-        }
+        // Extract the symbol variable
+        auto callee_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
+        auto callee = c_ctx.functions[func].vars[callee_var].accessed_symbol;
+        analyse_function_signature( c_ctx, w_ctx, callee );
 
         // TODO select the function based on its signature
-
-        if ( !expect_exactly_one_symbol( c_ctx, w_ctx, calls, *this ) )
-            break; // Should be the unit symbol
 
         std::vector<MirVarId> params;
         for ( auto &pe : named[AstChild::parameters].children ) {
             params.push_back( pe.parse_mir( c_ctx, w_ctx, func ) );
         }
 
-        auto &op = create_call( c_ctx, w_ctx, func, *this, calls.front(), 0, params );
-
-        ret = op.ret;
+        ret = create_call( c_ctx, w_ctx, func, *this, callee, 0, params ).ret;
         break;
     }
     case ExprType::op: {
@@ -1171,9 +1183,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 c_ctx.type_table[c_ctx.symbol_graph[base_symbol].value].members[attrs.front()].value;
             ret = op.ret;
         } else {
-            // Call method TODO
+            ret = create_variable( c_ctx, w_ctx, func, this );
+            c_ctx.functions[func].vars[ret].type = MirVariable::Type::symbol;
+            c_ctx.functions[func].vars[ret].accessed_symbol = methods.front();
         }
-
         break;
     }
     case ExprType::typed_op: {

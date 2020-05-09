@@ -182,6 +182,7 @@ struct MirVariable {
         l_ref, // local reference
         p_ref, // parameter reference
         label, // just a label specifier
+        symbol, // just a static symbol specifier
 
         count
     } type = Type::value;
@@ -191,6 +192,7 @@ struct MirVariable {
     bool mut = false; // whether this variable can be updated
     MirVarId ref = 0; // referred variable (for l_ref or for method access)
     size_t member_idx = 0; // used for member access operations
+    SymbolId accessed_symbol = 0; // used to specify a symbol (e. g. for function calls)
     AstNode *original_expr = nullptr; // refers to the original variable or expression
 };
 
