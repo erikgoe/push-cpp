@@ -331,6 +331,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "cond_jmp_z";
                 else if ( op.type == MirEntry::Type::cast )
                     str = "cast";
+                else if ( op.type == MirEntry::Type::symbol )
+                    str = "symbol";
                 else
                     str = "UNKNOWN COMMAND";
 

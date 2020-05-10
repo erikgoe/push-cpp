@@ -161,6 +161,7 @@ struct MirEntry {
         label, // label declaration
         cond_jmp_z, // conditional jump if arg is zero
         cast, // type cast
+        symbol, // cosmetic operation to access a symbol
 
         count
     } type = Type::nop;

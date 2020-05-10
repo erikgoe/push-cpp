@@ -1058,6 +1058,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             result_var.type = MirVariable::Type::symbol;
             result_var.value_type = c_ctx.symbol_graph[symbols.front()].value;
             found = true;
+
+            // Create cosmetic operation
+            auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
+            op.symbol = symbols.front();
         }
 
         if ( !found ) {
@@ -1223,6 +1227,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             result_var.type = MirVariable::Type::symbol;
             result_var.value_type = c_ctx.symbol_graph[methods.front()].value;
             result_var.base_ref = obj;
+
+            // Create cosmetic operation
+            auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, { obj } );
+            op.symbol = methods.front();
         }
         break;
     }
