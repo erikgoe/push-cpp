@@ -1091,11 +1091,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     case ExprType::func_call: {
         // Extract the symbol variable
         auto callee_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
-        auto callee = c_ctx.type_table[c_ctx.functions[func].vars[callee_var].value_type].symbol;
-        analyse_function_signature( c_ctx, w_ctx, callee );
-
         if ( callee_var != 0 ) {
             // Symbol found
+            auto callee = c_ctx.type_table[c_ctx.functions[func].vars[callee_var].value_type].symbol;
+            analyse_function_signature( c_ctx, w_ctx, callee );
 
             // TODO select the function based on its signature
 
@@ -1254,6 +1253,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     }
     case ExprType::typed_op: {
         ret = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
+        if ( ret == 0 )
+            break; // Error, don't do anything
 
         auto type_ids = find_local_symbol_by_identifier_chain(
             c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx ) );
