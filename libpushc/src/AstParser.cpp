@@ -192,6 +192,7 @@ AstNode parse_scope( sptr<SourceInput> &input, Worker &w_ctx, CrateCtx &c_ctx, T
             input->get_token(); // consume
             add_to_all_paths.type = ExprType::token;
             add_to_all_paths.token = t;
+            add_to_all_paths.pos_info = PosInfo{ t.file, t.line, t.column, t.length };
             add_to_all_paths.generate_new_props();
         }
 
