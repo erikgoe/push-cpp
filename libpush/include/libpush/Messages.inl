@@ -67,6 +67,7 @@ enum class MessageType {
     err_double_mut_keyword,
     err_double_ref_op,
     err_mut_ref_wrong_order,
+    err_method_is_a_free_function,
 
     warning = 5000,
 
@@ -193,6 +194,8 @@ MESSAGE_DEFINITION( MessageType::err_double_ref_op, MessageClass::Error, "C", "T
                     "only one reference operator allowed" );
 MESSAGE_DEFINITION( MessageType::err_mut_ref_wrong_order, MessageClass::Error, "C",
                     "Mutable reference in wrong order specified", "swap the '&' and the 'mut'" );
+MESSAGE_DEFINITION( MessageType::err_method_is_a_free_function, MessageClass::Error, "C",
+                    "Tried to access a free function as a method", "at this call", "function defined here" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

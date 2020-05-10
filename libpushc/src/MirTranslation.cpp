@@ -75,17 +75,21 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
     // Handle parameter remains
     for ( size_t i = 0; i < parameters.size(); i++ ) {
         if ( callee.identifier.parameters[i].ref ) {
+            // Reference parameter expected
             if ( caller.vars[parameters[i]].type == MirVariable::Type::rvalue ) {
                 drop_variable( c_ctx, w_ctx, calling_function, original_expr, parameters[i] );
             }
         } else {
-            // Remove from living variables
-            for ( auto itr = c_ctx.curr_living_vars.rbegin(); itr != c_ctx.curr_living_vars.rend(); itr++ ) {
-                if ( auto var_itr = std::find( itr->begin(), itr->end(), parameters[i] ); var_itr != itr->end() ) {
-                    itr->erase( var_itr );
-                    break;
-                }
+            // Parameter moved
+
+            // Drop referenced vars
+            if ( caller.vars[parameters[i]].type == MirVariable::Type::l_ref ) {
+                remove_from_local_living_vars( c_ctx, w_ctx, calling_function, original_expr,
+                                               caller.vars[parameters[i]].ref );
             }
+
+            // Remove from living variables
+            remove_from_local_living_vars( c_ctx, w_ctx, calling_function, original_expr, parameters[i] );
         }
     }
 
@@ -120,6 +124,16 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, Ast
     }
 
     // Remove from living variables
+    remove_from_local_living_vars( c_ctx, w_ctx, function, original_expr, variable );
+}
+
+void remove_from_local_living_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
+                                    MirVarId variable ) {
+    if ( variable == 0 )
+        return;
+
+    auto &var = c_ctx.functions[function].vars[variable];
+
     for ( auto itr = c_ctx.curr_living_vars.rbegin(); itr != c_ctx.curr_living_vars.rend(); itr++ ) {
         if ( auto var_itr = std::find( itr->begin(), itr->end(), variable ); var_itr != itr->end() ) {
             itr->erase( var_itr );
@@ -317,6 +331,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "cond_jmp_z";
                 else if ( op.type == MirEntry::Type::cast )
                     str = "cast";
+                else
+                    str = "UNKNOWN COMMAND";
 
                 if ( op.symbol != 0 )
                     str += " " + get_full_symbol_name( *c_ctx, w_ctx, op.symbol );
@@ -348,8 +364,9 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                            : " " ) +
                      get_full_symbol_name( *c_ctx, w_ctx, c_ctx->type_table[fn.vars[i].value_type].symbol ) +
                      ( fn.vars[i].ref != 0
-                           ? " -> " + get_var_name( fn.vars[i].ref ) + " +" + to_string( fn.vars[i].member_idx )
-                           : "" ) );
+                           ? " ->" + get_var_name( fn.vars[i].ref ) + " +" + to_string( fn.vars[i].member_idx )
+                           : "" ) +
+                     ( fn.vars[i].base_ref != 0 ? " base:" + get_var_name( fn.vars[i].base_ref ) : "" ) );
             }
         }
         log( "----------------" );

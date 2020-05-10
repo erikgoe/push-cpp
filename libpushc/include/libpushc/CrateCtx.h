@@ -190,9 +190,9 @@ struct MirVariable {
     String name; // the original variable name (temporaries have an empty name)
     TypeId value_type = 0; // type of the value of this variable
     bool mut = false; // whether this variable can be updated
-    MirVarId ref = 0; // referred variable (for l_ref or for method access)
+    MirVarId ref = 0; // referred variable (for l_ref or for method access; should never reference a l_ref)
     size_t member_idx = 0; // used for member access operations
-    SymbolId accessed_symbol = 0; // used to specify a symbol (e. g. for function calls)
+    MirVarId base_ref; // used for a method call to specify the "self" object (may also be a l_ref)
     AstNode *original_expr = nullptr; // refers to the original variable or expression
 };
 
