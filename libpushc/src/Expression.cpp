@@ -1008,9 +1008,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         ret = children.back().parse_mir( c_ctx, w_ctx, func );
 
         // Drop all created variables
-        for ( auto &var : c_ctx.curr_living_vars.back() ) {
-            if ( var != ret )
-                drop_variable( c_ctx, w_ctx, func, *this, var );
+        for ( auto var_itr = c_ctx.curr_living_vars.back().rbegin(); var_itr != c_ctx.curr_living_vars.back().rend();
+              var_itr++ ) {
+            if ( *var_itr != ret )
+                drop_variable( c_ctx, w_ctx, func, *this, *var_itr );
         }
 
         c_ctx.curr_name_mapping.pop_back();

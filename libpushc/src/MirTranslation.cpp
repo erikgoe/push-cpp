@@ -266,8 +266,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     function.ret = expr.children.front().parse_mir( c_ctx, w_ctx, func_id );
 
     // Drop parameters
-    for ( auto &p : function.params ) {
-        drop_variable( c_ctx, w_ctx, func_id, expr, p );
+    for ( auto p_itr = function.params.rbegin(); p_itr != function.params.rend(); p_itr++ ) {
+        drop_variable( c_ctx, w_ctx, func_id, expr, *p_itr );
     }
 }
 
