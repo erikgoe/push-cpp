@@ -134,6 +134,7 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
         new_rule.create = [=]( std::vector<AstNode> &list, Worker &w_ctx ) {
             auto node = AstNode{ ast_type };
             node.generate_new_props();
+            node.pos_info = merge_pos_infos( list.front().pos_info, list.back().pos_info );
             node.precedence = new_rule.precedence;
             node.original_list = list;
             for ( auto &mapping : lm ) {
