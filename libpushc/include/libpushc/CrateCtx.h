@@ -206,7 +206,7 @@ struct FunctionImpl {
 
     std::vector<MirEntry> ops; // instructions
     std::vector<MirVariable> vars; // variables
-    std::vector<AstNode*> drop_list; // stores where a variable was dropped
+    std::vector<std::pair<String, AstNode*>> drop_list; // stores where a variable was dropped
 };
 
 

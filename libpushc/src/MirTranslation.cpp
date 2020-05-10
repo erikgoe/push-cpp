@@ -37,7 +37,7 @@ MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId funct
         }
         if ( !valid ) {
             auto original_expr = c_ctx.functions[function].vars[param].original_expr;
-            auto drop_expr = c_ctx.functions[function].drop_list[param];
+            auto drop_expr = c_ctx.functions[function].drop_list[param].second;
             if ( !original_expr ) {
                 LOG_ERR( "Unit variable accessed out of its lifetime" );
             } else if ( !drop_expr ) {
@@ -156,8 +156,9 @@ void remove_from_local_living_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImpl
     // Add to drop list
     if ( c_ctx.functions[function].drop_list.size() <= variable )
         c_ctx.functions[function].drop_list.resize( variable + 1 );
-    if ( c_ctx.functions[function].drop_list[variable] == 0 )
-        c_ctx.functions[function].drop_list[variable] = &original_expr;
+    if ( c_ctx.functions[function].drop_list[variable].second == nullptr )
+        c_ctx.functions[function].drop_list[variable] =
+            std::make_pair( c_ctx.functions[function].vars[variable].name, &original_expr );
 }
 
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {

@@ -1051,21 +1051,38 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, name_chain );
 
             // TODO allow multiple symbols (e. g. for function overloading)
-            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *this ) )
-                break; // Should be the unit symbol
 
-            ret = create_variable( c_ctx, w_ctx, func, this );
-            auto &result_var = c_ctx.functions[func].vars[ret];
-            result_var.type = MirVariable::Type::symbol;
-            result_var.value_type = c_ctx.symbol_graph[symbols.front()].value;
-            found = true;
+            if ( !symbols.empty() ) {
+                if ( expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *this ) ) {
+                    break; // Should be the unit symbol
 
-            // Create cosmetic operation
-            auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
-            op.symbol = symbols.front();
+                    ret = create_variable( c_ctx, w_ctx, func, this );
+                    auto &result_var = c_ctx.functions[func].vars[ret];
+                    result_var.type = MirVariable::Type::symbol;
+                    result_var.value_type = c_ctx.symbol_graph[symbols.front()].value;
+                    found = true;
+
+                    // Create cosmetic operation
+                    auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
+                    op.symbol = symbols.front();
+                }
+            }
         }
 
         if ( !found ) {
+            // Frist check if the symbol was just dropped earlier
+            for ( auto itr = c_ctx.functions[func].drop_list.rbegin(); itr != c_ctx.functions[func].drop_list.rend();
+                  itr++ ) {
+                if ( itr->first == name_chain->front().name ) {
+                    w_ctx.print_msg<MessageType::err_var_not_living>( MessageInfo( *this, 0, FmtStr::Color::Red ),
+                                                                      { MessageInfo( *itr->second, 1 ) } );
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if ( !found ) {
+            // Symbol actually not found
             w_ctx.print_msg<MessageType::err_symbol_not_found>(
                 MessageInfo( *this, 0, FmtStr::Color::Red ), std::vector<MessageInfo>(), symbol_name, token.content );
         }

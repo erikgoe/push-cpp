@@ -41,4 +41,4 @@ void remove_from_local_living_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImpl
                                     MirVarId variable );
 
 // Analyses the function signature and updates the type if necessary
-void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function);
+void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function );
