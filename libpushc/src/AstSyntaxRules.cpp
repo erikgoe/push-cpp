@@ -84,6 +84,8 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
 
     std::map<SyntaxType, ExprType> ast_type_map = {
         { SyntaxType::op, ExprType::op },
+        { SyntaxType::self, ExprType::self },
+        { SyntaxType::self_type, ExprType::self_type },
         { SyntaxType::scope_access, ExprType::scope_access },
         { SyntaxType::module_spec, ExprType::module },
         { SyntaxType::member_access, ExprType::member_access },

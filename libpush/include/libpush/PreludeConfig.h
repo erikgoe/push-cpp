@@ -69,6 +69,8 @@ struct Operator {
 // Defines available types of syntaxes
 enum class SyntaxType {
     op, // general operator syntax
+    self,
+    self_type,
     scope_access,
     module_spec,
     member_access,

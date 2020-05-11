@@ -68,6 +68,8 @@ enum class MessageType {
     err_double_ref_op,
     err_mut_ref_wrong_order,
     err_method_is_a_free_function,
+    err_self_in_free_function,
+    err_self_not_first_parameter,
 
     warning = 5000,
 
@@ -196,6 +198,10 @@ MESSAGE_DEFINITION( MessageType::err_mut_ref_wrong_order, MessageClass::Error, "
                     "Mutable reference in wrong order specified", "swap the '&' and the 'mut'" );
 MESSAGE_DEFINITION( MessageType::err_method_is_a_free_function, MessageClass::Error, "C",
                     "Tried to access a free function as a method", "at this call", "function defined here" );
+MESSAGE_DEFINITION( MessageType::err_self_in_free_function, MessageClass::Error, "C",
+                    "Self may not be used in a non-member function", "can not deduce type" );
+MESSAGE_DEFINITION( MessageType::err_self_not_first_parameter, MessageClass::Error, "C",
+                    "Self may only be the first parameter", "not the first parameter" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

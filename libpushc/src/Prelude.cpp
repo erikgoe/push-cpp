@@ -538,6 +538,10 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
 
 
                 CONSUME_COMMA( token );
+            } else if ( syntax_type_str == "SELF" ) {
+                syntax_type = SyntaxType::self;
+            } else if ( syntax_type_str == "SELF_TYPE" ) {
+                syntax_type = SyntaxType::self_type;
             } else if ( syntax_type_str == "SCOPE_ACCESS" ) {
                 syntax_type = SyntaxType::scope_access;
             } else if ( syntax_type_str == "MODULE_SPECIFIER" ) {
@@ -666,6 +670,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 conf->drop_fn = token.content;
             }
         } else if ( mci == "SPECIAL_TYPE" ) {
+            // TODO delete this mci
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {
                 create_prelude_error_msg( w_ctx, token );

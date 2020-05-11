@@ -238,6 +238,8 @@ struct CrateCtx {
 
     std::vector<std::vector<MirVarId>> curr_living_vars;
     std::vector<std::map<String, std::vector<MirVarId>>> curr_name_mapping; // mappes names to stacks of shaddowned vars
+    MirVarId curr_self_var = 0; // describes the current self parameter var
+    TypeId curr_self_type = 0; // describes which type is the current object type
 
     CrateCtx();
 };

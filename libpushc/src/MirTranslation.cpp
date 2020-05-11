@@ -177,39 +177,91 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
             for ( auto &entry : paren_expr.children ) {
                 auto &new_parameter = symbol.identifier.parameters.emplace_back();
                 auto *parameter_symbol = &entry;
+
                 if ( parameter_symbol->type == ExprType::typed_op ) {
                     parameter_symbol = &entry.named[AstChild::left_expr];
                     auto &type_symbol = entry.named[AstChild::right_expr];
-                    auto types = find_local_symbol_by_identifier_chain( c_ctx, w_ctx,
-                                                                        type_symbol.get_symbol_chain( c_ctx, w_ctx ) );
 
-                    if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, type_symbol ) )
-                        continue;
+                    if ( type_symbol.type == ExprType::self_type ) {
+                        // Self type
 
-                    new_parameter.type = c_ctx.symbol_graph[types.front()].value;
+                        // Check if "self" is allowed
+                        if ( c_ctx.symbol_graph[symbol.parent].type != c_ctx.struct_type ) {
+                            // Is not in an impl
+                            w_ctx.print_msg<MessageType::err_self_in_free_function>(
+                                MessageInfo( *symbol.original_expr.front(), 0, FmtStr::Color::Red ) );
+                        }
+
+                        new_parameter.type = c_ctx.symbol_graph[symbol.parent].value;
+                    } else {
+                        // Normal type
+                        auto types = find_local_symbol_by_identifier_chain(
+                            c_ctx, w_ctx, type_symbol.get_symbol_chain( c_ctx, w_ctx ) );
+
+                        if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, type_symbol ) )
+                            continue;
+
+                        new_parameter.type = c_ctx.symbol_graph[types.front()].value;
+                    }
+
                     new_parameter.ref = type_symbol.has_prop( ExprProperty::ref );
                     new_parameter.mut = type_symbol.has_prop( ExprProperty::mut );
                 }
 
-                auto symbol_chain = parameter_symbol->get_symbol_chain( c_ctx, w_ctx );
-                if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, *parameter_symbol ) )
-                    continue;
-                new_parameter.name = symbol_chain->front().name;
+                if ( parameter_symbol->type == ExprType::self ) {
+                    // Self parameter
+
+                    // Check if "self" is allowed
+                    if ( c_ctx.symbol_graph[symbol.parent].type != c_ctx.struct_type ) {
+                        // Is not in an impl
+                        w_ctx.print_msg<MessageType::err_self_in_free_function>(
+                            MessageInfo( entry, 0, FmtStr::Color::Red ) );
+                    }
+
+                    // Check if it's the first parameter
+                    if ( symbol.identifier.parameters.size() != 1 ) {
+                        w_ctx.print_msg<MessageType::err_self_not_first_parameter>(
+                            MessageInfo( entry, 0, FmtStr::Color::Red ) );
+                    }
+
+                    new_parameter.type = c_ctx.symbol_graph[symbol.parent].value;
+                } else {
+                    // Normal parameter
+                    auto symbol_chain = parameter_symbol->get_symbol_chain( c_ctx, w_ctx );
+                    if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, *parameter_symbol ) )
+                        continue;
+                    new_parameter.name = symbol_chain->front().name;
+                }
             }
         }
 
         // Return value
         if ( expr.named.find( AstChild::return_type ) != expr.named.end() ) {
             auto return_symbol = expr.named[AstChild::return_type];
-            auto return_symbols =
-                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, return_symbol.get_symbol_chain( c_ctx, w_ctx ) );
 
-            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, return_symbols, return_symbol ) )
-                return;
+            if ( return_symbol.type == ExprType::self_type ) {
+                // Self type
 
-            symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].value;
-            symbol.identifier.eval_type.ref = return_symbol.has_prop( ExprProperty::ref );
-            symbol.identifier.eval_type.mut = return_symbol.has_prop( ExprProperty::mut );
+                // Check if "self" is allowed
+                if ( c_ctx.symbol_graph[symbol.parent].type != c_ctx.struct_type ) {
+                    // Is not in an impl
+                    w_ctx.print_msg<MessageType::err_self_in_free_function>(
+                        MessageInfo( *symbol.original_expr.front(), 0, FmtStr::Color::Red ) );
+                }
+
+                symbol.identifier.eval_type.type = c_ctx.symbol_graph[symbol.parent].value;
+            } else {
+                // Normal return type
+                auto return_symbols = find_local_symbol_by_identifier_chain(
+                    c_ctx, w_ctx, return_symbol.get_symbol_chain( c_ctx, w_ctx ) );
+
+                if ( !expect_exactly_one_symbol( c_ctx, w_ctx, return_symbols, return_symbol ) )
+                    return;
+
+                symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].value;
+                symbol.identifier.eval_type.ref = return_symbol.has_prop( ExprProperty::ref );
+                symbol.identifier.eval_type.mut = return_symbol.has_prop( ExprProperty::mut );
+            }
         }
     }
 }
@@ -261,6 +313,18 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
         c_ctx.curr_name_mapping.back()[function.vars[id].name].push_back( id );
         c_ctx.curr_living_vars.back().push_back( id );
+    }
+
+    // Self parameter
+    if ( !paren_expr.children.empty() &&
+         ( paren_expr.children.front().type == ExprType::self ||
+           ( paren_expr.children.front().type == ExprType::typed_op &&
+             paren_expr.children.front().named[AstChild::left_expr].type == ExprType::self ) ) ) {
+        c_ctx.curr_self_var = 1; // per convention
+        c_ctx.curr_self_type = c_ctx.symbol_graph[symbol.parent].value;
+    } else {
+        c_ctx.curr_self_var = 0;
+        c_ctx.curr_self_type = 0;
     }
 
     // Parse body

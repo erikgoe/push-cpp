@@ -66,6 +66,9 @@ enum class ExprType {
     itr_loop,
     match,
 
+    self,
+    self_type,
+    
     structure,
     trait,
     implementation,

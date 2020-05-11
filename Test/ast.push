@@ -10,8 +10,8 @@ trait op::Add {
 }
 
 impl op::Add for A {
-    add(self, other:u32) {
-        //self.foo + other.foo
+    add(self, other:Self) {
+        self.foo + other.foo
     }
 }
 

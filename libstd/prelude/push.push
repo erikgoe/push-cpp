@@ -70,6 +70,9 @@ define_mci_rule( NEW_LEVEL, STRING, sw, double_quotes double_quotes, prefix "w",
 define_mci_rule( NEW_LEVEL, NORMAL, n, overlay b ln lr bd lnd lrd c sb s sb sw sr srw ); // normal code (root)
 //define_mci_rule( NEW_LEVEL, NORMAL, v, "\\(" ")" ); // value extraction in strings
 
+// Special independent keywords
+define_mci_rule( SYNTAX, SELF, 1, ltr, single_list, "self" ); // the self object in impls
+define_mci_rule( SYNTAX, SELF_TYPE, 1, ltr, single_list, "Self" ); // the self type in impls
 
 // Special basic literals
 //define_mci_rule( SYNTAX, OPERATOR, std::literal::bin_integer, 1, ltr, double_list, "0b", integer -> right ); // binary radix
@@ -220,8 +223,6 @@ define_mci_rule( SPECIAL_TYPE, TYPE, "type" ); // "type" type
 define_mci_rule( SPECIAL_TYPE, UNIT, "()" ); // unit-type
 define_mci_rule( SPECIAL_TYPE, UNKNOWN, "_" ); // unknown type
 define_mci_rule( SPECIAL_TYPE, IDENTIFIER, "ident" ); // "identifier" type
-define_mci_rule( SPECIAL_TYPE, SELF_TYPE, "Self" ); // "Self" type
-define_mci_rule( SPECIAL_TYPE, SELF, "self" ); // "self" symbol
 
 define_mci_rule( TYPE_MEMORY_BLOB, "bool", 1 );
 define_mci_rule( TYPE_MEMORY_BLOB, "char", 1 );

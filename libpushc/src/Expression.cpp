@@ -185,6 +185,16 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::anonymous_scope );
         break;
 
+    case ExprType::self:
+        props.insert( ExprProperty::operand );
+        props.insert( ExprProperty::symbol_like );
+        break;
+    case ExprType::self_type:
+        props.insert( ExprProperty::operand );
+        props.insert( ExprProperty::symbol_like );
+        break;
+
+
     case ExprType::structure:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
@@ -625,7 +635,8 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
             // Check parameter syntax (exclude func_call from check)
             for ( auto &p : named[AstChild::parameters].children ) {
                 if ( p.type == ExprType::typed_op ) {
-                    if ( !p.named[AstChild::left_expr].has_prop( ExprProperty::symbol ) ) {
+                    if ( !p.named[AstChild::left_expr].has_prop( ExprProperty::symbol ) &&
+                         p.named[AstChild::left_expr].type != ExprType::self ) {
                         w_ctx.print_msg<MessageType::err_expected_symbol>(
                             MessageInfo( p.named[AstChild::left_expr], 0, FmtStr::Color::Red ) );
                         return false;
@@ -635,7 +646,7 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
                             MessageInfo( p.named[AstChild::right_expr], 0, FmtStr::Color::Red ) );
                         return false;
                     }
-                } else if ( !p.has_prop( ExprProperty::symbol ) ) {
+                } else if ( !p.has_prop( ExprProperty::symbol ) && p.type != ExprType::self ) {
                     w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( p, 0, FmtStr::Color::Red ) );
                     return false;
                 }
@@ -1054,8 +1065,6 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
             if ( !symbols.empty() ) {
                 if ( expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *this ) ) {
-                    break; // Should be the unit symbol
-
                     ret = create_variable( c_ctx, w_ctx, func, this );
                     auto &result_var = c_ctx.functions[func].vars[ret];
                     result_var.type = MirVariable::Type::symbol;
@@ -1162,6 +1171,28 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         break;
     }
+    case ExprType::self: {
+        if ( c_ctx.curr_self_var == 0 ) {
+            w_ctx.print_msg<MessageType::err_self_in_free_function>( MessageInfo( *this, 0, FmtStr::Color::Red ) );
+        }
+        ret = c_ctx.curr_self_var;
+        break;
+    }
+    case ExprType::self_type: {
+        if ( c_ctx.curr_self_type == 0 ) {
+            w_ctx.print_msg<MessageType::err_self_in_free_function>( MessageInfo( *this, 0, FmtStr::Color::Red ) );
+        }
+
+        ret = create_variable( c_ctx, w_ctx, func, this );
+        auto &result_var = c_ctx.functions[func].vars[ret];
+        result_var.type = MirVariable::Type::symbol;
+        result_var.value_type = c_ctx.curr_self_type;
+
+        // Create cosmetic operation
+        auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
+        op.symbol = c_ctx.type_table[c_ctx.curr_self_type].symbol;
+        break;
+    }
     case ExprType::member_access: {
         auto obj = named[AstChild::base].parse_mir( c_ctx, w_ctx, func );
         if ( obj == 0 ) {
@@ -1231,8 +1262,9 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
             // First check if its a method and not a function
             auto &identifier = c_ctx.symbol_graph[methods.front()].identifier;
-            if ( identifier.parameters.empty() ||
-                 identifier.parameters.front().name != "self" ) { // TODO move into prelude
+            if ( identifier.parameters.empty() || c_ctx.symbol_graph[c_ctx.symbol_graph[methods.front()].parent].type !=
+                                                      c_ctx.struct_type ) { // TODO this check may be weak (rather check
+                                                                            // if the parameter is actually "self")
                 w_ctx.print_msg<MessageType::err_method_is_a_free_function>(
                     MessageInfo( *this, 0, FmtStr::Color::Red ),
                     { MessageInfo( *c_ctx.symbol_graph[methods.front()].original_expr.front(), 1 ) } );
@@ -1425,6 +1457,11 @@ String AstNode::get_debug_repr() const {
     case ExprType::match:
         return "MATCH(" + named.at( AstChild::select ).get_debug_repr() + " WITH " + children.front().get_debug_repr() +
                ")" + add_debug_data;
+
+    case ExprType::self:
+        return "SELF" + add_debug_data;
+    case ExprType::self_type:
+        return "SELF_TYPE" + add_debug_data;
 
     case ExprType::structure:
         return "STRUCT " +
