@@ -81,7 +81,8 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
         { "do { function(c, d); } until true;",
           "GLOBAL { SC POST_LOOP(FALSE: BLOB_LITERAL() DO BLOCK { SC FUNC_HEAD(TUPLE( SYM(), SYM(), ) SYM()); } ); }" },
         { "function { let var[4] = [0,1,2,3]; var[2] } ",
-          "GLOBAL { FUNC(SYM() BLOCK { SC BINDING(OP(ARR_ACC SYM()[ARRAY[ BLOB_LITERAL() ]] = ARRAY[ COMMA( BLOB_LITERAL(), "
+          "GLOBAL { FUNC(SYM() BLOCK { SC BINDING(OP(ARR_ACC SYM()[ARRAY[ BLOB_LITERAL() ]] = ARRAY[ COMMA( "
+          "BLOB_LITERAL(), "
           "BLOB_LITERAL(), BLOB_LITERAL(), BLOB_LITERAL(), ) ])); ARR_ACC SYM()[ARRAY[ BLOB_LITERAL() ]] }) }" },
         { "function { if true { let val = 4; } else { let val = 3; } if true  let val = 4; if false let val = 6; else "
           "let val = 5; let var = (if true 4; else 5;); if true let v = 3; else let v = 2; }",
@@ -91,6 +92,8 @@ TEST_CASE( "Ast parser", "[syntax_parser]" ) {
           "= BLOB_LITERAL())); ) SC BINDING(OP(SYM() = TERM( IF(BLOB_LITERAL() THEN SC BLOB_LITERAL(); ELSE SC "
           "BLOB_LITERAL(); ) ))); IF(BLOB_LITERAL() THEN SC BINDING(OP(SYM() = BLOB_LITERAL())); ELSE SC "
           "BINDING(OP(SYM() = BLOB_LITERAL())); ) }) }" },
+        { "impl A { fn(self, x:Self) { self } }",
+          "GLOBAL { IMPL SYM() BLOCK { FUNC(TUPLE( SELF, TYPED(SYM():SELF_TYPE), ) SYM() BLOCK { SELF }) } }" },
         { "let a:struct = { name = \"john\", age=21 }; \n // Global struct\n struct A { val1:int, val2:float } ",
           "GLOBAL { SC BINDING(OP(TYPED(SYM():STRUCT <anonymous> <undefined>) = SET { OP(SYM() = STR \"john\"), "
           "OP(SYM() = BLOB_LITERAL()), })); STRUCT SYM() SET { TYPED(SYM():SYM()), TYPED(SYM():SYM()), } }" },
