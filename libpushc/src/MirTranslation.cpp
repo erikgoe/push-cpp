@@ -390,6 +390,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "call";
                 else if ( op.type == MirEntry::Type::member )
                     str = "member";
+                else if ( op.type == MirEntry::Type::merge )
+                    str = "merge";
                 else if ( op.type == MirEntry::Type::label )
                     str = "label";
                 else if ( op.type == MirEntry::Type::cond_jmp_z )

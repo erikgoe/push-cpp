@@ -68,6 +68,7 @@ enum class ExprType {
 
     self,
     self_type,
+    struct_initializer,
     
     structure,
     trait,

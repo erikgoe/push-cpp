@@ -193,7 +193,12 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::symbol_like );
         break;
-
+    case ExprType::struct_initializer:
+        props.insert( ExprProperty::operand );
+        props.insert( ExprProperty::completed );
+        props.insert( ExprProperty::separable );
+        props.insert( ExprProperty::anonymous_scope );
+        break;
 
     case ExprType::structure:
         props.insert( ExprProperty::operand );
@@ -358,6 +363,9 @@ bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNod
                 return false;
         }
     }
+
+    // Reset context
+    c_ctx.expect_operand = true;
 
     return result;
 }
@@ -720,7 +728,9 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
     }
 
     // Transformations based on type
-    if ( type == ExprType::single_completed ) {
+    if ( type == ExprType::decl_scope || type == ExprType::imp_scope ) {
+        c_ctx.expect_operand = false; // allow
+    } else if ( type == ExprType::single_completed ) {
         if ( parent.has_prop( ExprProperty::decl_parent ) && parent.type != ExprType::decl_scope ) {
             type = ExprType::decl_scope;
             props.clear();
@@ -773,6 +783,14 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
     } else if ( type == ExprType::func || type == ExprType::pre_loop || type == ExprType::post_loop ||
                 type == ExprType::inf_loop || type == ExprType::itr_loop || type == ExprType::static_statement ||
                 type == ExprType::unsafe ) {
+        if ( type == ExprType::func && c_ctx.expect_operand && named.find( AstChild::parameters ) == named.end() &&
+             ( children.front().type == ExprType::set || children.front().children.size() <= 1 ) ) {
+            // Should be interpreted as struct initializer TODO this should be configurable using the prelude
+            type = ExprType::struct_initializer;
+            props.clear();
+            generate_new_props();
+            return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+        }
         if ( children.front().type == ExprType::single_completed ) {
             // resolve single completed
             children.front().type = ExprType::imp_scope;
@@ -794,6 +812,13 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
         }
     } else if ( type == ExprType::match ) {
         if ( children.front().type == ExprType::single_completed || children.front().type == ExprType::block ) {
+            // resolve single completed
+            children.front().type = ExprType::set;
+            children.front().props.clear();
+            children.front().generate_new_props();
+        }
+    } else if ( type == ExprType::struct_initializer ) {
+        if ( children.front().type != ExprType::set ) {
             // resolve single completed
             children.front().type = ExprType::set;
             children.front().props.clear();
@@ -1193,6 +1218,62 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         op.symbol = c_ctx.type_table[c_ctx.curr_self_type].symbol;
         break;
     }
+    case ExprType::struct_initializer: {
+        auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
+        if ( struct_var != 0 ) {
+            // Symbol found
+            auto &type = c_ctx.type_table[c_ctx.functions[func].vars[struct_var].value_type];
+            if ( c_ctx.symbol_graph[type.symbol].type != c_ctx.struct_type ) {
+                // Is not a struct
+                w_ctx.print_msg<MessageType::err_instantiate_non_struct>(
+                    MessageInfo( named[AstChild::member], 0, FmtStr::Color::Red ),
+                    { MessageInfo( *c_ctx.symbol_graph[type.symbol].original_expr.front(), 1 ) } );
+                break;
+            }
+
+            // Create variable TODO handle mutability
+            ret = create_variable( c_ctx, w_ctx, func, this );
+            auto &result_var = c_ctx.functions[func].vars[ret];
+            result_var.type = MirVariable::Type::rvalue;
+            result_var.value_type = c_ctx.functions[func].vars[struct_var].value_type;
+
+            // Check member count
+            if ( type.members.size() != children.front().children.size() ) {
+                w_ctx.print_msg<MessageType::err_wrong_struct_initializer_member_count>(
+                    MessageInfo( children.front(), 0, FmtStr::Color::Red ),
+                    { MessageInfo( *c_ctx.symbol_graph[type.symbol].original_expr.front(), 1 ) }, type.members.size(),
+                    children.front().children.size() );
+                break;
+            }
+
+            // Crate member values
+            std::vector<MirVarId> vars;
+            vars.reserve( type.members.size() );
+            for ( size_t i = 0; i < type.members.size(); i++ ) {
+                auto &entry = children.front().children[i];
+                auto var = entry.parse_mir( c_ctx, w_ctx, func );
+                vars.push_back( var );
+
+                // Add type check operation TODO handle if struct member is not already typed
+                auto &op = create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::type, var, {} );
+                op.symbol = type.members[i].type;
+            }
+
+            // Merge values into type
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::merge, ret, vars );
+
+            // Set type operation (should be after the merge)
+            auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
+            op.symbol = c_ctx.type_table[result_var.value_type].symbol;
+
+            // Drop vars if necessary
+            for ( auto var_itr = vars.rbegin(); var_itr != vars.rend(); var_itr++ ) {
+                drop_variable( c_ctx, w_ctx, func, children.front(), *var_itr );
+            }
+        }
+
+        break;
+    }
     case ExprType::member_access: {
         auto obj = named[AstChild::base].parse_mir( c_ctx, w_ctx, func );
         if ( obj == 0 ) {
@@ -1462,6 +1543,9 @@ String AstNode::get_debug_repr() const {
         return "SELF" + add_debug_data;
     case ExprType::self_type:
         return "SELF_TYPE" + add_debug_data;
+    case ExprType::struct_initializer:
+        return "STRUCT_INIT(" + named.at( AstChild::symbol ).get_debug_repr() + " " +
+               children.front().get_debug_repr() + ")" + add_debug_data;
 
     case ExprType::structure:
         return "STRUCT " +
