@@ -780,9 +780,9 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
             return basic_semantic_check( c_ctx, w_ctx ) && // repeat the parameter check
                    first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
         }
-    } else if ( type == ExprType::func || type == ExprType::pre_loop || type == ExprType::post_loop ||
-                type == ExprType::inf_loop || type == ExprType::itr_loop || type == ExprType::static_statement ||
-                type == ExprType::unsafe ) {
+    } else if ( type == ExprType::func || type == ExprType::if_cond || type == ExprType::if_else ||
+                type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
+                type == ExprType::itr_loop || type == ExprType::static_statement || type == ExprType::unsafe ) {
         if ( type == ExprType::func && c_ctx.expect_operand && named.find( AstChild::parameters ) == named.end() &&
              ( children.front().type == ExprType::set || children.front().children.size() <= 1 ) ) {
             // Should be interpreted as struct initializer TODO this should be configurable using the prelude
@@ -790,22 +790,28 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
             props.clear();
             generate_new_props();
             return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+        } else {
+            if ( children.front().type == ExprType::set ) {
+                w_ctx.print_msg<MessageType::err_comma_list_not_allowed>(
+                    MessageInfo( children.front(), 0, FmtStr::Color::Red ) );
+                return false;
+            }
+            if ( type == ExprType::if_else && children[1].type == ExprType::set ) {
+                w_ctx.print_msg<MessageType::err_comma_list_not_allowed>(
+                    MessageInfo( children[1], 0, FmtStr::Color::Red ) );
+                return false;
+            }
         }
+
+
         if ( children.front().type == ExprType::single_completed ) {
-            // resolve single completed
+            // resolve single completed and set
             children.front().type = ExprType::imp_scope;
             children.front().props.clear();
             children.front().generate_new_props();
         }
-    } else if ( type == ExprType::if_cond || type == ExprType::if_else ) {
-        if ( children[0].type == ExprType::single_completed ) {
-            // resolve single completed
-            children[0].type = ExprType::imp_scope;
-            children[0].props.clear();
-            children[0].generate_new_props();
-        }
         if ( type == ExprType::if_else && children[1].type == ExprType::single_completed ) {
-            // resolve single completed
+            // resolve single completed and set
             children[1].type = ExprType::imp_scope;
             children[1].props.clear();
             children[1].generate_new_props();
