@@ -897,21 +897,21 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 
             // Handle Members
             for ( auto &expr : children.front().children ) {
-                auto &symbol = expr;
+                auto *symbol = &expr;
 
                 // Select symbol
                 if ( expr.type == ExprType::typed_op ) {
-                    symbol = symbol.named[AstChild::left_expr];
+                    symbol = &symbol->named[AstChild::left_expr];
                 } else if ( !expr.has_prop( ExprProperty::symbol ) ) {
                     LOG_ERR( "Struct member is not a symbol" );
                     return false;
                 }
 
                 // Check if scope is right
-                auto identifier_list = symbol.get_symbol_chain( c_ctx, w_ctx );
+                auto identifier_list = symbol->get_symbol_chain( c_ctx, w_ctx );
                 if ( identifier_list->size() != 1 ) {
                     w_ctx.print_msg<MessageType::err_member_in_invalid_scope>(
-                        MessageInfo( symbol, 0, FmtStr::Color::Red ) );
+                        MessageInfo( *symbol, 0, FmtStr::Color::Red ) );
                     return false;
                 }
 
@@ -925,14 +925,14 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                             notes.push_back( MessageInfo( *members[idx].original_expr.front(), 1 ) );
                     }
                     w_ctx.print_msg<MessageType::err_member_symbol_is_ambiguous>(
-                        MessageInfo( symbol, 0, FmtStr::Color::Red ), notes );
+                        MessageInfo( *symbol, 0, FmtStr::Color::Red ), notes );
                     return false;
                 }
 
                 // Create member
                 auto &new_member = create_new_member_symbol( c_ctx, w_ctx, identifier_list->front(), new_id );
                 new_member.original_expr.push_back( &expr );
-                new_member.pub = symbol.has_prop( ExprProperty::pub );
+                new_member.pub = symbol->has_prop( ExprProperty::pub );
             }
         } else if ( type == ExprType::trait ) {
             c_ctx.symbol_graph[new_id].type = c_ctx.trait_type;
@@ -1012,6 +1012,27 @@ SymbolId AstNode::get_left_symbol_id() {
     } else {
         LOG_ERR( "Symbol has no left sub-symbol" );
         return 0;
+    }
+}
+
+void AstNode::find_types( CrateCtx &c_ctx, Worker &w_ctx ) {
+    if ( type == ExprType::structure ) {
+        for ( auto &member : children.front().children ) {
+            // Search for the type
+            if ( member.type == ExprType::typed_op ) {
+                auto type_si = member.named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx );
+                auto type_symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type_si );
+                if ( !expect_exactly_one_symbol( c_ctx, w_ctx, type_symbols, member ) )
+                    return;
+
+                auto symbol_si = member.named[AstChild::left_expr].get_symbol_chain( c_ctx, w_ctx )->front();
+                auto this_symbol_id = named[AstChild::symbol].get_symbol_id();
+                auto possible_members = find_member_symbol_by_identifier( c_ctx, w_ctx, symbol_si, this_symbol_id );
+
+                c_ctx.type_table[c_ctx.symbol_graph[this_symbol_id].value].members[possible_members.front()].type =
+                    type_symbols.front();
+            }
+        }
     }
 }
 

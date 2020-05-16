@@ -69,7 +69,7 @@ enum class ExprType {
     self,
     self_type,
     struct_initializer,
-    
+
     structure,
     trait,
     implementation,
@@ -231,6 +231,9 @@ struct AstNode {
     SymbolId get_left_symbol_id();
 
     // Mir methods
+
+    // Called on structs and alike to resolve the type symbols (which requires all symbols to be discovered)
+    void find_types( CrateCtx &c_ctx, Worker &w_ctx );
 
     // Parses the expr and appends the generated instructions to the function. Returns the result variable
     MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func );

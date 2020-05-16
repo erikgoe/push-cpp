@@ -340,6 +340,16 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) {
         auto c_ctx = w_ctx.do_query( get_ast )->jobs.back()->to<sptr<CrateCtx>>();
 
+        // Prepare types in structs
+        for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
+            if ( !c_ctx->symbol_graph[i].original_expr.empty() &&
+                 c_ctx->symbol_graph[i].original_expr.front()->type == ExprType::structure ) {
+                for ( auto &exprs : c_ctx->symbol_graph[i].original_expr ) {
+                    exprs->find_types( *c_ctx, w_ctx );
+                }
+            }
+        }
+
         // Generate the Mir function bodies
         for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
             if ( c_ctx->symbol_graph[i].original_expr.size() == 1 &&
