@@ -1087,7 +1087,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     }
     case ExprType::numeric_literal: {
         auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
-        op.data = literal_number;
+        op.data = store_in_literal( c_ctx, literal_number );
         c_ctx.functions[func].vars[op.ret].value_type = literal_type;
         c_ctx.functions[func].vars[op.ret].type = MirVariable::Type::rvalue;
 

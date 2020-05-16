@@ -421,8 +421,11 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
                 str += get_var_name( op.ret );
 
-                if ( op.type == MirEntry::Type::literal )
-                    str += " 0d" + to_string( op.data );
+                if ( op.type == MirEntry::Type::literal ) {
+                    Number tmp_lit = 0; // literals should not be smaller than this
+                    load_from_literal( *c_ctx, op.data, tmp_lit );
+                    str += " 0d" + to_string( tmp_lit );
+                }
 
                 for ( auto &p : op.params ) {
                     str += get_var_name( p );
