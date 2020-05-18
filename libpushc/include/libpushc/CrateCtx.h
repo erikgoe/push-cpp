@@ -240,8 +240,6 @@ struct CrateCtx {
     SymbolId current_scope = ROOT_SYMBOL; // new symbols are created on top of this one
     std::vector<std::vector<SymbolSubstitution>> current_substitutions; // Substitution rules for each new scope
 
-    bool expect_operand = true; // used to detect struct initializers in the first_transformation pass
-
     std::vector<std::vector<MirVarId>> curr_living_vars;
     std::vector<std::map<String, std::vector<MirVarId>>> curr_name_mapping; // mappes names to stacks of shaddowned vars
     MirVarId curr_self_var = 0; // describes the current self parameter var

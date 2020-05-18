@@ -203,7 +203,7 @@ struct AstNode {
 
     // This method is used to minimize the needed code to implement a visitor pattern using templates (see
     // post_visit_impl()). Returns false if the pass failed
-    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNode &parent );
+    bool visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNode &parent, bool expect_operand );
 
     // Creates a symbol chain from this expression which contains symbols or scoped symbols
     sptr<std::vector<SymbolIdentifier>> get_symbol_chain( CrateCtx &c_ctx, Worker &w_ctx );
@@ -212,7 +212,7 @@ struct AstNode {
     bool basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx );
 
     // Does basic transformations, which don't require symbol information
-    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &parent );
+    bool first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &parent, bool &expect_operand );
 
     // Prepares the symbol discovery for this expr
     bool symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx );

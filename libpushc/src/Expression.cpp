@@ -323,13 +323,13 @@ void AstNode::split_prepend_recursively( std::vector<AstNode> &rev_list, std::ve
     }
 }
 
-bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNode &parent ) {
+bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNode &parent, bool expect_operand ) {
     // Visit this
     if ( vpt == VisitorPassType::BASIC_SEMANTIC_CHECK ) {
         if ( !basic_semantic_check( c_ctx, w_ctx ) )
             return false;
     } else if ( vpt == VisitorPassType::FIRST_TRANSFORMATION ) {
-        if ( !first_transformation( c_ctx, w_ctx, parent ) )
+        if ( !first_transformation( c_ctx, w_ctx, parent, expect_operand ) )
             return false;
     } else if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
         if ( !symbol_discovery( c_ctx, w_ctx ) )
@@ -338,21 +338,21 @@ bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNod
 
     bool result = true;
     for ( auto &ss : static_statements ) {
-        if ( !ss.visit( c_ctx, w_ctx, vpt, *this ) )
+        if ( !ss.visit( c_ctx, w_ctx, vpt, *this, expect_operand ) )
             result = false;
     }
     for ( auto &a : annotations ) {
-        if ( !a.visit( c_ctx, w_ctx, vpt, *this ) )
+        if ( !a.visit( c_ctx, w_ctx, vpt, *this, expect_operand ) )
             result = false;
     }
 
     // Visit sub-elements
     for ( auto &node : named ) {
-        if ( !node.second.visit( c_ctx, w_ctx, vpt, *this ) )
+        if ( !node.second.visit( c_ctx, w_ctx, vpt, *this, expect_operand ) )
             result = false;
     }
     for ( auto &node : children ) {
-        if ( !node.visit( c_ctx, w_ctx, vpt, *this ) )
+        if ( !node.visit( c_ctx, w_ctx, vpt, *this, expect_operand ) )
             result = false;
     }
 
@@ -363,9 +363,6 @@ bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNod
                 return false;
         }
     }
-
-    // Reset context
-    c_ctx.expect_operand = true;
 
     return result;
 }
@@ -685,7 +682,7 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
     return true;
 }
 
-bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &parent ) {
+bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &parent, bool &expect_operand ) {
     // Transformations based on properties
     if ( has_prop( ExprProperty::braces ) ) {
         std::vector<AstNode> annotation_list;
@@ -728,25 +725,23 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
     }
 
     // Transformations based on type
-    if ( type == ExprType::decl_scope || type == ExprType::imp_scope ) {
-        c_ctx.expect_operand = false; // allow
-    } else if ( type == ExprType::single_completed ) {
+    if ( type == ExprType::single_completed ) {
         if ( parent.has_prop( ExprProperty::decl_parent ) && parent.type != ExprType::decl_scope ) {
             type = ExprType::decl_scope;
             props.clear();
             generate_new_props();
-            return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+            return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
         }
 
         auto tmp = children.front();
         *this = tmp;
-        return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+        return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
     } else if ( type == ExprType::block ) {
         if ( parent.has_prop( ExprProperty::decl_parent ) ) {
             type = ExprType::decl_scope;
             props.clear();
             generate_new_props();
-            return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+            return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
         } else {
             // Insert implicit return type
             if ( children.empty() || children.back().type == ExprType::single_completed ) {
@@ -758,38 +753,38 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
             type = ExprType::imp_scope;
             props.clear();
             generate_new_props();
-            return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+            return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
         }
     } else if ( type == ExprType::set ) {
         if ( parent.has_prop( ExprProperty::decl_parent ) ) {
             type = ExprType::decl_scope;
             props.clear();
             generate_new_props();
-            return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+            return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
         }
     } else if ( type == ExprType::func_head ) {
         if ( !parent.has_prop( ExprProperty::decl_parent ) ) {
             type = ExprType::func_call;
             props.clear();
             generate_new_props();
-            return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+            return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
         } else {
             type = ExprType::func_decl;
             props.clear();
             generate_new_props();
             return basic_semantic_check( c_ctx, w_ctx ) && // repeat the parameter check
-                   first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+                   first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
         }
     } else if ( type == ExprType::func || type == ExprType::if_cond || type == ExprType::if_else ||
                 type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
                 type == ExprType::itr_loop || type == ExprType::static_statement || type == ExprType::unsafe ) {
-        if ( type == ExprType::func && c_ctx.expect_operand && named.find( AstChild::parameters ) == named.end() &&
+        if ( type == ExprType::func && expect_operand && named.find( AstChild::parameters ) == named.end() &&
              ( children.front().type == ExprType::set || children.front().children.size() <= 1 ) ) {
             // Should be interpreted as struct initializer TODO this should be configurable using the prelude
             type = ExprType::struct_initializer;
             props.clear();
             generate_new_props();
-            return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+            return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
         } else {
             if ( children.front().type == ExprType::set ) {
                 w_ctx.print_msg<MessageType::err_comma_list_not_allowed>(
@@ -849,12 +844,12 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
             tmp.props.insert( ExprProperty::mut );
         tmp.props.insert( ExprProperty::ref );
         *this = tmp;
-        return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+        return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
     } else if ( type == ExprType::mutable_attr ) {
         auto tmp = named[AstChild::symbol_like];
         *this = tmp;
         props.insert( ExprProperty::mut );
-        return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+        return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
     } else if ( type == ExprType::public_attr ) {
         if ( parent.type != ExprType::decl_scope ) {
             // public symbols are only allowed in decl scopes
@@ -866,13 +861,21 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
         auto tmp = children.front();
         *this = tmp;
         props.insert( ExprProperty::pub );
-        return first_transformation( c_ctx, w_ctx, parent ); // repeat for new entry
+        return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
     } else if ( type == ExprType::template_postfix ) {
         if ( children.front().type == ExprType::comma_list ) {
             children.insert( children.end(), children.front().children.begin(), children.front().children.end() );
             children.erase( children.begin() );
         }
     }
+
+    // Set contextual expectations
+    if ( type == ExprType::decl_scope || type == ExprType::imp_scope ) {
+        expect_operand = false;
+    } else {
+        expect_operand = true;
+    }
+
     return true;
 }
 
