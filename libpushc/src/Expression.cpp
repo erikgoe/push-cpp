@@ -1226,6 +1226,27 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         break;
     }
+    case ExprType::if_cond: {
+        // Create jump label var
+        auto label = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[label].type = MirVariable::Type::label;
+
+        // Evaluate expr
+        auto cond = named[AstChild::cond].parse_mir( c_ctx, w_ctx, func );
+
+        // Insert conditional jump
+        auto &jmp_op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label, { cond } );
+
+        // Body
+        auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
+        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+
+        // Insert label
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label, {} );
+        drop_variable( c_ctx, w_ctx, func, *this, cond );
+
+        break; // return the unit var
+    }
     case ExprType::self: {
         if ( c_ctx.curr_self_var == 0 ) {
             w_ctx.print_msg<MessageType::err_self_in_free_function>( MessageInfo( *this, 0, FmtStr::Color::Red ) );
