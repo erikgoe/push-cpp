@@ -1104,6 +1104,19 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         ret = c_ctx.functions[func].ops[op_id].ret;
         break;
     }
+    case ExprType::string_literal: {
+        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
+        c_ctx.functions[func].ops[op_id].data = MirLiteral{ false, c_ctx.literal_data.size(), literal_string.size() };
+
+        c_ctx.literal_data.reserve( c_ctx.literal_data.size() + literal_string.size() );
+        c_ctx.literal_data.insert( c_ctx.literal_data.end(), literal_string.begin(), literal_string.end() );
+
+        c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].value_type = literal_type;
+        c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].type = MirVariable::Type::rvalue;
+
+        ret = c_ctx.functions[func].ops[op_id].ret;
+        break;
+    }
     case ExprType::atomic_symbol: {
         auto name_chain = get_symbol_chain( c_ctx, w_ctx );
         if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *this ) )
