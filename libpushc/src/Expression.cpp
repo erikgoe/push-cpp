@@ -1089,12 +1089,12 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         break;
     }
     case ExprType::numeric_literal: {
-        auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
-        op.data = store_in_literal( c_ctx, literal_number );
-        c_ctx.functions[func].vars[op.ret].value_type = literal_type;
-        c_ctx.functions[func].vars[op.ret].type = MirVariable::Type::rvalue;
+        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
+        c_ctx.functions[func].ops[op_id].data = store_in_literal( c_ctx, literal_number );
+        c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].value_type = literal_type;
+        c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].type = MirVariable::Type::rvalue;
 
-        ret = op.ret;
+        ret = c_ctx.functions[func].ops[op_id].ret;
         break;
     }
     case ExprType::atomic_symbol: {
@@ -1127,8 +1127,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                     found = true;
 
                     // Create cosmetic operation
-                    auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
-                    op.symbol = symbols.front();
+                    auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
+                    c_ctx.functions[func].ops[op_id].symbol = symbols.front();
                 }
             }
         }
@@ -1169,7 +1169,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 params.push_back( pe.parse_mir( c_ctx, w_ctx, func ) );
             }
 
-            ret = create_call( c_ctx, w_ctx, func, *this, callee, 0, params ).ret;
+            ret = c_ctx.functions[func].ops[create_call( c_ctx, w_ctx, func, *this, callee, 0, params )].ret;
         }
         break;
     }
@@ -1202,9 +1202,9 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto left_result = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
         auto right_result = named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
 
-        auto &op = create_call( c_ctx, w_ctx, func, *this, calls.front(), 0, { left_result, right_result } );
+        auto op_id = create_call( c_ctx, w_ctx, func, *this, calls.front(), 0, { left_result, right_result } );
 
-        ret = op.ret;
+        ret = c_ctx.functions[func].ops[op_id].ret;
         break;
     }
     case ExprType::simple_bind: {
@@ -1235,7 +1235,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto cond = named[AstChild::cond].parse_mir( c_ctx, w_ctx, func );
 
         // Insert conditional jump
-        auto &jmp_op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label, { cond } );
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label, { cond } );
 
         // Body
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
@@ -1265,8 +1265,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         result_var.value_type = c_ctx.curr_self_type;
 
         // Create cosmetic operation
-        auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
-        op.symbol = c_ctx.type_table[c_ctx.curr_self_type].symbol;
+        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
+        c_ctx.functions[func].ops[op_id].symbol = c_ctx.type_table[c_ctx.curr_self_type].symbol;
         break;
     }
     case ExprType::struct_initializer: {
@@ -1306,16 +1306,16 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 vars.push_back( var );
 
                 // Add type check operation TODO handle if struct member is not already typed
-                auto &op = create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::type, var, {} );
-                op.symbol = type.members[i].type;
+                auto op_id = create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::type, var, {} );
+                c_ctx.functions[func].ops[op_id].symbol = type.members[i].type;
             }
 
             // Merge values into type
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::merge, ret, vars );
 
             // Set type operation (should be after the merge)
-            auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
-            op.symbol = c_ctx.type_table[result_var.value_type].symbol;
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
+            c_ctx.functions[func].ops[op_id].symbol = c_ctx.type_table[result_var.value_type].symbol;
 
             // Drop vars if necessary
             for ( auto var_itr = vars.rbegin(); var_itr != vars.rend(); var_itr++ ) {
@@ -1374,8 +1374,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Create operation
         if ( !attrs.empty() ) {
             // Access attribute
-            auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::member, 0, { obj } );
-            auto &result_var = c_ctx.functions[func].vars[op.ret];
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::member, 0, { obj } );
+            auto &result_var = c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret];
             result_var.member_idx = attrs.front();
             result_var.type = MirVariable::Type::l_ref;
             if ( c_ctx.functions[func].vars[obj].type == MirVariable::Type::l_ref ) {
@@ -1388,7 +1388,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             result_var.mut = c_ctx.functions[func].vars[obj].mut;
             result_var.value_type =
                 c_ctx.type_table[c_ctx.symbol_graph[base_symbol].value].members[attrs.front()].value;
-            ret = op.ret;
+            ret = c_ctx.functions[func].ops[op_id].ret;
         } else {
             // Access method
 
@@ -1410,8 +1410,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             result_var.base_ref = obj;
 
             // Create cosmetic operation
-            auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, { obj } );
-            op.symbol = methods.front();
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, { obj } );
+            c_ctx.functions[func].ops[op_id].symbol = methods.front();
         }
         break;
     }
@@ -1427,8 +1427,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             break;
 
         // Set type
-        auto &op = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
-        op.symbol = type_ids.front();
+        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
+        c_ctx.functions[func].ops[op_id].symbol = type_ids.front();
         if ( c_ctx.functions[func].vars[ret].value_type == 0 ) {
             c_ctx.functions[func].vars[ret].value_type = c_ctx.symbol_graph[type_ids.front()].value;
         }

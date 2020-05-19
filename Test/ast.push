@@ -24,6 +24,8 @@ std::op::division(left:&u32, right:&u32) -> u32 {
 std::op::bigger(left:&u32, right:&u32) -> bool {
 }
 
+println(str) -> () {}
+
 fn() -> (u32,u64) {
     let a:u32 = 4;
     a+inc(3)
@@ -36,7 +38,7 @@ g() -> u32 {
     x.add(1);
     let x:A = A{42,40+3};
     if x.bar / 2 > 21 {
-    //    println("lies!");
+        println("lies!");
     }
     x.add(A{1,1});
     x.foo

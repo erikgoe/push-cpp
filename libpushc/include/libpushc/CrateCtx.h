@@ -28,6 +28,9 @@ using FunctionImplId = u32;
 // Identifies a local mir variable
 using MirVarId = u32;
 
+// Identifies a local mir variable
+using MirEntryId = u32;
+
 // Stores literal values (or pointers)
 struct MirLiteral {
     bool is_inline; // true when value contains the data

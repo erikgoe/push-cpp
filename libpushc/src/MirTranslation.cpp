@@ -18,8 +18,8 @@
 #include "libpushc/SymbolUtil.h"
 
 
-MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
-                            MirEntry::Type type, MirVarId result, std::vector<MirVarId> parameters ) {
+MirEntryId create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
+                             MirEntry::Type type, MirVarId result, std::vector<MirVarId> parameters ) {
     MirVarId return_var = result;
     if ( result == 0 ) {
         return_var = create_variable( c_ctx, w_ctx, function, &original_expr, "" );
@@ -52,25 +52,25 @@ MirEntry &create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId funct
 
     auto operation = MirEntry{ &original_expr, type, return_var, parameters };
     c_ctx.functions[function].ops.push_back( operation );
-    return c_ctx.functions[function].ops.back();
+    return c_ctx.functions[function].ops.size() - 1;
 }
 
-MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_function, AstNode &original_expr,
-                       SymbolId called_function, MirVarId result, std::vector<MirVarId> parameters ) {
+MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_function, AstNode &original_expr,
+                        SymbolId called_function, MirVarId result, std::vector<MirVarId> parameters ) {
     FunctionImpl &caller = c_ctx.functions[calling_function];
     SymbolGraphNode &callee = c_ctx.symbol_graph[called_function];
     if ( parameters.size() != callee.identifier.parameters.size() )
         LOG_ERR( "Expected and provided parameter count differ" );
 
     // Create call operation
-    auto &op =
+    auto op_id =
         create_operation( c_ctx, w_ctx, calling_function, original_expr, MirEntry::Type::call, result, parameters );
+    auto &op = caller.ops[op_id];
     op.symbol = called_function;
     caller.vars[op.ret].type = MirVariable::Type::rvalue;
     if ( caller.vars[op.ret].value_type == 0 ) {
         caller.vars[op.ret].value_type = callee.identifier.eval_type.type;
     }
-
 
     // Handle parameter remains
     for ( size_t i = 0; i < parameters.size(); i++ ) {
@@ -93,7 +93,7 @@ MirEntry &create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_fu
         }
     }
 
-    return op;
+    return op_id;
 }
 
 MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode *original_expr,
