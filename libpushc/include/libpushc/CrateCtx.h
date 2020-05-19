@@ -34,7 +34,7 @@ using MirEntryId = u32;
 // Stores literal values (or pointers)
 struct MirLiteral {
     bool is_inline; // true when value contains the data
-    size_t value; // data or index inside CrateCtx::literal_data
+    u64 value; // data or index inside CrateCtx::literal_data
     size_t size; // size in bytes (the value outside of this border is undefined)
 };
 
@@ -250,31 +250,3 @@ struct CrateCtx {
 
     CrateCtx();
 };
-
-
-template <typename T>
-MirLiteral store_in_literal( CrateCtx &c_ctx, const T &data ) {
-    if ( sizeof( data ) > sizeof( size_t ) ) {
-        size_t idx = c_ctx.literal_data.size();
-        for ( size_t i = 0; i < sizeof( data ); i++ )
-            c_ctx.literal_data.push_back( reinterpret_cast<const u8 *>( &data )[i] );
-        return { false, idx, sizeof( data ) };
-    } else {
-        // TODO this may (technically, but unlikely) segfault if sizeof(data) < sizeof(size_t)
-        return { true, *reinterpret_cast<const size_t*>( &data ), sizeof( data ) };
-    }
-}
-template <typename T>
-void load_from_literal( CrateCtx &c_ctx, const MirLiteral &lit, T &dest ) {
-    if ( sizeof( T ) > lit.size )
-        LOG_ERR( "Tried to load a literal with too small size" );
-
-    if ( !lit.is_inline ) {
-        if ( lit.value + lit.size > c_ctx.literal_data.size() )
-            LOG_ERR( "Tried to load a (not inline) literal out of the the literal blob bounds" );
-        else
-            dest = *reinterpret_cast<const T*>( &c_ctx.literal_data[lit.value] );
-    } else {
-        dest = *reinterpret_cast<const T*>( &lit.value );
-    }
-}

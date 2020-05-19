@@ -422,9 +422,12 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                 str += get_var_name( op.ret );
 
                 if ( op.type == MirEntry::Type::literal ) {
-                    Number tmp_lit = 0; // literals should not be smaller than this
-                    load_from_literal( *c_ctx, op.data, tmp_lit );
-                    str += " 0d" + to_string( tmp_lit );
+                    str += " 0x";
+                    const u8 *data_ptr = ( op.data.is_inline ? reinterpret_cast<const u8 *>( &op.data.value )
+                                                             : &c_ctx->literal_data[op.data.value] );
+                    for ( size_t i = 0; i < op.data.size; i++ ) {
+                        append_hex_str( data_ptr[i], str );
+                    }
                 }
 
                 for ( auto &p : op.params ) {

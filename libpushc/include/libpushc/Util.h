@@ -26,6 +26,9 @@ using Number = u64;
 // Pares a value
 Number parse_number( sptr<SourceInput> &input, Worker &w_ctx );
 
+// Appends the hex representation of a value to a string
+void append_hex_str( u8 val, String &str );
+
 // Returns true if @param element is in @param collection
 template <typename T, typename Collection>
 bool element_of( const T &element, const Collection &collection ) {

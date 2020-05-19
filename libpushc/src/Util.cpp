@@ -96,6 +96,18 @@ Number parse_number( sptr<SourceInput> &input, Worker &w_ctx ) {
     return num;
 }
 
+void append_hex_str( u8 val, String &str ) {
+    str.reserve( str.size() + 2 );
+    char tmp = '0' + ( ( val & 0xf0 ) >> 4 );
+    if ( tmp > '9' )
+        tmp += 'a' - ':';
+    str.push_back( tmp );
+    tmp = '0' + ( val & 0xf );
+    if ( tmp > '9' )
+        tmp += 'a' - ':';
+    str.push_back( tmp );
+}
+
 bool is_operator_token( const String &token ) {
     if ( token.empty() ) {
         LOG_ERR( "Token string is empty. In `is_operator_token()`" );
