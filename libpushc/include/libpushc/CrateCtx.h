@@ -166,6 +166,7 @@ struct MirEntry {
         merge, // combine vars to a struct
         label, // label declaration
         cond_jmp_z, // conditional jump if arg is zero
+        jmp, // unconditional jump
         cast, // type cast
         symbol, // cosmetic operation to access a symbol
 

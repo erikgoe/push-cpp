@@ -406,6 +406,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "label";
                 else if ( op.type == MirEntry::Type::cond_jmp_z )
                     str = "cond_jmp_z";
+                else if ( op.type == MirEntry::Type::jmp )
+                    str = "jmp";
                 else if ( op.type == MirEntry::Type::cast )
                     str = "cast";
                 else if ( op.type == MirEntry::Type::symbol )

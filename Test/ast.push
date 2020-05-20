@@ -39,15 +39,12 @@ g() -> u32 {
     let x:A = A{42,40+3};
     if x.bar / 2 > 21 {
         println("lies!");
+    } else {
+        println("truth");
     }
     x.add(A{1,1});
-    x.foo
+    x.foo // TODO lifetime error
 }
-
-
-
-
-
 
 /*
 x() {
@@ -62,80 +59,3 @@ x() {
 y(val:&A) {
     val.foo
 }*/
-
-
-
-
-///////////////
-/// Pseudo MIR
-///////////////
-
-/*
-
-function A::add <unknown> {
-    param val self%l0 A
-    param other other%l0 <unknown>
-
-    member %l0 self%l0 A::foo
-    member %l1 other%l0 A::foo
-    call std::op::add %r2 &%l0 &%l1
-
-    ret %r2
-}
-
-function fn <unknown> {
-    typed a%0 u32
-    literal %0 0x4 std::num::Integer
-    call std::op::assign a%0 &%0
-    call drop () %0
-    
-    literal %1 0x3 std::num::Integer
-    call inc %r2 %1
-    call std::op::add %r3 &a%0 &%r2
-    call drop () %r2
-    
-    call drop () a%0
-    ret %r3
-}
-
-function g u32 {
-    literal %l0 0x... A // constant evaluation required
-    call std::op::assign x%0 &%l0
-
-    member %l1 x%0 A::bar
-    literal %2 0x2 std::num::Integer
-    call std::op::div %r3 &%l1 &%2
-    call drop () %2
-    literal %4 0x15 std::num::Integer
-    call std::op::greater_than %r5 &%r3 &%4
-    call drop () %r4
-    call drop () %r3
-    cond_jmp_z %b6 %r5
-
-    literal %l7 0x... std::str::String // refer to a pool of global constants
-    call println () %l7
-
-    label %b6
-    call drop () %r5
-
-    literal %l8 0x... A
-    call A::add %r9 &x%0 &%l8
-
-    member %l10 x%0 A::foo
-
-    call drop () x%0
-    ret %l10 // error outlives x%0
-}
-
-function inc <unknown> {
-    param val val%0 <unknown>
-
-    literal %0 0x1 std::num::Integer
-    call std::op::add %r1 &val%0 &%0
-    call drop () %0
-
-    call drop () val%0
-    ret %r1
-}
-
-*/
