@@ -1228,21 +1228,12 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         break;
     }
     case ExprType::simple_bind: {
-        AstNode *symbol = &children.front().named[AstChild::left_expr];
-        if ( symbol->type == ExprType::typed_op ) {
-            symbol = &symbol->named[AstChild::left_expr];
-        }
-
-        auto name_chain = symbol->get_symbol_chain( c_ctx, w_ctx );
-        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *symbol ) )
-            break;
-
-        // Create variable
-        create_variable( c_ctx, w_ctx, func, symbol, name_chain->front().name );
+        // Currently this expr requires to contain an assignment
 
         // Expr operation
-        auto var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, var );
+        auto var = children.front().named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
+        children.front().named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, var, *this, false );
+        remove_from_local_living_vars( c_ctx, w_ctx, func, *this, var );
 
         break;
     }
@@ -1564,6 +1555,58 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     if ( scope_symbol != 0 )
         switch_scope_to_symbol( c_ctx, w_ctx, scope_symbol );
 
+    return ret;
+}
+
+std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func, MirVarId in_var,
+                                                  AstNode &bind_expr, bool add_checks ) {
+    std::pair<MirVarId, MirVarId> ret = { 0, 0 };
+    MirVarId &ret_bind = ret.first;
+    MirVarId &ret_check = ret.second;
+
+    switch ( type ) {
+    case ExprType::atomic_symbol: {
+        // Create an atomic binding
+
+        // Get the symbol name
+        auto name_chain = get_symbol_chain( c_ctx, w_ctx );
+        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *this ) )
+            break;
+
+        // Create variable
+        ret_bind = create_variable( c_ctx, w_ctx, func, this, name_chain->front().name );
+
+        // Bind var
+        create_operation( c_ctx, w_ctx, func, bind_expr, MirEntry::Type::bind, ret_bind, { in_var } );
+
+        break;
+    }
+    case ExprType::typed_op: {
+        // Pass binding and add type
+
+        ret = named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr, add_checks );
+        if ( ret.first == 0 )
+            break; // Error, don't do anything
+
+        auto type_ids = find_local_symbol_by_identifier_chain(
+            c_ctx, w_ctx, named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx ) );
+
+        if ( !expect_exactly_one_symbol( c_ctx, w_ctx, type_ids, named[AstChild::right_expr] ) )
+            break;
+
+        // Set type
+        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret_bind, {} );
+        c_ctx.functions[func].ops[op_id].symbol = type_ids.front();
+        if ( c_ctx.functions[func].vars[ret_bind].value_type == 0 ) {
+            c_ctx.functions[func].vars[ret_bind].value_type = c_ctx.symbol_graph[type_ids.front()].value;
+        }
+
+        break;
+    }
+    default:
+        LOG_ERR( "NOT IMPLEMENTED: bind_vars of type " + to_string( static_cast<size_t>( type ) ) );
+        break;
+    }
     return ret;
 }
 

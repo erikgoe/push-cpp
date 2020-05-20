@@ -162,6 +162,7 @@ struct MirEntry {
         type, // specifies the type of a variable
         literal, // literal definition
         call, // function call
+        bind, // assign/move a variable into another
         member, // member access
         merge, // combine vars to a struct
         label, // label declaration
