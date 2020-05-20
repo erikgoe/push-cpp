@@ -1296,6 +1296,62 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         break; // return the unit var
     }
+    case ExprType::pre_loop: {
+        // Create jump label
+        auto label1 = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[label1].type = MirVariable::Type::label;
+        auto label2 = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[label2].type = MirVariable::Type::label;
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label1, {} );
+
+        // Evaluate expr
+        auto cond = named[AstChild::cond].parse_mir( c_ctx, w_ctx, func );
+
+        // Insert conditional jump
+        if ( !continue_eval ) {
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { cond } );
+            drop_variable( c_ctx, w_ctx, func, *this, cond );
+            cond = c_ctx.functions[func].ops[op_id].ret;
+        }
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label2, { cond } );
+
+        // Body
+        auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
+        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+
+        drop_variable( c_ctx, w_ctx, func, *this, cond );
+
+        // Jump back to condition
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label1, {} );
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label2, {} );
+
+        break; // return the unit var
+    }
+    case ExprType::post_loop: {
+        // Create jump label
+        auto label = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[label].type = MirVariable::Type::label;
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label, {} );
+
+        // Body
+        auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
+        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+
+        // Evaluate expr
+        auto cond = named[AstChild::cond].parse_mir( c_ctx, w_ctx, func );
+
+        // Insert conditional jump
+        if ( continue_eval ) {
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { cond } );
+            drop_variable( c_ctx, w_ctx, func, *this, cond );
+            cond = c_ctx.functions[func].ops[op_id].ret;
+        }
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label, { cond } );
+        drop_variable( c_ctx, w_ctx, func, *this, cond );
+        // TODO fix cond lifetime isues with loop
+
+        break; // return the unit var
+    }
     case ExprType::inf_loop: {
         // Create jump label
         auto label = create_variable( c_ctx, w_ctx, func, this );
@@ -1310,7 +1366,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label, {} );
 
         break; // return the unit var
-    } case ExprType::self: {
+    }
+    case ExprType::self: {
         if ( c_ctx.curr_self_var == 0 ) {
             w_ctx.print_msg<MessageType::err_self_in_free_function>( MessageInfo( *this, 0, FmtStr::Color::Red ) );
         }

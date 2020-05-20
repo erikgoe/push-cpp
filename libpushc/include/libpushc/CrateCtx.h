@@ -167,6 +167,7 @@ struct MirEntry {
         label, // label declaration
         cond_jmp_z, // conditional jump if arg is zero
         jmp, // unconditional jump
+        inv, // binary invert a value (should only apply to machine primitives)
         cast, // type cast
         symbol, // cosmetic operation to access a symbol
 
