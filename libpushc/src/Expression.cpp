@@ -1283,7 +1283,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Body
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
         drop_variable( c_ctx, w_ctx, func, *this, body_var );
-        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label2, { cond } );
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label2, {} );
 
         // Else block
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label1, {} );
