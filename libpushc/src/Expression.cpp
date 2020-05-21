@@ -1566,8 +1566,6 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
     }
     case ExprType::struct_initializer: {
         ret_bind = in_var;
-        remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
-
         auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
         if ( struct_var != 0 ) {
             // Symbol found
@@ -1635,6 +1633,8 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
                 op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, ret_check, {} );
                 c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
             }
+            
+            remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
         }
 
         break;
