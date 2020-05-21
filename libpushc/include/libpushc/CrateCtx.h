@@ -166,7 +166,7 @@ struct MirEntry {
         member, // member access
         merge, // combine vars to a struct
         label, // label declaration
-        cond_jmp_z, // conditional jump if arg is zero
+        cond_jmp_z, // conditional jump if arg is zero (means false)
         jmp, // unconditional jump
         inv, // binary invert a value (should only apply to machine primitives)
         cast, // type cast
@@ -238,6 +238,9 @@ struct CrateCtx {
     TypeId tuple_type = 0; // type of the tuple template type
 
     TypeId drop_fn = 0; // the function which is called on variable drop
+
+    MirLiteral true_val = { true, 0xff, 1 }; // the representation of the boolean "true" value
+    MirLiteral false_val = { true, 0, 1 }; // the representation of the boolean "false" value
 
     std::vector<SyntaxRule> rules;
     std::unordered_map<String, std::pair<TypeId, u64>> literals_map; // maps literals to their typeid and mem_value

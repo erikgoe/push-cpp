@@ -36,6 +36,8 @@ inc(val) { val + 1 }
 g() -> u32 {
     let x:A = 1;
     x.add(1);
+    let A{a,b} = x;
+
     let x:A = A{42,40+3};
     if x.bar / 2 > 21 {
         println("lies!");
