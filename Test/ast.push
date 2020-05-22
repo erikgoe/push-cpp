@@ -15,6 +15,8 @@ impl op::Add for A {
     }
 }
 
+std::op::is_equal(left:mut&u32, right:&u32) -> () {
+}
 std::op::assignment(left:mut&u32, right:&u32) -> () {
 }
 std::op::addition(left:&u32, right:&u32) -> u32 {
@@ -36,7 +38,7 @@ inc(val) { val + 1 }
 g() -> u32 {
     let x:A = 1;
     x.add(1);
-    let A{a,b} = x;
+    let A{a,1} = x;
 
     let x:A = A{42,40+3};
     if x.bar / 2 > 21 {

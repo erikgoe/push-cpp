@@ -212,12 +212,13 @@ define_mci_rule( SYNTAX, TEMPLATE_POSTFIX, 34 CLASS 3 FROM 4, ltr, quadruple_lis
 
 
 // Primitive types
-define_mci_rule( BASE_TYPE, INTEGER, std::num::Integer ); // Defines which trait describes the integer type
-define_mci_rule( BASE_TYPE, STRING, std::str::String ); // Defines which trait describes the string type
-define_mci_rule( BASE_TYPE, TUPLE, std::Tuple ); // Defines which struct template describes the tuple type
-define_mci_rule( BASE_TYPE, IMPLICATION, std::base::Implication ); // Defines which trait describes the implication type
-define_mci_rule( BASE_TYPE, NEVER, std::base::Never ); // Defines which trait describes the never type
-define_mci_rule( BASE_TYPE, DROP, std::drop ); // Defines which function describes the drop operation
+define_mci_rule( BASE_SYMBOL, INTEGER, std::num::Integer ); // Defines which trait describes the integer type
+define_mci_rule( BASE_SYMBOL, STRING, std::str::String ); // Defines which trait describes the string type
+define_mci_rule( BASE_SYMBOL, TUPLE, std::Tuple ); // Defines which struct template describes the tuple type
+define_mci_rule( BASE_SYMBOL, IMPLICATION, std::base::Implication ); // Defines which trait describes the implication type
+define_mci_rule( BASE_SYMBOL, NEVER, std::base::Never ); // Defines which trait describes the never type
+define_mci_rule( BASE_SYMBOL, DROP, std::drop ); // Defines which function describes the drop operation
+define_mci_rule( BASE_SYMBOL, EQUALS, std::op::is_equal ); // Defines which function describes the comparison
 
 define_mci_rule( SPECIAL_TYPE, TYPE, "type" ); // "type" type
 define_mci_rule( SPECIAL_TYPE, UNIT, "()" ); // unit-type

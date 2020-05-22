@@ -73,6 +73,8 @@ enum class MessageType {
     err_self_not_first_parameter,
     err_instantiate_non_struct,
     err_wrong_struct_initializer_member_count,
+    err_obj_deconstruction_check_not_allowed,
+    err_expr_not_allowed_in_obj_deconstruction,
 
     warning = 5000,
 
@@ -175,8 +177,8 @@ MESSAGE_DEFINITION( MessageType::err_expected_function_definition, MessageClass:
                     "Expected a function definition", "instead of this expression" );
 MESSAGE_DEFINITION( MessageType::err_method_not_allowed, MessageClass::Error, "C", "Method not allowed",
                     "Methods are not allowed in this scope, please move it into an impl block." );
-MESSAGE_DEFINITION( MessageType::err_comma_list_not_allowed, MessageClass::Error, "C", "Comma list not allowed in this block (solely)",
-                    "This block is interpreted as set" );
+MESSAGE_DEFINITION( MessageType::err_comma_list_not_allowed, MessageClass::Error, "C",
+                    "Comma list not allowed in this block (solely)", "This block is interpreted as set" );
 MESSAGE_DEFINITION( MessageType::err_public_not_allowed_in_context, MessageClass::Error, "C",
                     "A symbol may not be public in this context", "This symbol." );
 MESSAGE_DEFINITION( MessageType::err_member_in_invalid_scope, MessageClass::Error, "C",
@@ -213,6 +215,10 @@ MESSAGE_DEFINITION( MessageType::err_wrong_struct_initializer_member_count, Mess
                     "The passed values do not match the amount struct members. Expected " + to_string( GET_ARG( 0 ) ) +
                         ", found " + to_string( GET_ARG( 1 ) ),
                     "here", "defined here" );
+MESSAGE_DEFINITION( MessageType::err_obj_deconstruction_check_not_allowed, MessageClass::Error, "C",
+                    "Conditions are not allowed in this object deconstruction", "implies a check" );
+MESSAGE_DEFINITION( MessageType::err_expr_not_allowed_in_obj_deconstruction, MessageClass::Error, "C",
+                    "Unexpected expression in object deconstruction", "not allowed" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

@@ -642,7 +642,7 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 return false;
             }
             conf->syntaxes[syntax_type].push_back( op );
-        } else if ( mci == "BASE_TYPE" ) {
+        } else if ( mci == "BASE_SYMBOL" ) {
             token = input->get_token();
             if ( token.type != Token::Type::identifier ) {
                 create_prelude_error_msg( w_ctx, token );
@@ -668,6 +668,8 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 conf->never_trait = token.content;
             } else if ( type == "DROP" ) {
                 conf->drop_fn = token.content;
+            } else if ( type == "EQUALS" ) {
+                conf->equals_fn = token.content;
             }
         } else if ( mci == "SPECIAL_TYPE" ) {
             // TODO delete this mci

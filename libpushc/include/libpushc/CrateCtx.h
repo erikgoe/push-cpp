@@ -238,6 +238,7 @@ struct CrateCtx {
     TypeId tuple_type = 0; // type of the tuple template type
 
     TypeId drop_fn = 0; // the function which is called on variable drop
+    TypeId equals_fn = 0; // the function which is called to check if two variables are equal TODO set in prelude
 
     MirLiteral true_val = { true, 0xff, 1 }; // the representation of the boolean "true" value
     MirLiteral false_val = { true, 0, 1 }; // the representation of the boolean "false" value

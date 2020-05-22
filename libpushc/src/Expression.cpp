@@ -1547,6 +1547,36 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
     MirVarId &ret_check = ret.second;
 
     switch ( type ) {
+    case ExprType::term:
+    case ExprType::unit:
+    case ExprType::numeric_literal:
+    case ExprType::string_literal:
+    case ExprType::func_call:
+    case ExprType::op:
+    case ExprType::member_access:
+    case ExprType::scope_access:
+    case ExprType::array_access:
+    case ExprType::template_postfix: {
+        // Check if the variable holds a specific value
+
+        if ( !add_checks ) {
+            w_ctx.print_msg<MessageType::err_obj_deconstruction_check_not_allowed>(
+                MessageInfo( *this, 0, FmtStr::Color::Red ) );
+            break;
+        }
+
+        // Generate the expr
+        auto var = parse_mir( c_ctx, w_ctx, func );
+
+        // Check value
+        auto op_id =
+            create_call( c_ctx, w_ctx, func, *this, c_ctx.type_table[c_ctx.equals_fn].symbol, 0, { in_var, var } );
+        ret_check = c_ctx.functions[func].ops[op_id].ret;
+
+        drop_variable( c_ctx, w_ctx, func, *this, in_var ); // drop needed here
+
+        break;
+    }
     case ExprType::atomic_symbol: {
         // Create an atomic binding
 
@@ -1565,6 +1595,8 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
         break;
     }
     case ExprType::struct_initializer: {
+        // Deconstruct the object
+
         ret_bind = in_var;
         auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
         if ( struct_var != 0 ) {
@@ -1633,7 +1665,7 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
                 op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, ret_check, {} );
                 c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
             }
-            
+
             remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
         }
 
@@ -1661,8 +1693,10 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
 
         break;
     }
+    // TODO handle set, array, tuple, block, range, reference
     default:
-        LOG_ERR( "NOT IMPLEMENTED: bind_vars of type " + to_string( static_cast<size_t>( type ) ) );
+        w_ctx.print_msg<MessageType::err_obj_deconstruction_check_not_allowed>(
+            MessageInfo( *this, 0, FmtStr::Color::Red ) );
         break;
     }
     return ret;

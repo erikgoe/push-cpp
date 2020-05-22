@@ -135,6 +135,7 @@ struct PreludeConfig {
     String implication_trait; // Basic trait to define an implication
     String never_trait; // Basic trait to define the never type
     String drop_fn; // Basic function to define the drop operation
+    String equals_fn; // Basic function to define the drop operation
     std::map<String, String> special_types; // maps special type keywords/operators to their meaning
     std::map<String, u8> memblob_types; // maps type names to their memory size
     std::map<String, std::pair<String, u64>> literals; // each literal keyword is mapped to its type and memory_value
