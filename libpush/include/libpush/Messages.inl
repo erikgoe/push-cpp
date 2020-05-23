@@ -73,6 +73,7 @@ enum class MessageType {
     err_self_not_first_parameter,
     err_instantiate_non_struct,
     err_wrong_struct_initializer_member_count,
+    err_obj_deconstruction_check_expected,
     err_obj_deconstruction_check_not_allowed,
     err_expr_not_allowed_in_obj_deconstruction,
 
@@ -215,8 +216,10 @@ MESSAGE_DEFINITION( MessageType::err_wrong_struct_initializer_member_count, Mess
                     "The passed values do not match the amount struct members. Expected " + to_string( GET_ARG( 0 ) ) +
                         ", found " + to_string( GET_ARG( 1 ) ),
                     "here", "defined here" );
-MESSAGE_DEFINITION( MessageType::err_obj_deconstruction_check_not_allowed, MessageClass::Error, "C",
+MESSAGE_DEFINITION( MessageType::err_obj_deconstruction_check_expected, MessageClass::Error, "C",
                     "Conditions are not allowed in this object deconstruction", "implies a check" );
+MESSAGE_DEFINITION( MessageType::err_obj_deconstruction_check_not_allowed, MessageClass::Error, "C",
+                    "Cannot check this object deconstruction condition", "not allowed" );
 MESSAGE_DEFINITION( MessageType::err_expr_not_allowed_in_obj_deconstruction, MessageClass::Error, "C",
                     "Unexpected expression in object deconstruction", "not allowed" );
 

@@ -238,9 +238,13 @@ struct AstNode {
     // Parses the expr and appends the generated instructions to the function. Returns the result variable
     MirVarId parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func );
 
-    // Create variable bindings from this expr. Returns the var, which was bound to and the var with the check result
-    std::pair<MirVarId, MirVarId> bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func, MirVarId in_var,
-                                             AstNode &bind_expr, bool add_checks );
+    // Create variable bindings from this expr. Returns the var, which was bound to
+    MirVarId bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func, MirVarId in_var,
+                                             AstNode &bind_expr, bool checked_deconstruction );
+
+    // Check if a deconstruction is possible/valid. Returns the var with the check result
+    MirVarId check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func,
+                                                        MirVarId in_var, AstNode &bind_expr );
 
     // Debugging & message methods
 

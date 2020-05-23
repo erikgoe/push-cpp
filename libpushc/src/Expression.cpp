@@ -1543,106 +1543,41 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     return ret;
 }
 
-std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func, MirVarId in_var,
-                                                  AstNode &bind_expr, bool add_checks ) {
-    std::pair<MirVarId, MirVarId> ret = { 0, 0 };
-    MirVarId &ret_bind = ret.first;
-    MirVarId &ret_check = ret.second;
+MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func, MirVarId in_var, AstNode &bind_expr,
+                             bool checked_deconstruction ) {
+    MirVarId ret = 0;
 
     switch ( type ) {
     case ExprType::op: {
         // Handle special logical operators and fall through otherwise
 
         if ( token.content == "&&" ) { // TODO move this into the prelude
-            if ( !add_checks ) {
-                w_ctx.print_msg<MessageType::err_obj_deconstruction_check_not_allowed>(
+            if ( !checked_deconstruction ) {
+                w_ctx.print_msg<MessageType::err_obj_deconstruction_check_expected>(
                     MessageInfo( *this, 0, FmtStr::Color::Red ) );
                 break;
             }
 
-            MirVarId eval_false_label = create_variable( c_ctx, w_ctx, func, this );
-            c_ctx.functions[func].vars[eval_false_label].type = MirVariable::Type::label;
-
             auto left_result =
-                named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr, add_checks );
-            ret_bind = left_result.first;
-            if ( left_result.second != 0 ) {
-                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_false_label,
-                                  { left_result.second } );
-                // TODO drop the value
-            }
-
-            auto right_result = named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_false_label,
-                              { right_result } );
-
-            // Create check conclusion
-            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
-            c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
-            ret_check = c_ctx.functions[func].ops[op_id].ret;
-
-            auto eval_end_label = create_variable( c_ctx, w_ctx, func, this );
-            c_ctx.functions[func].vars[eval_end_label].type = MirVariable::Type::label;
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, eval_end_label, {} );
-
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_false_label, {} );
-            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, ret_check, {} );
-            c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
-
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
+                named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr, checked_deconstruction );
+            ret = left_result;
 
             break;
         } else if ( token.content == "||" ) { // TODO move this into the prelude
-            if ( !add_checks ) {
-                w_ctx.print_msg<MessageType::err_obj_deconstruction_check_not_allowed>(
+            if ( !checked_deconstruction ) {
+                w_ctx.print_msg<MessageType::err_obj_deconstruction_check_expected>(
                     MessageInfo( *this, 0, FmtStr::Color::Red ) );
                 break;
             }
 
-            MirVarId eval_true_label = create_variable( c_ctx, w_ctx, func, this );
-            c_ctx.functions[func].vars[eval_true_label].type = MirVariable::Type::label;
-
-            // Evaluate left
-            auto left_result =
-                named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr, add_checks );
-
-            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { left_result.second } );
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
-                              { c_ctx.functions[func].ops[op_id].ret } );
-
-            // Evaluate right
-            auto right_result =
-                named[AstChild::right_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr, add_checks );
-
-            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { right_result.second } );
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
-                              { c_ctx.functions[func].ops[op_id].ret } );
-
-            // Create check conclusion
-            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
-            c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
-            ret_check = c_ctx.functions[func].ops[op_id].ret;
-
-            auto eval_end_label = create_variable( c_ctx, w_ctx, func, this );
-            c_ctx.functions[func].vars[eval_end_label].type = MirVariable::Type::label;
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, eval_end_label, {} );
-
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_true_label, {} );
-
-            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, ret_check, {} );
-            c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
-
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
-
-            if ( right_result.first != 0 || left_result.first != 0 ) {
+            if ( named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr,
+                                                       checked_deconstruction ) != 0 ||
+                 named[AstChild::right_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr,
+                                                        checked_deconstruction ) != 0 ) {
                 w_ctx.print_msg<MessageType::err_feature_curr_not_supported>(
                     MessageInfo( *this, 0, FmtStr::Color::Red ), {}, String( "OR-operator in object deconstruction" ) );
                 // TODO fix this and set ret_bind properly
-                break;
             }
-
-            // TODO fix lifetimes
-
             break;
         }
 
@@ -1657,25 +1592,8 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
     case ExprType::scope_access:
     case ExprType::array_access:
     case ExprType::template_postfix: {
-        // Check if the variable holds a specific value
-
-        if ( !add_checks ) {
-            w_ctx.print_msg<MessageType::err_obj_deconstruction_check_not_allowed>(
-                MessageInfo( *this, 0, FmtStr::Color::Red ) );
-            break;
-        }
-
-        // Generate the expr
-        auto var = parse_mir( c_ctx, w_ctx, func );
-
-        // Check value
-        auto op_id =
-            create_call( c_ctx, w_ctx, func, *this, c_ctx.type_table[c_ctx.equals_fn].symbol, 0, { in_var, var } );
-        ret_check = c_ctx.functions[func].ops[op_id].ret;
-
-        drop_variable( c_ctx, w_ctx, func, *this, in_var ); // drop needed here
-
-        break;
+        remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
+        break; // allowed but return 0
     }
     case ExprType::atomic_symbol: {
         // Create an atomic binding
@@ -1686,10 +1604,10 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
             break;
 
         // Create variable
-        ret_bind = create_variable( c_ctx, w_ctx, func, this, name_chain->front().name );
+        ret = create_variable( c_ctx, w_ctx, func, this, name_chain->front().name );
 
         // Bind var
-        create_operation( c_ctx, w_ctx, func, bind_expr, MirEntry::Type::bind, ret_bind, { in_var } );
+        create_operation( c_ctx, w_ctx, func, bind_expr, MirEntry::Type::bind, ret, { in_var } );
         remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
 
         break;
@@ -1697,7 +1615,7 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
     case ExprType::struct_initializer: {
         // Deconstruct the object
 
-        ret_bind = in_var;
+        ret = in_var;
         auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
         if ( struct_var != 0 ) {
             // Symbol found
@@ -1719,12 +1637,6 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
                 break;
             }
 
-            MirVarId eval_false_label = 0;
-            if ( add_checks ) {
-                eval_false_label = create_variable( c_ctx, w_ctx, func, this );
-                c_ctx.functions[func].vars[eval_false_label].type = MirVariable::Type::label;
-            }
-
             // Bind member values
             for ( size_t i = 0; i < type.members.size(); i++ ) {
                 // Access the member
@@ -1744,39 +1656,9 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
 
                 // Bind var
                 auto &entry = children.front().children[i];
-                auto binding =
-                    entry.bind_vars( c_ctx, w_ctx, func, c_ctx.functions[func].ops[op_id].ret, *this, add_checks );
-
-                // Handle check
-                if ( add_checks && binding.second != 0 ) {
-                    auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::cond], MirEntry::Type::bind, 0,
-                                                   { binding.second } );
-                    drop_variable( c_ctx, w_ctx, func, *this, binding.second );
-                    auto tmp_cond = c_ctx.functions[func].ops[op_id].ret;
-                    c_ctx.functions[func].vars[tmp_cond].type =
-                        MirVariable::Type::not_dropped; // temporary var which must not be dropped
-                    create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_false_label,
-                                      { tmp_cond } );
-                }
+                entry.bind_vars( c_ctx, w_ctx, func, c_ctx.functions[func].ops[op_id].ret, *this,
+                                 checked_deconstruction );
             }
-
-            if ( add_checks ) {
-                // Create check conclusion
-                auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
-                c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
-                ret_check = c_ctx.functions[func].ops[op_id].ret;
-
-                auto eval_end_label = create_variable( c_ctx, w_ctx, func, this );
-                c_ctx.functions[func].vars[eval_end_label].type = MirVariable::Type::label;
-                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, eval_end_label, {} );
-
-                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_false_label, {} );
-                op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, ret_check, {} );
-                c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
-
-                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
-            }
-
             remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
         }
 
@@ -1785,8 +1667,8 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
     case ExprType::typed_op: {
         // Pass binding and add type
 
-        ret = named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr, add_checks );
-        if ( ret.first == 0 )
+        ret = named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, in_var, bind_expr, checked_deconstruction );
+        if ( ret == 0 )
             break; // Error, don't do anything
 
         auto type_ids = find_local_symbol_by_identifier_chain(
@@ -1796,22 +1678,208 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
             break;
 
         // Set type
-        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret_bind, {} );
+        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
         c_ctx.functions[func].ops[op_id].symbol = type_ids.front();
-        if ( c_ctx.functions[func].vars[ret_bind].value_type == 0 ) {
-            c_ctx.functions[func].vars[ret_bind].value_type = c_ctx.symbol_graph[type_ids.front()].value;
+        if ( c_ctx.functions[func].vars[ret].value_type == 0 ) {
+            c_ctx.functions[func].vars[ret].value_type = c_ctx.symbol_graph[type_ids.front()].value;
         }
 
         break;
     }
     // TODO handle set, array, tuple, block, range, reference
     default:
-        w_ctx.print_msg<MessageType::err_obj_deconstruction_check_not_allowed>(
+        w_ctx.print_msg<MessageType::err_expr_not_allowed_in_obj_deconstruction>(
             MessageInfo( *this, 0, FmtStr::Color::Red ) );
         break;
     }
     return ret;
 }
+
+MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func, MirVarId in_var,
+                                        AstNode &bind_expr ) {
+    MirVarId ret = 0;
+
+    switch ( type ) {
+    case ExprType::op: {
+        // Handle special logical operators and fall through otherwise
+
+        if ( token.content == "&&" ) { // TODO move this into the prelude
+            MirVarId eval_false_label = create_variable( c_ctx, w_ctx, func, this );
+            c_ctx.functions[func].vars[eval_false_label].type = MirVariable::Type::label;
+
+            auto left_result = named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, in_var, bind_expr );
+            if ( left_result != 0 ) {
+                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_false_label,
+                                  { left_result } );
+            }
+
+            auto right_result = named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_false_label,
+                              { right_result } );
+
+            // Create check conclusion
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
+            c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
+            ret = c_ctx.functions[func].ops[op_id].ret;
+
+            auto eval_end_label = create_variable( c_ctx, w_ctx, func, this );
+            c_ctx.functions[func].vars[eval_end_label].type = MirVariable::Type::label;
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, eval_end_label, {} );
+
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_false_label, {} );
+            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, ret, {} );
+            c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
+
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
+
+            break;
+        } else if ( token.content == "||" ) { // TODO move this into the prelude
+            MirVarId eval_true_label = create_variable( c_ctx, w_ctx, func, this );
+            c_ctx.functions[func].vars[eval_true_label].type = MirVariable::Type::label;
+
+            // Evaluate left
+            auto left_result = named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, in_var, bind_expr );
+
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { left_result } );
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
+                              { c_ctx.functions[func].ops[op_id].ret } );
+
+            // Evaluate right
+            auto right_result =
+                named[AstChild::right_expr].check_deconstruction( c_ctx, w_ctx, func, in_var, bind_expr );
+
+            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { right_result } );
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
+                              { c_ctx.functions[func].ops[op_id].ret } );
+
+            // Create check conclusion
+            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
+            c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
+            ret = c_ctx.functions[func].ops[op_id].ret;
+
+            auto eval_end_label = create_variable( c_ctx, w_ctx, func, this );
+            c_ctx.functions[func].vars[eval_end_label].type = MirVariable::Type::label;
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, eval_end_label, {} );
+
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_true_label, {} );
+
+            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, ret, {} );
+            c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
+
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
+            break;
+        }
+
+        // fall through
+    }
+    case ExprType::term:
+    case ExprType::unit:
+    case ExprType::numeric_literal:
+    case ExprType::string_literal:
+    case ExprType::func_call:
+    case ExprType::member_access:
+    case ExprType::scope_access:
+    case ExprType::array_access:
+    case ExprType::typed_op:
+    case ExprType::template_postfix: {
+        // Check if the variable holds a specific value
+
+        // Generate the expr
+        auto var = parse_mir( c_ctx, w_ctx, func );
+
+        // Check value
+        auto op_id =
+            create_call( c_ctx, w_ctx, func, *this, c_ctx.type_table[c_ctx.equals_fn].symbol, 0, { in_var, var } );
+        ret = c_ctx.functions[func].ops[op_id].ret;
+        break;
+    }
+    case ExprType::atomic_symbol: {
+        auto op_id = create_operation( c_ctx, w_ctx, func, bind_expr, MirEntry::Type::literal, 0, {} );
+        c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
+        ret = c_ctx.functions[func].ops[op_id].ret;
+        break;
+    }
+    case ExprType::struct_initializer: {
+        auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
+        if ( struct_var != 0 ) {
+            // Symbol found
+            auto &type = c_ctx.type_table[c_ctx.functions[func].vars[struct_var].value_type];
+            if ( c_ctx.symbol_graph[type.symbol].type != c_ctx.struct_type ) {
+                // Is not a struct
+                w_ctx.print_msg<MessageType::err_instantiate_non_struct>(
+                    MessageInfo( named[AstChild::member], 0, FmtStr::Color::Red ),
+                    { MessageInfo( *c_ctx.symbol_graph[type.symbol].original_expr.front(), 1 ) } );
+                break;
+            }
+
+            // Check member count
+            if ( type.members.size() != children.front().children.size() ) {
+                w_ctx.print_msg<MessageType::err_wrong_struct_initializer_member_count>(
+                    MessageInfo( children.front(), 0, FmtStr::Color::Red ),
+                    { MessageInfo( *c_ctx.symbol_graph[type.symbol].original_expr.front(), 1 ) }, type.members.size(),
+                    children.front().children.size() );
+                break;
+            }
+
+            MirVarId eval_false_label = create_variable( c_ctx, w_ctx, func, this );
+            c_ctx.functions[func].vars[eval_false_label].type = MirVariable::Type::label;
+
+            // Bind member values
+            for ( size_t i = 0; i < type.members.size(); i++ ) {
+                // Access the member
+                auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::member, 0, { in_var } );
+                auto &result_var = c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret];
+                result_var.member_idx = i;
+                result_var.type = MirVariable::Type::l_ref;
+                if ( c_ctx.functions[func].vars[in_var].type == MirVariable::Type::l_ref ) {
+                    // Pass reference (never reference a l_ref)
+                    result_var.ref = c_ctx.functions[func].vars[in_var].ref;
+                    result_var.member_idx += c_ctx.functions[func].vars[in_var].member_idx;
+                } else {
+                    result_var.ref = in_var;
+                }
+                result_var.mut = c_ctx.functions[func].vars[in_var].mut;
+                result_var.value_type = type.members[i].value;
+
+                // Check deconstruction
+                auto &entry = children.front().children[i];
+                auto binding =
+                    entry.check_deconstruction( c_ctx, w_ctx, func, c_ctx.functions[func].ops[op_id].ret, *this );
+
+                // Handle check
+                if ( binding != 0 ) {
+                    create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_false_label,
+                                      { binding } );
+                }
+            }
+
+            // Create check conclusion
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
+            c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
+            ret = c_ctx.functions[func].ops[op_id].ret;
+
+            auto eval_end_label = create_variable( c_ctx, w_ctx, func, this );
+            c_ctx.functions[func].vars[eval_end_label].type = MirVariable::Type::label;
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, eval_end_label, {} );
+
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_false_label, {} );
+            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, ret, {} );
+            c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
+
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
+        }
+
+        break;
+    }
+    default:
+        w_ctx.print_msg<MessageType::err_obj_deconstruction_check_not_allowed>(
+            MessageInfo( *this, 0, FmtStr::Color::Red ) );
+        break;
+    }
+
+    return ret;
+}
+
 
 String AstNode::get_debug_repr() const {
     String add_debug_data;
