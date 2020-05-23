@@ -1359,9 +1359,15 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             next_label = create_variable( c_ctx, w_ctx, func, this ); // create next label
             c_ctx.functions[func].vars[next_label].type = MirVariable::Type::label;
 
+            // Create a temporary copy of the selector, to avoid drop issues
+            auto tmp_selector =
+                c_ctx.functions[func]
+                    .ops[create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::bind, 0, { selector } )]
+                    .ret;
+
             // Check if path matches
             auto check_var =
-                entry.named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, selector, *this );
+                entry.named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, tmp_selector, *this );
 
             auto op_id = create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::bind, 0, { check_var } );
             drop_variable( c_ctx, w_ctx, func, *this, check_var );
@@ -1372,7 +1378,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, next_label, { check_var } );
 
             // Body (including the actual variable deconstruction)
-            entry.named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, selector, *this, true );
+            entry.named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, tmp_selector, *this, true );
             auto result = entry.named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, ret, { result } );
             drop_variable( c_ctx, w_ctx, func, *this, result );
@@ -1384,6 +1390,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, next_label, {} );
 
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, end_label, {} );
+
+        remove_from_local_living_vars( c_ctx, w_ctx, func, *this, selector );
         break;
     }
     case ExprType::self: {
