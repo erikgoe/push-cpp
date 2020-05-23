@@ -1343,6 +1343,49 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         break; // return the unit var
     }
+    case ExprType::match: {
+        auto selector = named[AstChild::select].parse_mir( c_ctx, w_ctx, func );
+
+        ret = create_variable( c_ctx, w_ctx, func, this ); // will contain the final result
+
+        auto end_label = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[end_label].type = MirVariable::Type::label;
+
+        auto next_label = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[next_label].type = MirVariable::Type::label;
+        for ( auto &entry : children.front().children ) {
+            // Jump label to this block and prepare next label
+            create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::label, next_label, {} );
+            next_label = create_variable( c_ctx, w_ctx, func, this ); // create next label
+            c_ctx.functions[func].vars[next_label].type = MirVariable::Type::label;
+
+            // Check if path matches
+            auto check_var =
+                entry.named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, selector, *this );
+
+            auto op_id = create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::bind, 0, { check_var } );
+            drop_variable( c_ctx, w_ctx, func, *this, check_var );
+            check_var = c_ctx.functions[func].ops[op_id].ret;
+            c_ctx.functions[func].vars[check_var].type =
+                MirVariable::Type::not_dropped; // temporary var which must not be dropped
+
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, next_label, { check_var } );
+
+            // Body (including the actual variable deconstruction)
+            entry.named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, selector, *this, true );
+            auto result = entry.named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, ret, { result } );
+            drop_variable( c_ctx, w_ctx, func, *this, result );
+
+            // Jump out
+            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, end_label, {} );
+        }
+        // last label (should never be reached)
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, next_label, {} );
+
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, end_label, {} );
+        break;
+    }
     case ExprType::self: {
         if ( c_ctx.curr_self_var == 0 ) {
             w_ctx.print_msg<MessageType::err_self_in_free_function>( MessageInfo( *this, 0, FmtStr::Color::Red ) );

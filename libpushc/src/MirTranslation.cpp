@@ -365,15 +365,18 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
             auto get_var_name = [&fn]( MirVarId id ) -> String {
                 if ( id == 0 )
                     return " ()";
-                String type_str = ( fn.vars[id].type == MirVariable::Type::rvalue
-                                        ? "r"
-                                        : fn.vars[id].type == MirVariable::Type::l_ref
-                                              ? "l"
-                                              : fn.vars[id].type == MirVariable::Type::p_ref
-                                                    ? "p"
-                                                    : fn.vars[id].type == MirVariable::Type::label
-                                                          ? "b"
-                                                          : fn.vars[id].type == MirVariable::Type::symbol ? "s" : "" );
+                String type_str =
+                    ( fn.vars[id].type == MirVariable::Type::rvalue
+                          ? "r"
+                          : fn.vars[id].type == MirVariable::Type::l_ref
+                                ? "l"
+                                : fn.vars[id].type == MirVariable::Type::p_ref
+                                      ? "p"
+                                      : fn.vars[id].type == MirVariable::Type::not_dropped
+                                            ? "n"
+                                            : fn.vars[id].type == MirVariable::Type::label
+                                                  ? "b"
+                                                  : fn.vars[id].type == MirVariable::Type::symbol ? "s" : "" );
                 return " " + fn.vars[id].name + "%" + type_str + to_string( id );
             };
 
