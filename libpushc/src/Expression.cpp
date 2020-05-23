@@ -1714,8 +1714,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
             }
 
             auto right_result = named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
-            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, 0,
-                                           { right_result } );
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, 0, { right_result } );
             drop_variable( c_ctx, w_ctx, func, *this, right_result );
             right_result = c_ctx.functions[func].ops[op_id].ret;
             c_ctx.functions[func].vars[right_result].type =
@@ -1725,7 +1724,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
                               { right_result } );
 
             // Create check conclusion
-            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
+            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
             c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
             ret = c_ctx.functions[func].ops[op_id].ret;
 
@@ -1748,23 +1747,31 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
             // Evaluate left
             auto left_result = named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, in_var, bind_expr );
 
-            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { left_result } );
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
-                              { c_ctx.functions[func].ops[op_id].ret } );
+            if ( left_result != 0 ) {
+                auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { left_result } );
+                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
+                                  { c_ctx.functions[func].ops[op_id].ret } );
+            } else { // always true
+                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, eval_true_label, {} );
+            }
 
             // Evaluate right
             auto right_result =
                 named[AstChild::right_expr].check_deconstruction( c_ctx, w_ctx, func, in_var, bind_expr );
 
-            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { right_result } );
-            drop_variable( c_ctx, w_ctx, func, *this, right_result );
-            c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].type =
-                MirVariable::Type::not_dropped; // temporary var which must not be dropped
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
-                              { c_ctx.functions[func].ops[op_id].ret } );
+            if ( right_result != 0 ) {
+                auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { right_result } );
+                drop_variable( c_ctx, w_ctx, func, *this, right_result );
+                c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].type =
+                    MirVariable::Type::not_dropped; // temporary var which must not be dropped
+                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
+                                  { c_ctx.functions[func].ops[op_id].ret } );
+            } else { // always true
+                create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, eval_true_label, {} );
+            }
 
             // Create check conclusion
-            op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
+            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::literal, 0, {} );
             c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
             ret = c_ctx.functions[func].ops[op_id].ret;
 
@@ -1778,7 +1785,9 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
             c_ctx.functions[func].ops[op_id].data = c_ctx.true_val;
 
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
-            drop_variable( c_ctx, w_ctx, func, *this, left_result );
+
+            if ( left_result != 0 )
+                drop_variable( c_ctx, w_ctx, func, *this, left_result );
             break;
         }
 
@@ -1860,8 +1869,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
 
                 // Handle check
                 if ( binding != 0 ) {
-                    auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, 0,
-                                                   { binding } );
+                    auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, 0, { binding } );
                     drop_variable( c_ctx, w_ctx, func, *this, binding );
                     binding = c_ctx.functions[func].ops[op_id].ret;
                     c_ctx.functions[func].vars[binding].type =
