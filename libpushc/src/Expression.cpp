@@ -1319,9 +1319,12 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             drop_variable( c_ctx, w_ctx, func, *this, cond );
             cond = c_ctx.functions[func].ops[op_id].ret;
         }
-        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label, { cond } );
+        auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::cond], MirEntry::Type::bind, 0, { cond } );
         drop_variable( c_ctx, w_ctx, func, *this, cond );
-        // TODO fix cond lifetime isues with loop
+        cond = c_ctx.functions[func].ops[op_id].ret;
+        c_ctx.functions[func].vars[cond].type =
+            MirVariable::Type::not_dropped; // temporary var which must not be dropped
+        create_operation( c_ctx, w_ctx, func, named[AstChild::cond], MirEntry::Type::cond_jmp_z, label, { cond } );
 
         break; // return the unit var
     }
@@ -1635,7 +1638,10 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
                 w_ctx.print_msg<MessageType::err_feature_curr_not_supported>(
                     MessageInfo( *this, 0, FmtStr::Color::Red ), {}, String( "OR-operator in object deconstruction" ) );
                 // TODO fix this and set ret_bind properly
+                break;
             }
+
+            // TODO fix lifetimes
 
             break;
         }
@@ -1743,9 +1749,14 @@ std::pair<MirVarId, MirVarId> AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx
 
                 // Handle check
                 if ( add_checks && binding.second != 0 ) {
+                    auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::cond], MirEntry::Type::bind, 0,
+                                                   { binding.second } );
+                    drop_variable( c_ctx, w_ctx, func, *this, binding.second );
+                    auto tmp_cond = c_ctx.functions[func].ops[op_id].ret;
+                    c_ctx.functions[func].vars[tmp_cond].type =
+                        MirVariable::Type::not_dropped; // temporary var which must not be dropped
                     create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_false_label,
-                                      { binding.second } );
-                    // TODO drop the value
+                                      { tmp_cond } );
                 }
             }
 

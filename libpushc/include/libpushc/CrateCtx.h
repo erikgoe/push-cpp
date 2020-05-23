@@ -191,6 +191,7 @@ struct MirVariable {
         rvalue, // rvalue
         l_ref, // local reference
         p_ref, // parameter reference
+        not_dropped, // variable which requires no dropping routine
         label, // just a label specifier
         symbol, // just a static symbol specifier
 
