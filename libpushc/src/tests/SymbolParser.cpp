@@ -288,30 +288,32 @@ TEST_CASE( "Symbol discovery", "[semantic_parser]" ) {
         std::find_if( c_ctx->type_table.begin(), c_ctx->type_table.end(),
                       [&graph_start_idx]( const TypeTableEntry &entry ) { return entry.symbol == graph_start_idx; } );
     u32 type_start_idx = type_start - c_ctx->type_table.begin();
-    REQUIRE( c_ctx->symbol_graph.end() - graph_start == 26 ); // expected graph element count
+    REQUIRE( c_ctx->symbol_graph.end() - graph_start == 25 ); // expected graph element count
     REQUIRE( c_ctx->type_table.end() - type_start == 10 ); // expected type table element count
+    u32 op_scope = std::find_if( c_ctx->symbol_graph.begin(), c_ctx->symbol_graph.end(),
+                                 []( const SymbolGraphNode &node ) { return node.identifier.name == "op"; } ) -
+                   c_ctx->symbol_graph.begin();
 
     // Create expected data
     u32 type_ctr = graph_start_idx;
     std::vector<SymbolGraphNode> expected_graph_nodes = {
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "A" }, {}, false, type_start_idx, c_ctx->struct_type },
-        SymbolGraphNode{ 3, {}, {}, SymbolIdentifier{ "op" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
-            graph_start_idx + 1, {}, {}, SymbolIdentifier{ "Add" }, {}, false, type_start_idx + 1, c_ctx->trait_type },
+            op_scope, {}, {}, SymbolIdentifier{ "Add" }, {}, false, type_start_idx + 1, c_ctx->trait_type },
         SymbolGraphNode{
-            graph_start_idx + 2, {}, {}, SymbolIdentifier{ "add" }, {}, false, type_start_idx + 2, c_ctx->fn_type },
+            graph_start_idx + 1, {}, {}, SymbolIdentifier{ "add" }, {}, false, type_start_idx + 2, c_ctx->fn_type },
         SymbolGraphNode{
             graph_start_idx, {}, {}, SymbolIdentifier{ "add" }, {}, false, type_start_idx + 3, c_ctx->fn_type },
-        SymbolGraphNode{ graph_start_idx + 4, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+        SymbolGraphNode{ graph_start_idx + 3, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "submodule" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
-            graph_start_idx + 6, {}, {}, SymbolIdentifier{ "B" }, {}, false, type_start_idx + 4, c_ctx->struct_type },
+            graph_start_idx + 5, {}, {}, SymbolIdentifier{ "B" }, {}, false, type_start_idx + 4, c_ctx->struct_type },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "base" }, {}, false, 0, c_ctx->mod_type },
-        SymbolGraphNode{ graph_start_idx + 8, {}, {}, SymbolIdentifier{ "B" }, {}, false, 0, c_ctx->mod_type },
-        SymbolGraphNode{ graph_start_idx + 9, {}, {}, SymbolIdentifier{ "A" }, {}, false, 0, c_ctx->mod_type },
-        SymbolGraphNode{ graph_start_idx + 10, {}, {}, SymbolIdentifier{ "b" }, {}, false, 0, c_ctx->mod_type },
-        SymbolGraphNode{ graph_start_idx + 11, {}, {}, SymbolIdentifier{ "a" }, {}, false, 0, c_ctx->mod_type },
-        SymbolGraphNode{ graph_start_idx + 12,
+        SymbolGraphNode{ graph_start_idx + 7, {}, {}, SymbolIdentifier{ "B" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 8, {}, {}, SymbolIdentifier{ "A" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 9, {}, {}, SymbolIdentifier{ "b" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 10, {}, {}, SymbolIdentifier{ "a" }, {}, false, 0, c_ctx->mod_type },
+        SymbolGraphNode{ graph_start_idx + 11,
                          {},
                          {},
                          SymbolIdentifier{ "function" },
@@ -319,21 +321,21 @@ TEST_CASE( "Symbol discovery", "[semantic_parser]" ) {
                          false,
                          type_start_idx + 5,
                          c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 12, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ graph_start_idx + 13, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
-        SymbolGraphNode{ graph_start_idx + 14, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{
-            graph_start_idx + 14, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 6, c_ctx->fn_type },
-        SymbolGraphNode{ graph_start_idx + 16, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+            graph_start_idx + 13, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 6, c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 15, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "sub" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
-            graph_start_idx + 18, {}, {}, SymbolIdentifier{ "new_fn" }, {}, false, type_start_idx + 7, c_ctx->fn_type },
-        SymbolGraphNode{ graph_start_idx + 19, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+            graph_start_idx + 17, {}, {}, SymbolIdentifier{ "new_fn" }, {}, false, type_start_idx + 7, c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 18, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "other_fn" }, {}, false, type_start_idx + 8, c_ctx->fn_type },
-        SymbolGraphNode{ graph_start_idx + 21, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+        SymbolGraphNode{ graph_start_idx + 20, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
         SymbolGraphNode{ 1, {}, {}, SymbolIdentifier{ "another_sub" }, {}, false, 0, c_ctx->mod_type },
         SymbolGraphNode{
-            graph_start_idx + 23, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 9, c_ctx->fn_type },
-        SymbolGraphNode{ graph_start_idx + 24, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
+            graph_start_idx + 22, {}, {}, SymbolIdentifier{ "fn" }, {}, false, type_start_idx + 9, c_ctx->fn_type },
+        SymbolGraphNode{ graph_start_idx + 23, {}, {}, SymbolIdentifier{ "" }, {}, false, 0, 0 },
     };
 
     for ( size_t i = graph_start_idx; i < c_ctx->symbol_graph.size(); i++ ) {
