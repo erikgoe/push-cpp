@@ -758,9 +758,19 @@ bool AstNode::first_transformation( CrateCtx &c_ctx, Worker &w_ctx, AstNode &par
             return basic_semantic_check( c_ctx, w_ctx ) && // repeat the parameter check
                    first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
         }
-    } else if ( type == ExprType::func || type == ExprType::if_cond || type == ExprType::if_else ||
-                type == ExprType::pre_loop || type == ExprType::post_loop || type == ExprType::inf_loop ||
-                type == ExprType::itr_loop || type == ExprType::static_statement || type == ExprType::unsafe ) {
+    } else if ( type == ExprType::func || type == ExprType::if_bind || type == ExprType::if_cond ||
+                type == ExprType::if_else || type == ExprType::pre_loop || type == ExprType::post_loop ||
+                type == ExprType::inf_loop || type == ExprType::itr_loop || type == ExprType::static_statement ||
+                type == ExprType::unsafe ) {
+        if ( ( type == ExprType::if_cond || type == ExprType::if_else ) &&
+             named[AstChild::cond].type == ExprType::simple_bind ) {
+            // if let
+            type = ( type == ExprType::if_cond ? ExprType::if_bind : ExprType::if_else_bind );
+            auto tmp = named[AstChild::cond].children.front();
+            named[AstChild::cond] = tmp;
+            return first_transformation( c_ctx, w_ctx, parent, expect_operand ); // repeat for new entry
+        }
+
         if ( type == ExprType::func && expect_operand && named.find( AstChild::parameters ) == named.end() &&
              ( children.front().type == ExprType::set || children.front().children.size() <= 1 ) ) {
             // Should be interpreted as struct initializer TODO this should be configurable using the prelude
@@ -1218,6 +1228,64 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         children.front().named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, var, *this, false );
 
         break;
+    }
+    case ExprType::if_bind: {
+        // Create jump label var
+        auto label = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[label].type = MirVariable::Type::label;
+
+        // Evaluate expr
+        auto var = named[AstChild::cond].named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
+        auto cond =
+            named[AstChild::cond].named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, var, *this );
+
+        // Insert conditional jump
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label, { cond } );
+
+        // Body
+        auto head = named[AstChild::cond].bind_vars( c_ctx, w_ctx, func, var,*this, true );
+        auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
+        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        drop_variable( c_ctx, w_ctx, func, *this, head );
+
+        // Insert label
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label, {} );
+        drop_variable( c_ctx, w_ctx, func, *this, cond );
+
+        break; // return the unit var
+    }
+    case ExprType::if_else_bind: {
+        // Create jump label var
+        auto label1 = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[label1].type = MirVariable::Type::label;
+        auto label2 = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[label2].type = MirVariable::Type::label;
+
+        // Evaluate expr
+        auto var = named[AstChild::cond].named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
+        auto cond =
+            named[AstChild::cond].named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, var, *this );
+
+        // Insert conditional jump
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label1, { cond } );
+
+        // Body
+        auto head = named[AstChild::cond].bind_vars( c_ctx, w_ctx, func, var, *this, true );
+        auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
+        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        drop_variable( c_ctx, w_ctx, func, *this, head );
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label2, {} );
+
+        // Else block
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label1, {} );
+        body_var = children[1].parse_mir( c_ctx, w_ctx, func );
+        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+
+        // Insert label
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label2, {} );
+        drop_variable( c_ctx, w_ctx, func, *this, cond );
+
+        break; // return the unit var
     }
     case ExprType::if_cond: {
         // Create jump label var
@@ -2077,6 +2145,12 @@ String AstNode::get_debug_repr() const {
         return "BINDING(" + children.front().get_debug_repr() + ")" + add_debug_data;
     case ExprType::alias_bind:
         return "ALIAS(" + children.front().get_debug_repr() + ")" + add_debug_data;
+    case ExprType::if_bind:
+        return "IF_BIND(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " + children.front().get_debug_repr() +
+               " )" + add_debug_data;
+    case ExprType::if_else_bind:
+        return "IF_BIND(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " + children.front().get_debug_repr() +
+               " ELSE " + children.at( 1 ).get_debug_repr() + " )" + add_debug_data;
 
     case ExprType::if_cond:
         return "IF(" + named.at( AstChild::cond ).get_debug_repr() + " THEN " + children.front().get_debug_repr() +

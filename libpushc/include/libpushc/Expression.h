@@ -57,6 +57,8 @@ enum class ExprType {
     op,
     simple_bind,
     alias_bind,
+    if_bind,
+    if_else_bind,
 
     if_cond,
     if_else,
