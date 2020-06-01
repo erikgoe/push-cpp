@@ -103,6 +103,7 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
         { SyntaxType::range, ExprType::range },
         { SyntaxType::assignment, ExprType::op },
         { SyntaxType::implication, ExprType::op },
+        { SyntaxType::in_operator, ExprType::op },
         { SyntaxType::decl_attr, ExprType::declaration },
         { SyntaxType::public_attr, ExprType::public_attr },
         { SyntaxType::comma, ExprType::comma_list },
@@ -188,6 +189,8 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
                 node.props.insert( ExprProperty::assignment );
             } else if ( type == SyntaxType::implication ) {
                 node.props.insert( ExprProperty::implication );
+            } else if ( type == SyntaxType::in_operator ) {
+                node.props.insert( ExprProperty::in_operator );
             }
 
             return node;

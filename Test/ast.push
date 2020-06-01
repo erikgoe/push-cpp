@@ -15,6 +15,7 @@ impl op::Add for A {
     }
 }
 
+struct std::Iterator {}
 std::op::is_equal(left:mut&u32, right:&u32) -> () {
 }
 std::op::assignment(left:mut&u32, right:&u32) -> () {
@@ -24,6 +25,14 @@ std::op::addition(left:&u32, right:&u32) -> u32 {
 std::op::division(left:&u32, right:&u32) -> u32 {
 }
 std::op::bigger(left:&u32, right:&u32) -> bool {
+}
+std::op::in_operator(collection:&u32) -> std::Iterator {
+}
+std::itr::valid(itr:&std::Iterator) -> bool {
+}
+std::itr::get(itr:&std::Iterator) -> u32 {
+}
+std::itr::next(itr:&std::Iterator) -> () {
 }
 
 println(str) -> () {}
@@ -51,11 +60,9 @@ g() -> u32 {
 }
 
 h() {
-    let x:A = 1;
-    if let A{ 1, y } = x {
-        true
-    }else {
-        false
+    //let itr:std::base::Iterator = 1;
+    for i in 0 { // Don't mind the type
+        // stuff
     }
 }
 

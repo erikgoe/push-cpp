@@ -519,12 +519,14 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             String syntax_type_str = token.content;
             CONSUME_COMMA( token );
 
-            if ( syntax_type_str == "OPERATOR" || syntax_type_str == "ASSIGNMENT" ||
-                 syntax_type_str == "IMPLICATION" ) {
+            if ( syntax_type_str == "OPERATOR" || syntax_type_str == "ASSIGNMENT" || syntax_type_str == "IMPLICATION" ||
+                 syntax_type_str == "IN_OPERATOR" ) {
                 if ( syntax_type_str == "ASSIGNMENT" ) {
                     syntax_type = SyntaxType::assignment;
                 } else if ( syntax_type_str == "IMPLICATION" ) {
                     syntax_type = SyntaxType::implication;
+                } else if ( syntax_type_str == "IN_OPERATOR" ) {
+                    syntax_type = SyntaxType::in_operator;
                 } else {
                     syntax_type = SyntaxType::op;
                 }
@@ -662,6 +664,10 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 conf->string_trait = token.content;
             } else if ( type == "TUPLE" ) {
                 conf->tuple_trait = token.content;
+            } else if ( type == "ARRAY" ) {
+                conf->array_trait = token.content;
+            } else if ( type == "ITERATOR" ) {
+                conf->iterator_trait = token.content;
             } else if ( type == "IMPLICATION" ) {
                 conf->implication_trait = token.content;
             } else if ( type == "NEVER" ) {
@@ -670,6 +676,12 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
                 conf->drop_fn = token.content;
             } else if ( type == "EQUALS" ) {
                 conf->equals_fn = token.content;
+            } else if ( type == "ITR_VALID" ) {
+                conf->itr_valid_fn = token.content;
+            } else if ( type == "ITR_GET" ) {
+                conf->itr_get_fn = token.content;
+            } else if ( type == "ITR_NEXT" ) {
+                conf->itr_next_fn = token.content;
             }
         } else if ( mci == "SPECIAL_TYPE" ) {
             // TODO delete this mci

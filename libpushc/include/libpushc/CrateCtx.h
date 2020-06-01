@@ -237,9 +237,14 @@ struct CrateCtx {
     TypeId int_type = 0; // type of the integer trait
     TypeId str_type = 0; // type of the string trait
     TypeId tuple_type = 0; // type of the tuple template type
+    TypeId array_type = 0; // type of the array template type
+    TypeId iterator_type = 0; // type of the iterator trait
 
     TypeId drop_fn = 0; // the function which is called on variable drop
-    TypeId equals_fn = 0; // the function which is called to check if two variables are equal TODO set in prelude
+    TypeId equals_fn = 0; // the function which is called to check if two variables are equal
+    TypeId itr_valid_fn = 0; // the function which is called to check if an iterator ist still valid
+    TypeId itr_get_fn = 0; // the function which is called to access the value behind a iterator
+    TypeId itr_next_fn = 0; // the function which is called to increase the iterator pointer
 
     MirLiteral true_val = { true, 0xff, 1 }; // the representation of the boolean "true" value
     MirLiteral false_val = { true, 0, 1 }; // the representation of the boolean "false" value

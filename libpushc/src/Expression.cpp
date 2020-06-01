@@ -1243,7 +1243,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label, { cond } );
 
         // Body
-        auto head = named[AstChild::cond].bind_vars( c_ctx, w_ctx, func, var,*this, true );
+        auto head = named[AstChild::cond].bind_vars( c_ctx, w_ctx, func, var, *this, true );
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
         drop_variable( c_ctx, w_ctx, func, *this, body_var );
         drop_variable( c_ctx, w_ctx, func, *this, head );
@@ -1408,6 +1408,108 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Infinit jump back
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label, {} );
+
+        break; // return the unit var
+    }
+    case ExprType::itr_loop: {
+        auto loop_label = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[loop_label].type = MirVariable::Type::label;
+
+        auto end_label = create_variable( c_ctx, w_ctx, func, this );
+        c_ctx.functions[func].vars[end_label].type = MirVariable::Type::label;
+
+        MirVarId iterator = 0, right_result = 0;
+
+        // Decide how to handle the iteration condition
+        if ( named[AstChild::itr].has_prop( ExprProperty::in_operator ) ) {
+            // Iterate collection with new binding
+            auto calls = find_global_symbol_by_identifier_chain(
+                c_ctx, w_ctx,
+                split_symbol_chain( named[AstChild::itr].symbol_name,
+                                    w_ctx.unit_ctx()->prelude_conf.scope_access_operator ) );
+
+            for ( auto &candidate : calls ) {
+                analyse_function_signature( c_ctx, w_ctx, candidate );
+            }
+
+            // TODO select the function based on its signature
+
+            if ( calls.empty() ) {
+                w_ctx.print_msg<MessageType::err_operator_symbol_not_found>(
+                    MessageInfo( named[AstChild::itr], 0, FmtStr::Color::Red ), std::vector<MessageInfo>(), symbol_name,
+                    token.content );
+                break;
+            } else if ( calls.size() > 1 ) {
+                std::vector<MessageInfo> notes;
+                for ( auto &c : calls ) {
+                    if ( !c_ctx.symbol_graph[c].original_expr.empty() )
+                        notes.push_back( MessageInfo( *c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
+                }
+                w_ctx.print_msg<MessageType::err_operator_symbol_is_ambiguous>(
+                    MessageInfo( named[AstChild::itr], 0, FmtStr::Color::Red ), notes, symbol_name, token.content );
+                break;
+            }
+
+            // Create iterator
+            right_result = named[AstChild::itr].named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
+            auto op_id = create_call( c_ctx, w_ctx, func, named[AstChild::itr], calls.front(), 0, { right_result } );
+            iterator = c_ctx.functions[func].ops[op_id].ret;
+        } else {
+            // Iterate given iterator
+            iterator = named[AstChild::itr].parse_mir( c_ctx, w_ctx, func );
+        }
+
+        auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::itr], MirEntry::Type::type, iterator, {} );
+        c_ctx.functions[func].ops[op_id].symbol = c_ctx.iterator_type;
+
+        // Create loop jump label
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, loop_label, {} );
+
+        // Loop condition
+        auto cond = create_call( c_ctx, w_ctx, func, named[AstChild::itr], c_ctx.type_table[c_ctx.itr_valid_fn].symbol,
+                                 0, { iterator } );
+
+        op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::itr], MirEntry::Type::bind, 0, { cond } );
+        drop_variable( c_ctx, w_ctx, func, named[AstChild::itr], cond );
+        cond = c_ctx.functions[func].ops[op_id].ret;
+        c_ctx.functions[func].vars[cond].type =
+            MirVariable::Type::not_dropped; // temporary var which must not be dropped
+
+        create_operation( c_ctx, w_ctx, func, named[AstChild::itr], MirEntry::Type::cond_jmp_z, end_label, { cond } );
+
+        // Create binding
+        MirVarId binding = 0;
+        if ( named[AstChild::itr].has_prop( ExprProperty::in_operator ) ) {
+            op_id = create_call( c_ctx, w_ctx, func, named[AstChild::itr], c_ctx.type_table[c_ctx.itr_get_fn].symbol, 0,
+                                 { iterator } );
+            binding = named[AstChild::itr].named[AstChild::left_expr].bind_vars(
+                c_ctx, w_ctx, func, c_ctx.functions[func].ops[op_id].ret, named[AstChild::itr], false );
+        }
+
+        // Body
+        auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
+        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+
+        // Drop binding
+        if ( binding != 0 ) {
+            drop_variable( c_ctx, w_ctx, func, *this, binding );
+        }
+
+        // Increment iterator
+        op_id = create_call( c_ctx, w_ctx, func, *this, c_ctx.type_table[c_ctx.itr_next_fn].symbol, 0, { iterator } );
+        drop_variable( c_ctx, w_ctx, func, *this, c_ctx.functions[func].ops[op_id].ret );
+
+        // Jump back loop
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, loop_label, {} );
+
+        // Create end jump label
+        create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, end_label, {} );
+
+        // Drop stuff
+        drop_variable( c_ctx, w_ctx, func, *this, iterator );
+        if ( binding != 0 ) {
+            drop_variable( c_ctx, w_ctx, func, *this, right_result );
+        }
 
         break; // return the unit var
     }

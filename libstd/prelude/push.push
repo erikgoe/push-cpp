@@ -150,7 +150,7 @@ define_mci_rule( SYNTAX, RANGE, TO_EXCLUDING, 21 BIAS 11, rtl, double_list, ".."
 define_mci_rule( SYNTAX, RANGE, INCLUDING, 21 BIAS 9, rtl, triple_list, expr -> from, "..=" -> op, expr -> to ); // range operator for 0..=5
 define_mci_rule( SYNTAX, RANGE, TO_INCLUDING, 21 BIAS 11, rtl, double_list, "..=" -> op, expr -> to ); // range operator for ..=5
 
-define_mci_rule( SYNTAX, OPERATOR, std::op::iterate_collection, 22, ltr, triple_list, expr -> left, "in" -> op, expr -> right ); // iteration over a collection
+define_mci_rule( SYNTAX, IN_OPERATOR, std::op::in_operator, 22, ltr, triple_list, expr -> left, "in" -> op, expr -> right ); // iteration over a collection
 
 define_mci_rule( SYNTAX, OPERATOR, std::op::smaller, AMBIGUOUS, 23 CLASS 4, ltr, triple_list, expr -> left, "<" -> op, expr -> right ); // regular compare
 define_mci_rule( SYNTAX, OPERATOR, std::op::smaller_or_eql, 23, ltr, triple_list, expr -> left, "<=" -> op, expr -> right ); // regular compare (with or equal)
@@ -215,10 +215,15 @@ define_mci_rule( SYNTAX, TEMPLATE_POSTFIX, 34 CLASS 3 FROM 4, ltr, quadruple_lis
 define_mci_rule( BASE_SYMBOL, INTEGER, std::num::Integer ); // Defines which trait describes the integer type
 define_mci_rule( BASE_SYMBOL, STRING, std::str::String ); // Defines which trait describes the string type
 define_mci_rule( BASE_SYMBOL, TUPLE, std::Tuple ); // Defines which struct template describes the tuple type
+define_mci_rule( BASE_SYMBOL, ARRAY, std::Array ); // Defines which struct template describes the array type
+define_mci_rule( BASE_SYMBOL, ITERATOR, std::base::Iterator ); // Defines which struct describes the iterator type
 define_mci_rule( BASE_SYMBOL, IMPLICATION, std::base::Implication ); // Defines which trait describes the implication type
 define_mci_rule( BASE_SYMBOL, NEVER, std::base::Never ); // Defines which trait describes the never type
 define_mci_rule( BASE_SYMBOL, DROP, std::drop ); // Defines which function describes the drop operation
 define_mci_rule( BASE_SYMBOL, EQUALS, std::op::is_equal ); // Defines which function describes the comparison
+define_mci_rule( BASE_SYMBOL, ITR_VALID, std::itr::valid ); // Defines which function checks if an iterator is still valid
+define_mci_rule( BASE_SYMBOL, ITR_GET, std::itr::get ); // Defines which function accesses the value behind a iterator
+define_mci_rule( BASE_SYMBOL, ITR_NEXT, std::itr::next ); // Defines which function increases the iterator pointer
 
 define_mci_rule( SPECIAL_TYPE, TYPE, "type" ); // "type" type
 define_mci_rule( SPECIAL_TYPE, UNIT, "()" ); // unit-type

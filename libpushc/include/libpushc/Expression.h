@@ -118,6 +118,7 @@ enum class ExprProperty {
 
     assignment, // specialization of an operator
     implication, // specialization of an operator
+    in_operator, // specialization of an operator
 
     pub, // public (symbol)
     mut, // mutable (symbol)

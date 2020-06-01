@@ -436,6 +436,16 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
     c_ctx.symbol_graph[new_symbol].identifier.template_values.push_back(
         std::make_pair( c_ctx.type_type, ConstValue() ) ); // Make it a template TODO make variadic
 
+    new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, w_ctx, split_symbol_chain( cfg.array_trait, cfg.scope_access_operator ) );
+    c_ctx.array_type = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].identifier.template_values.push_back(
+        std::make_pair( c_ctx.type_type, ConstValue() ) ); // Make it a template TODO make variadic
+
+    new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, w_ctx, split_symbol_chain( cfg.iterator_trait, cfg.scope_access_operator ) );
+    c_ctx.iterator_type = create_new_type( c_ctx, w_ctx, new_symbol );
+
     // Most basic functions
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.drop_fn, cfg.scope_access_operator ) );
@@ -444,6 +454,18 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.equals_fn, cfg.scope_access_operator ) );
     c_ctx.equals_fn = create_new_type( c_ctx, w_ctx, new_symbol );
+
+    new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, w_ctx, split_symbol_chain( cfg.itr_valid_fn, cfg.scope_access_operator ) );
+    c_ctx.itr_valid_fn = create_new_type( c_ctx, w_ctx, new_symbol );
+
+    new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, w_ctx, split_symbol_chain( cfg.itr_get_fn, cfg.scope_access_operator ) );
+    c_ctx.itr_get_fn = create_new_type( c_ctx, w_ctx, new_symbol );
+
+    new_symbol = create_new_global_symbol_from_name_chain(
+        c_ctx, w_ctx, split_symbol_chain( cfg.itr_next_fn, cfg.scope_access_operator ) );
+    c_ctx.itr_next_fn = create_new_type( c_ctx, w_ctx, new_symbol );
 
     // Memblob types
     for ( auto &mbt : cfg.memblob_types ) {

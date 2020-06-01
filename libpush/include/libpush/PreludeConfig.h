@@ -88,6 +88,7 @@ enum class SyntaxType {
     range,
     assignment,
     implication,
+    in_operator,
     decl_attr,
     public_attr,
     comma,
@@ -132,10 +133,15 @@ struct PreludeConfig {
     String integer_trait; // Basic trait to define an integer
     String string_trait; // Basic trait to define a string
     String tuple_trait; // Basic struct template to define a tuple
+    String array_trait; // Basic struct template to define an array
+    String iterator_trait; // Basic struct to define an iterator
     String implication_trait; // Basic trait to define an implication
     String never_trait; // Basic trait to define the never type
     String drop_fn; // Basic function to define the drop operation
-    String equals_fn; // Basic function to define the drop operation
+    String equals_fn; // Basic function to compare two values
+    String itr_valid_fn; // Basic function to check if an iterator is still valid
+    String itr_get_fn; // Basic function to access the value behind a iterator
+    String itr_next_fn; // Basic function to increase the iterator pointer
     std::map<String, String> special_types; // maps special type keywords/operators to their meaning
     std::map<String, u8> memblob_types; // maps type names to their memory size
     std::map<String, std::pair<String, u64>> literals; // each literal keyword is mapped to its type and memory_value
