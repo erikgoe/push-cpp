@@ -1454,6 +1454,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             right_result = named[AstChild::itr].named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
             auto op_id = create_call( c_ctx, w_ctx, func, named[AstChild::itr], calls.front(), 0, { right_result } );
             iterator = c_ctx.functions[func].ops[op_id].ret;
+            c_ctx.functions[func].vars[iterator].type =
+                MirVariable::Type::value; // TODO temporary workaround, while borrowing is not implemented (delete then)
         } else {
             // Iterate given iterator
             iterator = named[AstChild::itr].parse_mir( c_ctx, w_ctx, func );
@@ -1831,6 +1833,8 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         create_operation( c_ctx, w_ctx, func, bind_expr, MirEntry::Type::bind, ret, { in_var } );
         remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
 
+        c_ctx.functions[func].vars[ret].type = MirVariable::Type::value;
+
         break;
     }
     case ExprType::struct_initializer: {
@@ -1903,6 +1907,14 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         c_ctx.functions[func].ops[op_id].symbol = type_ids.front();
         if ( c_ctx.functions[func].vars[ret].value_type == 0 ) {
             c_ctx.functions[func].vars[ret].value_type = c_ctx.symbol_graph[type_ids.front()].value;
+        }
+
+        // Add attributes
+        if ( named[AstChild::right_expr].has_prop( ExprProperty::mut ) ) {
+            c_ctx.functions[func].vars[ret].mut = true;
+        }
+        if ( named[AstChild::right_expr].has_prop( ExprProperty::ref ) ) {
+            c_ctx.functions[func].vars[ret].type = MirVariable::Type::l_ref;
         }
 
         break;
