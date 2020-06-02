@@ -1462,7 +1462,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         }
 
         auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::itr], MirEntry::Type::type, iterator, {} );
-        c_ctx.functions[func].ops[op_id].symbol = c_ctx.iterator_type;
+        c_ctx.functions[func].ops[op_id].symbol = c_ctx.type_table[c_ctx.iterator_type].symbol;
 
         // Create loop jump label
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, loop_label, {} );
