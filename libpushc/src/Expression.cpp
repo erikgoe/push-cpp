@@ -134,50 +134,17 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::separable );
         break;
     case ExprType::simple_bind:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::separable );
-        break;
     case ExprType::alias_bind:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::separable );
         break;
 
     case ExprType::if_cond:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::completed );
-        props.insert( ExprProperty::separable );
-        props.insert( ExprProperty::anonymous_scope );
-        break;
     case ExprType::if_else:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::completed );
-        props.insert( ExprProperty::separable );
-        props.insert( ExprProperty::anonymous_scope );
-        break;
     case ExprType::pre_loop:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::completed );
-        props.insert( ExprProperty::separable );
-        props.insert( ExprProperty::anonymous_scope );
-        break;
     case ExprType::post_loop:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::completed );
-        props.insert( ExprProperty::separable );
-        props.insert( ExprProperty::anonymous_scope );
-        break;
     case ExprType::inf_loop:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::completed );
-        props.insert( ExprProperty::separable );
-        props.insert( ExprProperty::anonymous_scope );
-        break;
     case ExprType::itr_loop:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::completed );
-        props.insert( ExprProperty::separable );
-        props.insert( ExprProperty::anonymous_scope );
-        break;
     case ExprType::match:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
@@ -186,9 +153,6 @@ void AstNode::generate_new_props() {
         break;
 
     case ExprType::self:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::symbol_like );
-        break;
     case ExprType::self_type:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::symbol_like );
@@ -201,19 +165,7 @@ void AstNode::generate_new_props() {
         break;
 
     case ExprType::structure:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::completed );
-        props.insert( ExprProperty::separable );
-        props.insert( ExprProperty::decl_parent );
-        props.insert( ExprProperty::named_scope );
-        break;
     case ExprType::trait:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::completed );
-        props.insert( ExprProperty::separable );
-        props.insert( ExprProperty::decl_parent );
-        props.insert( ExprProperty::named_scope );
-        break;
     case ExprType::implementation:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::completed );
@@ -243,11 +195,6 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::separable );
         break;
     case ExprType::reference:
-        props.insert( ExprProperty::shallow );
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::symbol_like );
-        props.insert( ExprProperty::separable );
-        break;
     case ExprType::mutable_attr:
         props.insert( ExprProperty::shallow );
         props.insert( ExprProperty::operand );
@@ -272,10 +219,6 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::named_scope );
         break;
     case ExprType::declaration:
-        props.insert( ExprProperty::shallow );
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::separable );
-        break;
     case ExprType::public_attr:
         props.insert( ExprProperty::shallow );
         props.insert( ExprProperty::operand );
@@ -290,9 +233,6 @@ void AstNode::generate_new_props() {
         props.insert( ExprProperty::completed );
         break;
     case ExprType::macro_call:
-        props.insert( ExprProperty::operand );
-        props.insert( ExprProperty::separable );
-        break;
     case ExprType::unsafe:
         props.insert( ExprProperty::operand );
         props.insert( ExprProperty::separable );
