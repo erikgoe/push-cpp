@@ -520,13 +520,18 @@ bool parse_mci_rule( sptr<PreludeConfig> &conf, sptr<SourceInput> &input, Worker
             CONSUME_COMMA( token );
 
             if ( syntax_type_str == "OPERATOR" || syntax_type_str == "ASSIGNMENT" || syntax_type_str == "IMPLICATION" ||
-                 syntax_type_str == "IN_OPERATOR" ) {
+                 syntax_type_str == "IN_OPERATOR" || syntax_type_str == "SHORTCUT_AND" ||
+                 syntax_type_str == "SHORTCUT_OR" ) {
                 if ( syntax_type_str == "ASSIGNMENT" ) {
                     syntax_type = SyntaxType::assignment;
                 } else if ( syntax_type_str == "IMPLICATION" ) {
                     syntax_type = SyntaxType::implication;
                 } else if ( syntax_type_str == "IN_OPERATOR" ) {
                     syntax_type = SyntaxType::in_operator;
+                } else if ( syntax_type_str == "SHORTCUT_AND" ) {
+                    syntax_type = SyntaxType::shortcut_and;
+                } else if ( syntax_type_str == "SHORTCUT_OR" ) {
+                    syntax_type = SyntaxType::shortcut_or;
                 } else {
                     syntax_type = SyntaxType::op;
                 }

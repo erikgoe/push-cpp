@@ -159,8 +159,8 @@ define_mci_rule( SYNTAX, OPERATOR, std::op::bigger_or_eql, 23, ltr, triple_list,
 define_mci_rule( SYNTAX, OPERATOR, std::op::is_equal, 24, ltr, triple_list, expr -> left, "==" -> op, expr -> right ); // equality comparison
 define_mci_rule( SYNTAX, OPERATOR, std::op::is_not_equal, 24, ltr, triple_list, expr -> left, "!=" -> op, expr -> right ); // inequality comparison
 
-define_mci_rule( SYNTAX, OPERATOR, std::op::logic_and, 25, ltr, triple_list, expr -> left, "&&" -> op, expr -> right ); // basic logical "and" operator
-define_mci_rule( SYNTAX, OPERATOR, std::op::logic_or, 26, ltr, triple_list, expr -> left, "||" -> op, expr -> right ); // basic logical "or" operator
+define_mci_rule( SYNTAX, SHORTCUT_AND, std::op::logic_and, 25, ltr, triple_list, expr -> left, "&&" -> op, expr -> right ); // basic logical "and" operator
+define_mci_rule( SYNTAX, SHORTCUT_OR, std::op::logic_or, 26, ltr, triple_list, expr -> left, "||" -> op, expr -> right ); // basic logical "or" operator
 
 define_mci_rule( SYNTAX, ASSIGNMENT, std::op::assignment, 27, rtl, triple_list, expr -> left, "=" -> op, expr -> right ); // simple assignment
 define_mci_rule( SYNTAX, ASSIGNMENT, std::op::add_assign, 27, rtl, triple_list, expr -> left, "+=" -> op, expr -> right ); // simple add assignment

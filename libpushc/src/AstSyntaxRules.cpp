@@ -104,6 +104,8 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
         { SyntaxType::assignment, ExprType::op },
         { SyntaxType::implication, ExprType::op },
         { SyntaxType::in_operator, ExprType::op },
+        { SyntaxType::shortcut_and, ExprType::op },
+        { SyntaxType::shortcut_or, ExprType::op },
         { SyntaxType::decl_attr, ExprType::declaration },
         { SyntaxType::public_attr, ExprType::public_attr },
         { SyntaxType::comma, ExprType::comma_list },
@@ -191,6 +193,10 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
                 node.props.insert( ExprProperty::implication );
             } else if ( type == SyntaxType::in_operator ) {
                 node.props.insert( ExprProperty::in_operator );
+            } else if ( type == SyntaxType::shortcut_and ) {
+                node.props.insert( ExprProperty::shortcut_and );
+            } else if ( type == SyntaxType::shortcut_or ) {
+                node.props.insert( ExprProperty::shortcut_or );
             }
 
             return node;

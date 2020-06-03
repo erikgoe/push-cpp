@@ -89,6 +89,8 @@ enum class SyntaxType {
     assignment,
     implication,
     in_operator,
+    shortcut_and,
+    shortcut_or,
     decl_attr,
     public_attr,
     comma,
