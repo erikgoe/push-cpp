@@ -55,41 +55,67 @@ MirEntryId create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     return c_ctx.functions[function].ops.size() - 1;
 }
 
+// Collects message information from symbol locations
+std::vector<MessageInfo> generate_error_messages_of_symbols( CrateCtx &c_ctx, Worker &w_ctx,
+                                                             std::vector<SymbolId> &symbols ) {
+    std::vector<MessageInfo> messages;
+    for ( auto &s : symbols ) {
+        messages.push_back( MessageInfo( *c_ctx.symbol_graph[s].original_expr.front(), 1 ) );
+    }
+    return messages;
+}
+
 MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_function, AstNode &original_expr,
-                        SymbolId called_function, MirVarId result, std::vector<MirVarId> parameters ) {
+                        std::vector<SymbolId> called_function_candidates, MirVarId result,
+                        std::vector<MirVarId> parameters ) {
     FunctionImpl &caller = c_ctx.functions[calling_function];
-    SymbolGraphNode &callee = c_ctx.symbol_graph[called_function];
-    if ( parameters.size() != callee.identifier.parameters.size() )
+    std::remove_if( called_function_candidates.begin(), called_function_candidates.end(), [&]( SymbolId s ) {
+        return parameters.size() != c_ctx.symbol_graph[s].identifier.parameters.size();
+    } );
+    if ( called_function_candidates.empty() ) // because all candidates have been removed
         LOG_ERR( "Expected and provided parameter count differ" );
 
     // Create call operation
     auto op_id =
         create_operation( c_ctx, w_ctx, calling_function, original_expr, MirEntry::Type::call, result, parameters );
     auto &op = caller.ops[op_id];
-    op.symbol = called_function;
+    op.symbols = called_function_candidates;
     caller.vars[op.ret].type = MirVariable::Type::rvalue;
-    if ( caller.vars[op.ret].value_type == 0 ) {
-        caller.vars[op.ret].value_type = callee.identifier.eval_type.type;
-    }
 
-    // Handle parameter remains
-    for ( size_t i = 0; i < parameters.size(); i++ ) {
-        if ( callee.identifier.parameters[i].ref ) {
-            // Reference parameter expected
-            if ( caller.vars[parameters[i]].type == MirVariable::Type::rvalue ) {
-                drop_variable( c_ctx, w_ctx, calling_function, original_expr, parameters[i] );
-            }
-        } else {
-            // Parameter moved
-
-            // Drop referenced vars
-            if ( caller.vars[parameters[i]].type == MirVariable::Type::l_ref ) {
-                remove_from_local_living_vars( c_ctx, w_ctx, calling_function, original_expr,
-                                               caller.vars[parameters[i]].ref );
+    // Infer the function call as good as possible
+    if ( infer_function_call( c_ctx, w_ctx, c_ctx.type_table[c_ctx.functions[calling_function].type].symbol, op ) ) {
+        // Handle parameter remains
+        for ( size_t i = 0; i < parameters.size(); i++ ) {
+            bool is_ref = c_ctx.symbol_graph[caller.ops[op_id].symbols.front()].identifier.parameters[i].ref;
+            // Test if the borrowing behaviour of all possible functions match
+            for ( auto &s : caller.ops[op_id].symbols ) {
+                if ( is_ref != c_ctx.symbol_graph[s].identifier.parameters[i].ref ) {
+                    // Function signatures differ to much
+                    w_ctx.print_msg<MessageType::err_multiple_suitable_functions_for_parameter_ref>(
+                        MessageInfo( original_expr, 0, FmtStr::Color::Red ),
+                        generate_error_messages_of_symbols( c_ctx, w_ctx, caller.ops[op_id].symbols ), i );
+                    break;
+                    // TODO maybe add an enforce_type_of_variable() enforcement to still be able to select a function
+                }
             }
 
-            // Remove from living variables
-            remove_from_local_living_vars( c_ctx, w_ctx, calling_function, original_expr, parameters[i] );
+            if ( is_ref ) {
+                // Reference parameter expected
+                if ( caller.vars[parameters[i]].type == MirVariable::Type::rvalue ) {
+                    drop_variable( c_ctx, w_ctx, calling_function, original_expr, parameters[i] );
+                }
+            } else {
+                // Parameter moved
+
+                // Drop referenced vars
+                if ( caller.vars[parameters[i]].type == MirVariable::Type::l_ref ) {
+                    remove_from_local_living_vars( c_ctx, w_ctx, calling_function, original_expr,
+                                                   caller.vars[parameters[i]].ref );
+                }
+
+                // Remove from living variables
+                remove_from_local_living_vars( c_ctx, w_ctx, calling_function, original_expr, parameters[i] );
+            }
         }
     }
 
@@ -118,8 +144,9 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, Ast
 
     // Create drop operation
     if ( var.type == MirVariable::Type::value || var.type == MirVariable::Type::rvalue ) {
-        auto op =
-            MirEntry{ &original_expr, MirEntry::Type::call, 0, { variable }, c_ctx.type_table[c_ctx.drop_fn].symbol };
+        auto op = MirEntry{
+            &original_expr, MirEntry::Type::call, 0, { variable }, { c_ctx.type_table[c_ctx.drop_fn].symbol }
+        };
         c_ctx.functions[function].ops.push_back( op );
     }
 
@@ -304,7 +331,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         function.params.push_back( id );
 
         function.vars[id].name = entry_symbol.name;
-        function.vars[id].value_type = entry_symbol.type;
+        function.vars[id].value_type_requirements.push_back( entry_symbol.type );
         function.vars[id].mut = entry_symbol.mut;
         if ( entry_symbol.ref )
             function.vars[id].type = MirVariable::Type::p_ref;
@@ -329,6 +356,16 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
     // Parse body
     function.ret = expr.children.front().parse_mir( c_ctx, w_ctx, func_id );
+
+    // Infer all types and function calls (if not already)
+    for ( auto &op : function.ops ) {
+        if ( function.vars[op.ret].value_type_requirements.size() != 1 ) {
+            infer_type( c_ctx, w_ctx, symbol_id, op.ret );
+            enforce_type_of_variable( c_ctx, w_ctx, symbol_id, op.ret );
+        }
+        if ( op.symbols.size() != 1 )
+            infer_function_call( c_ctx, w_ctx, symbol_id, op );
+    }
 
     // Drop parameters
     for ( auto p_itr = function.params.rbegin(); p_itr != function.params.rend(); p_itr++ ) {
@@ -395,8 +432,6 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "nop";
                 else if ( op.type == MirEntry::Type::intrinsic )
                     str = "intrinsic";
-                else if ( op.type == MirEntry::Type::type )
-                    str = "type";
                 else if ( op.type == MirEntry::Type::literal )
                     str = "literal";
                 else if ( op.type == MirEntry::Type::call )
@@ -420,8 +455,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                 else
                     str = "UNKNOWN COMMAND";
 
-                if ( op.symbol != 0 )
-                    str += " " + get_full_symbol_name( *c_ctx, w_ctx, op.symbol );
+                for ( auto &s : op.symbols )
+                    str += " " + get_full_symbol_name( *c_ctx, w_ctx, s );
 
                 if ( op.intrinsic != MirIntrinsic::none )
                     str += " intrinsic " + to_string( static_cast<u32>( op.intrinsic ) );
@@ -454,7 +489,12 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                      ( fn.vars[i].type == MirVariable::Type::l_ref || fn.vars[i].type == MirVariable::Type::p_ref
                            ? "& "
                            : " " ) +
-                     get_full_symbol_name( *c_ctx, w_ctx, c_ctx->type_table[fn.vars[i].value_type].symbol ) +
+                     get_full_symbol_name( *c_ctx, w_ctx,
+                                           c_ctx
+                                               ->type_table[fn.vars[i].value_type_requirements.empty()
+                                                                ? 0
+                                                                : fn.vars[i].value_type_requirements.front()]
+                                               .symbol ) +
                      ( fn.vars[i].ref != 0
                            ? " ->" + get_var_name( fn.vars[i].ref ) + " +" + to_string( fn.vars[i].member_idx )
                            : "" ) +
@@ -463,4 +503,222 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         }
         log( "----------------" );
     } );
+}
+
+// Checks if a type implements a trait (or is the trait)
+bool type_has_trait( CrateCtx &c_ctx, Worker &w_ctx, TypeId type, TypeId trait ) {
+    if ( type == trait ) {
+        return true;
+    } else {
+        for ( auto &st : c_ctx.type_table[type].supertypes ) {
+            if ( type_has_trait( c_ctx, w_ctx, type, st ) )
+                return true;
+        }
+        return false;
+    }
+}
+
+// Creates the set intersection of all subtypes of the @param types
+std::vector<TypeId> find_common_types( CrateCtx &c_ctx, Worker &w_ctx, std::vector<TypeId> types ) {
+    std::vector<TypeId> typeset;
+    typeset.push_back( types.front() );
+    typeset.insert( typeset.end(), c_ctx.type_table[types.front()].subtypes.begin(),
+                    c_ctx.type_table[types.front()].subtypes.end() );
+
+    // TODO maybe implement a faster (linear instead of quadratic) intersection algorithm, based on the fact that the
+    // sets are ordered.
+
+    // Create set intersection of types
+    for ( auto t_itr = types.begin() + 1; t_itr != types.end(); t_itr++ ) {
+        std::remove_if( typeset.begin(), typeset.end(),
+                        [&]( TypeId t ) { return !type_has_trait( c_ctx, w_ctx, t, *t_itr ); } );
+    }
+
+    return typeset;
+}
+
+bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,
+                          std::vector<MirVarId> infer_stack ) {
+    if ( call_op.symbols.size() == 1 ) {
+        return true; // Already clear
+    } else if ( call_op.symbols.empty() ) {
+        w_ctx.print_msg<MessageType::err_no_suitable_function>(
+            MessageInfo( *call_op.original_expr, 0, FmtStr::Color::Red ) );
+        return false;
+    }
+
+
+    // First infer the parameter and return types
+    infer_type( c_ctx, w_ctx, function, call_op.ret, infer_stack );
+    for ( auto &p : call_op.params ) {
+        infer_type( c_ctx, w_ctx, function, p, infer_stack );
+    }
+
+    // Decide which function to call
+    std::vector<SymbolId> selected;
+    auto &fn = c_ctx.functions[function];
+    for ( auto &s : call_op.symbols ) {
+        bool param_matches = false, fn_matches = true;
+        for ( auto &requirement : fn.vars[call_op.ret].value_type_requirements ) {
+            if ( type_has_trait( c_ctx, w_ctx, requirement, c_ctx.symbol_graph[s].identifier.eval_type.type ) ) {
+                param_matches = true;
+                break;
+            }
+        }
+        if ( !param_matches && !fn.vars[call_op.ret].value_type_requirements.empty() )
+            fn_matches = false; // contains no matching type
+
+        for ( size_t i = 0; i < call_op.params.size() && fn_matches; i++ ) {
+            param_matches = false;
+            for ( auto &requirement : fn.vars[call_op.params[i]].value_type_requirements ) {
+                if ( type_has_trait( c_ctx, w_ctx, requirement, c_ctx.symbol_graph[s].identifier.eval_type.type ) ) {
+                    param_matches = true;
+                    break;
+                }
+            }
+            if ( !param_matches && !fn.vars[call_op.params[i]].value_type_requirements.empty() )
+                fn_matches = false; // contains no matching type
+        }
+
+        if ( fn_matches ) {
+            selected.push_back( s );
+        }
+    }
+
+    // Check if exactly one symbol found
+    if ( !selected.empty() ) {
+        call_op.symbols = selected;
+        return true;
+    } else {
+        w_ctx.print_msg<MessageType::err_no_suitable_function>(
+            MessageInfo( *call_op.original_expr, 0, FmtStr::Color::Red ) );
+        return false;
+    }
+}
+
+bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var,
+                 std::vector<MirVarId> infer_stack ) {
+    if ( std::find( infer_stack.begin(), infer_stack.end(), var ) != infer_stack.end() )
+        return false; // Variable is currently inferred (infer cycle)
+
+    auto &fn = c_ctx.functions[function];
+
+    if ( fn.vars[var].type == MirVariable::Type::label || fn.vars[var].type == MirVariable::Type::symbol )
+        return false; // Skip typeless variables (labels and symbols)
+
+    infer_stack.push_back( var );
+
+    for ( size_t i = fn.vars[var].next_type_check_position; i < fn.ops.size(); i++ ) {
+        auto &op = fn.ops[i];
+
+        if ( op.ret == var ) {
+            switch ( op.type ) {
+            case MirEntry::Type::call:
+                if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) ) {
+                    std::vector<TypeId> types;
+                    types.reserve( op.symbols.size() );
+                    for ( auto &s : op.symbols ) {
+                        types.push_back( c_ctx.symbol_graph[s].identifier.eval_type.type );
+                    }
+                    auto typeset = find_common_types( c_ctx, w_ctx, types );
+
+                    // We can only add a requirement, if the type/trait is unambiguous
+                    if ( typeset.size() == 1 ) {
+                        fn.vars[var].value_type_requirements.push_back( typeset.front() );
+                    }
+                }
+                break;
+            case MirEntry::Type::bind:
+                // Pass type requirements. Bind contains only one parameter
+                fn.vars[var].value_type_requirements = fn.vars[op.params.front()].value_type_requirements;
+                break;
+            case MirEntry::Type::inv:
+                // fn.vars[var].value_type_requirements.insert(c_ctx.boolean_type); // TODO
+                break;
+            case MirEntry::Type::cast:
+                fn.vars[var].value_type_requirements.push_back( c_ctx.symbol_graph[op.symbols.front()].value );
+                break;
+            default:
+                break; // does not change any types
+            }
+        } else if ( auto param = std::find( op.params.begin(), op.params.end(), var ); param != op.params.end() ) {
+            switch ( op.type ) {
+            case MirEntry::Type::call:
+                if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) ) {
+                    std::vector<TypeId> types;
+                    types.reserve( op.symbols.size() );
+                    for ( auto &s : op.symbols ) {
+                        types.push_back( c_ctx.symbol_graph[s].identifier.parameters[param - op.params.begin()].type );
+                    }
+                    auto typeset = find_common_types( c_ctx, w_ctx, types );
+
+                    // We can only add a requirement, if the type/trait is unambiguous
+                    if ( typeset.size() == 1 ) {
+                        fn.vars[var].value_type_requirements.push_back( typeset.front() );
+                    }
+                }
+                break;
+            case MirEntry::Type::cond_jmp_z:
+                // fn.vars[var].value_type_requirements.insert(c_ctx.boolean_type); // TODO
+                break;
+            case MirEntry::Type::inv:
+                // fn.vars[var].value_type_requirements.insert(c_ctx.boolean_type); // TODO
+                break;
+            default:
+                break; // does not change any types
+            }
+        }
+    }
+    fn.vars[var].next_type_check_position = fn.ops.size(); // optimizes the iterative type inference process
+
+    infer_stack.pop_back();
+
+    // Select a suitable type (set intersecion)
+    auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
+    std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
+        return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].is_trait;
+    } ); // TODO trait object should also be possible
+
+    if ( typeset.size() == 1 ) {
+        // Add the final type (delete all other requirements, because they are redundant)
+        fn.vars[var].value_type_requirements.clear();
+        fn.vars[var].value_type_requirements.push_back( *typeset.begin() );
+    } else if ( typeset.empty() ) {
+        w_ctx.print_msg<MessageType::err_no_suitable_type_found>(
+            MessageInfo( *fn.vars[var].original_expr, 0, FmtStr::Color::Red ) );
+        return false;
+    }
+    // Multiple suitable types are accepted and are later handled by enforce_type_of_variable() (if not earlier)
+
+    return true;
+}
+
+bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var ) {
+    auto &fn = c_ctx.functions[function];
+
+    if ( fn.vars[var].value_type_requirements.size() == 1 )
+        return true; // type is already defined
+
+    auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
+    std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
+        return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].is_trait;
+    } ); // TODO trait object should also be possible
+
+    // TODO select the best fit (with smallest bounds; e. g. prefer u32 over u64)
+    // DEBUG this implementation is only for testing
+    fn.vars[var].value_type_requirements.clear();
+    fn.vars[var].value_type_requirements.push_back( *typeset.begin() );
+
+    // TODO Fail if no type could be selected, because the domain of the possible types can not be compared
+    /*std::vector<MessageInfo> occurrences;
+    occurrences.resize( typeset.size() );
+    for ( auto &t : typeset ) {
+        occurrences.push_back(
+            MessageInfo( *c_ctx.symbol_graph[c_ctx.type_table[t].symbol].original_expr.front(), 1 ) );
+    }
+    w_ctx.print_msg<MessageType::err_multiple_suitable_types_found>(
+        MessageInfo( *fn.vars[var].original_expr, 0, FmtStr::Color::Red ), occurrences );
+    return false;*/
+
+    return true;
 }

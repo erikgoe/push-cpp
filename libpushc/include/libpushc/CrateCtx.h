@@ -133,6 +133,7 @@ struct SymbolGraphNode {
     SymbolIdentifier identifier; // identifies this symbol (may be partially defined)
     std::vector<std::pair<TypeId, String>> template_params; // type-name pairs of template parameters
     bool pub = false; // whether this symbol is public
+    bool is_trait = true; // whether this symbol describes a trait (or natural type)
 
     TypeId value = 0; // type/value of this symbol (every function has its own type; for structs this is struct body;
                       // for (local) variables this is 0)
@@ -159,7 +160,6 @@ struct MirEntry {
     enum class Type {
         nop, // no operation
         intrinsic, // some intrinsic operation
-        type, // specifies the type of a variable
         literal, // literal definition
         call, // function call
         bind, // assign/move a variable into another
@@ -178,7 +178,7 @@ struct MirEntry {
 
     MirVarId ret = 0; // variable which will contain the result
     std::vector<MirVarId> params; // parameters for this instruction
-    SymbolId symbol = 0; // used symbol (e. g. for calls)
+    std::vector<SymbolId> symbols; // possible symbols (e. g. for calls)
     MirLiteral data; // contains literal data or a pointer to it
     MirIntrinsic intrinsic = MirIntrinsic::none; // if it's an intrinsic operation
 };
@@ -199,12 +199,14 @@ struct MirVariable {
     } type = Type::value;
 
     String name; // the original variable name (temporaries have an empty name)
-    TypeId value_type = 0; // type of the value of this variable
+    std::vector<TypeId>
+        value_type_requirements; // requirements on the type of the value of this variable TODO make this a set
     bool mut = false; // whether this variable can be updated
     MirVarId ref = 0; // referred variable (for l_ref or for method access; should never reference a l_ref)
     size_t member_idx = 0; // used for member access operations
     MirVarId base_ref; // used for a method call to specify the "self" object (may also be a l_ref)
     AstNode *original_expr = nullptr; // refers to the original variable or expression
+    MirEntryId next_type_check_position = 0; // optimizes the iterative type inference
 };
 
 // Represents the content of a function

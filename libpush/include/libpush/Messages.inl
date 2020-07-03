@@ -76,6 +76,11 @@ enum class MessageType {
     err_obj_deconstruction_check_expected,
     err_obj_deconstruction_check_not_allowed,
     err_expr_not_allowed_in_obj_deconstruction,
+    err_no_suitable_function,
+    err_multiple_suitable_functions,
+    err_multiple_suitable_functions_for_parameter_ref,
+    err_no_suitable_type_found,
+    err_multiple_suitable_types_found,
 
     warning = 5000,
 
@@ -222,6 +227,18 @@ MESSAGE_DEFINITION( MessageType::err_obj_deconstruction_check_not_allowed, Messa
                     "Cannot check this object deconstruction condition", "not allowed" );
 MESSAGE_DEFINITION( MessageType::err_expr_not_allowed_in_obj_deconstruction, MessageClass::Error, "C",
                     "Unexpected expression in object deconstruction", "not allowed" );
+MESSAGE_DEFINITION( MessageType::err_no_suitable_function, MessageClass::Error, "C",
+                    "No suitable function symbol found", "here" );
+MESSAGE_DEFINITION( MessageType::err_multiple_suitable_functions, MessageClass::Error, "C",
+                    "Multiple suitable function symbols found", "for this call", "matching function" );
+MESSAGE_DEFINITION( MessageType::err_multiple_suitable_functions_for_parameter_ref, MessageClass::Error, "C",
+                    "Multiple suitable function symbols with different borrowing behaviors of parameter " +
+                        to_string( GET_ARG( 0 ) ) + " found. This information can not be lazily evaluated!",
+                    "for this call", "matching function" );
+MESSAGE_DEFINITION( MessageType::err_no_suitable_type_found, MessageClass::Error, "C", "No suitable type found",
+                    "for this expression" );
+MESSAGE_DEFINITION( MessageType::err_multiple_suitable_types_found, MessageClass::Error, "C",
+                    "Multiple suitable types found", "for this expression", "possible type" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

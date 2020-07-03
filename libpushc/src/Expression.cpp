@@ -1031,7 +1031,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             c_ctx.literal_data.push_back( reinterpret_cast<u8 *>( &literal_number )[i - 1] );
         }
 
-        c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].value_type = literal_type;
+        c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].value_type_requirements.push_back(
+            literal_type );
         c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].type = MirVariable::Type::rvalue;
 
         ret = c_ctx.functions[func].ops[op_id].ret;
@@ -1044,7 +1045,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         c_ctx.literal_data.reserve( c_ctx.literal_data.size() + literal_string.size() );
         c_ctx.literal_data.insert( c_ctx.literal_data.end(), literal_string.begin(), literal_string.end() );
 
-        c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].value_type = literal_type;
+        c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].value_type_requirements.push_back(
+            literal_type );
         c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].type = MirVariable::Type::rvalue;
 
         ret = c_ctx.functions[func].ops[op_id].ret;
@@ -1069,19 +1071,20 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             // Search for a symbol
             auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, name_chain );
 
-            // TODO allow multiple symbols (e. g. for function overloading)
-
             if ( !symbols.empty() ) {
                 if ( expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *this ) ) {
                     ret = create_variable( c_ctx, w_ctx, func, this );
                     auto &result_var = c_ctx.functions[func].vars[ret];
                     result_var.type = MirVariable::Type::symbol;
-                    result_var.value_type = c_ctx.symbol_graph[symbols.front()].value;
+                    result_var.value_type_requirements.reserve( symbols.size() );
+                    for ( auto &s : symbols ) {
+                        result_var.value_type_requirements.push_back( c_ctx.symbol_graph[s].value );
+                    }
                     found = true;
 
                     // Create cosmetic operation
                     auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
-                    c_ctx.functions[func].ops[op_id].symbol = symbols.front();
+                    c_ctx.functions[func].ops[op_id].symbols = symbols;
                 }
             }
         }
@@ -1110,10 +1113,12 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto callee_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
         if ( callee_var != 0 ) {
             // Symbol found
-            auto callee = c_ctx.type_table[c_ctx.functions[func].vars[callee_var].value_type].symbol;
-            analyse_function_signature( c_ctx, w_ctx, callee );
-
-            // TODO select the function based on its signature
+            std::vector<SymbolId> possible_callees;
+            possible_callees.reserve( c_ctx.functions[func].vars[callee_var].value_type_requirements.size() );
+            for ( auto &t : c_ctx.functions[func].vars[callee_var].value_type_requirements ) {
+                possible_callees.push_back( c_ctx.type_table[t].symbol );
+                analyse_function_signature( c_ctx, w_ctx, c_ctx.type_table[t].symbol );
+            }
 
             std::vector<MirVarId> params;
             if ( c_ctx.functions[func].vars[callee_var].base_ref != 0 )
@@ -1122,7 +1127,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 params.push_back( pe.parse_mir( c_ctx, w_ctx, func ) );
             }
 
-            ret = c_ctx.functions[func].ops[create_call( c_ctx, w_ctx, func, *this, callee, 0, params )].ret;
+            ret = c_ctx.functions[func].ops[create_call( c_ctx, w_ctx, func, *this, possible_callees, 0, params )].ret;
         }
         break;
     }
@@ -1134,28 +1139,25 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             analyse_function_signature( c_ctx, w_ctx, candidate );
         }
 
-        // TODO select the function based on its signature
-
         if ( calls.empty() ) {
             w_ctx.print_msg<MessageType::err_operator_symbol_not_found>(
                 MessageInfo( *this, 0, FmtStr::Color::Red ), std::vector<MessageInfo>(), symbol_name, token.content );
             break;
-        } else if ( calls.size() > 1 ) {
-            std::vector<MessageInfo> notes;
-            for ( auto &c : calls ) {
-                if ( !c_ctx.symbol_graph[c].original_expr.empty() )
-                    notes.push_back( MessageInfo( *c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
-            }
-            w_ctx.print_msg<MessageType::err_operator_symbol_is_ambiguous>( MessageInfo( *this, 0, FmtStr::Color::Red ),
-                                                                            notes, symbol_name, token.content );
-            break;
+            /*} else if ( calls.size() > 1 ) { // TODO remove this
+                std::vector<MessageInfo> notes;
+                for ( auto &c : calls ) {
+                    if ( !c_ctx.symbol_graph[c].original_expr.empty() )
+                        notes.push_back( MessageInfo( *c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
+                }
+                w_ctx.print_msg<MessageType::err_operator_symbol_is_ambiguous>( MessageInfo( *this, 0,
+               FmtStr::Color::Red ), notes, symbol_name, token.content ); break;*/
         }
 
 
         auto left_result = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
         auto right_result = named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
 
-        auto op_id = create_call( c_ctx, w_ctx, func, *this, calls.front(), 0, { left_result, right_result } );
+        auto op_id = create_call( c_ctx, w_ctx, func, *this, calls, 0, { left_result, right_result } );
 
         ret = c_ctx.functions[func].ops[op_id].ret;
         break;
@@ -1372,27 +1374,25 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 analyse_function_signature( c_ctx, w_ctx, candidate );
             }
 
-            // TODO select the function based on its signature
-
             if ( calls.empty() ) {
                 w_ctx.print_msg<MessageType::err_operator_symbol_not_found>(
                     MessageInfo( named[AstChild::itr], 0, FmtStr::Color::Red ), std::vector<MessageInfo>(), symbol_name,
                     token.content );
                 break;
-            } else if ( calls.size() > 1 ) {
-                std::vector<MessageInfo> notes;
-                for ( auto &c : calls ) {
-                    if ( !c_ctx.symbol_graph[c].original_expr.empty() )
-                        notes.push_back( MessageInfo( *c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
-                }
-                w_ctx.print_msg<MessageType::err_operator_symbol_is_ambiguous>(
-                    MessageInfo( named[AstChild::itr], 0, FmtStr::Color::Red ), notes, symbol_name, token.content );
-                break;
+                /*} else if ( calls.size() > 1 ) { // TODO remove this
+                    std::vector<MessageInfo> notes;
+                    for ( auto &c : calls ) {
+                        if ( !c_ctx.symbol_graph[c].original_expr.empty() )
+                            notes.push_back( MessageInfo( *c_ctx.symbol_graph[c].original_expr.front(), 1 ) );
+                    }
+                    w_ctx.print_msg<MessageType::err_operator_symbol_is_ambiguous>(
+                        MessageInfo( named[AstChild::itr], 0, FmtStr::Color::Red ), notes, symbol_name, token.content );
+                    break;*/
             }
 
             // Create iterator
             right_result = named[AstChild::itr].named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
-            auto op_id = create_call( c_ctx, w_ctx, func, named[AstChild::itr], calls.front(), 0, { right_result } );
+            auto op_id = create_call( c_ctx, w_ctx, func, named[AstChild::itr], calls, 0, { right_result } );
             iterator = c_ctx.functions[func].ops[op_id].ret;
             c_ctx.functions[func].vars[iterator].type =
                 MirVariable::Type::value; // TODO temporary workaround, while borrowing is not implemented (delete then)
@@ -1401,17 +1401,16 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             iterator = named[AstChild::itr].parse_mir( c_ctx, w_ctx, func );
         }
 
-        auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::itr], MirEntry::Type::type, iterator, {} );
-        c_ctx.functions[func].ops[op_id].symbol = c_ctx.type_table[c_ctx.iterator_type].symbol;
+        c_ctx.functions[func].vars[iterator].value_type_requirements.push_back( c_ctx.iterator_type );
 
         // Create loop jump label
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, loop_label, {} );
 
         // Loop condition
-        auto cond = create_call( c_ctx, w_ctx, func, named[AstChild::itr], c_ctx.type_table[c_ctx.itr_valid_fn].symbol,
-                                 0, { iterator } );
+        auto cond = create_call( c_ctx, w_ctx, func, named[AstChild::itr],
+                                 { c_ctx.type_table[c_ctx.itr_valid_fn].symbol }, 0, { iterator } );
 
-        op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::itr], MirEntry::Type::bind, 0, { cond } );
+        auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::itr], MirEntry::Type::bind, 0, { cond } );
         drop_variable( c_ctx, w_ctx, func, named[AstChild::itr], cond );
         cond = c_ctx.functions[func].ops[op_id].ret;
         c_ctx.functions[func].vars[cond].type =
@@ -1422,8 +1421,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Create binding
         MirVarId binding = 0;
         if ( named[AstChild::itr].has_prop( ExprProperty::in_operator ) ) {
-            op_id = create_call( c_ctx, w_ctx, func, named[AstChild::itr], c_ctx.type_table[c_ctx.itr_get_fn].symbol, 0,
-                                 { iterator } );
+            op_id = create_call( c_ctx, w_ctx, func, named[AstChild::itr],
+                                 { c_ctx.type_table[c_ctx.itr_get_fn].symbol }, 0, { iterator } );
             binding = named[AstChild::itr].named[AstChild::left_expr].bind_vars(
                 c_ctx, w_ctx, func, c_ctx.functions[func].ops[op_id].ret, named[AstChild::itr], false );
         }
@@ -1438,7 +1437,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         }
 
         // Increment iterator
-        op_id = create_call( c_ctx, w_ctx, func, *this, c_ctx.type_table[c_ctx.itr_next_fn].symbol, 0, { iterator } );
+        op_id =
+            create_call( c_ctx, w_ctx, func, *this, { c_ctx.type_table[c_ctx.itr_next_fn].symbol }, 0, { iterator } );
         drop_variable( c_ctx, w_ctx, func, *this, c_ctx.functions[func].ops[op_id].ret );
 
         // Jump back loop
@@ -1521,18 +1521,20 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         ret = create_variable( c_ctx, w_ctx, func, this );
         auto &result_var = c_ctx.functions[func].vars[ret];
         result_var.type = MirVariable::Type::symbol;
-        result_var.value_type = c_ctx.curr_self_type;
+        result_var.value_type_requirements.push_back( c_ctx.curr_self_type );
 
         // Create cosmetic operation
         auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
-        c_ctx.functions[func].ops[op_id].symbol = c_ctx.type_table[c_ctx.curr_self_type].symbol;
+        c_ctx.functions[func].ops[op_id].symbols = { c_ctx.type_table[c_ctx.curr_self_type].symbol };
         break;
     }
     case ExprType::struct_initializer: {
         auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
         if ( struct_var != 0 ) {
             // Symbol found
-            auto &type = c_ctx.type_table[c_ctx.functions[func].vars[struct_var].value_type];
+            auto &type = c_ctx.type_table[c_ctx.functions[func]
+                                              .vars[struct_var]
+                                              .value_type_requirements.front()]; // TODO handle multiple possible types?
             if ( c_ctx.symbol_graph[type.symbol].type != c_ctx.struct_type ) {
                 // Is not a struct
                 w_ctx.print_msg<MessageType::err_instantiate_non_struct>(
@@ -1545,7 +1547,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             ret = create_variable( c_ctx, w_ctx, func, this );
             auto &result_var = c_ctx.functions[func].vars[ret];
             result_var.type = MirVariable::Type::rvalue;
-            result_var.value_type = c_ctx.functions[func].vars[struct_var].value_type;
+            result_var.value_type_requirements.insert(
+                result_var.value_type_requirements.end(),
+                c_ctx.functions[func].vars[struct_var].value_type_requirements.begin(),
+                c_ctx.functions[func].vars[struct_var].value_type_requirements.end() );
 
             // Check member count
             if ( type.members.size() != children.front().children.size() ) {
@@ -1565,16 +1570,11 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 vars.push_back( var );
 
                 // Add type check operation TODO handle if struct member is not already typed
-                auto op_id = create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::type, var, {} );
-                c_ctx.functions[func].ops[op_id].symbol = type.members[i].type;
+                c_ctx.functions[func].vars[var].value_type_requirements.push_back( type.members[i].type );
             }
 
             // Merge values into type
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::merge, ret, vars );
-
-            // Set type operation (should be after the merge)
-            auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
-            c_ctx.functions[func].ops[op_id].symbol = c_ctx.type_table[result_var.value_type].symbol;
 
             // Drop vars if necessary
             for ( auto var_itr = vars.rbegin(); var_itr != vars.rend(); var_itr++ ) {
@@ -1591,7 +1591,12 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             break;
         }
 
-        auto base_symbol = c_ctx.type_table[c_ctx.functions[func].vars[obj].value_type].symbol;
+        // Determine the final type of the object
+        infer_type( c_ctx, w_ctx, func, obj );
+        enforce_type_of_variable( c_ctx, w_ctx, func, obj );
+
+        auto base_symbol = c_ctx.type_table[c_ctx.functions[func].vars[obj].value_type_requirements.front()]
+                               .symbol; // TODO handle multiple possible types?
 
         // Get member name
         auto member_chain = named[AstChild::member].get_symbol_chain( c_ctx, w_ctx );
@@ -1615,15 +1620,11 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             w_ctx.print_msg<MessageType::err_symbol_not_found>(
                 MessageInfo( named[AstChild::member], 0, FmtStr::Color::Red ) );
             break;
-        } else if ( attrs.size() + methods.size() != 1 ) {
+        } else if ( attrs.size() > 1 ) { // methods may be overloaded, just check attributes
             std::vector<MessageInfo> notes;
             for ( auto &attr : attrs ) {
                 if ( !c_ctx.symbol_graph[attr].original_expr.empty() )
                     notes.push_back( MessageInfo( *c_ctx.symbol_graph[attr].original_expr.front(), 1 ) );
-            }
-            for ( auto &method : methods ) {
-                if ( !c_ctx.symbol_graph[method].original_expr.empty() )
-                    notes.push_back( MessageInfo( *c_ctx.symbol_graph[method].original_expr.front(), 1 ) );
             }
             w_ctx.print_msg<MessageType::err_member_symbol_is_ambiguous>(
                 MessageInfo( named[AstChild::base], 0, FmtStr::Color::Red ), notes );
@@ -1645,17 +1646,22 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 result_var.ref = obj;
             }
             result_var.mut = c_ctx.functions[func].vars[obj].mut;
-            result_var.value_type =
-                c_ctx.type_table[c_ctx.symbol_graph[base_symbol].value].members[attrs.front()].value;
+            result_var.value_type_requirements.push_back(
+                c_ctx.type_table[c_ctx.symbol_graph[base_symbol].value].members[attrs.front()].value );
             ret = c_ctx.functions[func].ops[op_id].ret;
         } else {
             // Access method
 
-            // First check if its a method and not a function
-            auto &identifier = c_ctx.symbol_graph[methods.front()].identifier;
-            if ( identifier.parameters.empty() || c_ctx.symbol_graph[c_ctx.symbol_graph[methods.front()].parent].type !=
-                                                      c_ctx.struct_type ) { // TODO this check may be weak (rather check
-                                                                            // if the parameter is actually "self")
+            // First check if it's a method and not a function
+            std::remove_if( methods.begin(), methods.end(), [&]( SymbolId m ) {
+                auto &identifier = c_ctx.symbol_graph[m].identifier;
+                if ( identifier.parameters.empty() ||
+                     c_ctx.symbol_graph[c_ctx.symbol_graph[m].parent].type !=
+                         c_ctx.struct_type ) // TODO this check may be weak (rather check
+                                             // if the parameter is actually "self")
+                    return true;
+            } );
+            if ( methods.empty() ) {
                 w_ctx.print_msg<MessageType::err_method_is_a_free_function>(
                     MessageInfo( *this, 0, FmtStr::Color::Red ),
                     { MessageInfo( *c_ctx.symbol_graph[methods.front()].original_expr.front(), 1 ) } );
@@ -1665,12 +1671,11 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             ret = create_variable( c_ctx, w_ctx, func, this );
             auto &result_var = c_ctx.functions[func].vars[ret];
             result_var.type = MirVariable::Type::symbol;
-            result_var.value_type = c_ctx.symbol_graph[methods.front()].value;
             result_var.base_ref = obj;
 
             // Create cosmetic operation
             auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, { obj } );
-            c_ctx.functions[func].ops[op_id].symbol = methods.front();
+            c_ctx.functions[func].ops[op_id].symbols = methods;
         }
         break;
     }
@@ -1686,11 +1691,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             break;
 
         // Set type
-        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
-        c_ctx.functions[func].ops[op_id].symbol = type_ids.front();
-        if ( c_ctx.functions[func].vars[ret].value_type == 0 ) {
-            c_ctx.functions[func].vars[ret].value_type = c_ctx.symbol_graph[type_ids.front()].value;
-        }
+        c_ctx.functions[func].vars[ret].value_type_requirements.push_back( c_ctx.symbol_graph[type_ids.front()].value );
 
         break;
     }
@@ -1784,7 +1785,9 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
         if ( struct_var != 0 ) {
             // Symbol found
-            auto &type = c_ctx.type_table[c_ctx.functions[func].vars[struct_var].value_type];
+            auto &type = c_ctx.type_table[c_ctx.functions[func]
+                                              .vars[struct_var]
+                                              .value_type_requirements.front()]; // TODO handle multiple possible types?
             if ( c_ctx.symbol_graph[type.symbol].type != c_ctx.struct_type ) {
                 // Is not a struct
                 w_ctx.print_msg<MessageType::err_instantiate_non_struct>(
@@ -1817,7 +1820,7 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                     result_var.ref = in_var;
                 }
                 result_var.mut = c_ctx.functions[func].vars[in_var].mut;
-                result_var.value_type = type.members[i].value;
+                result_var.value_type_requirements.push_back( type.members[i].value );
 
                 // Bind var
                 auto &entry = children.front().children[i];
@@ -1843,11 +1846,7 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             break;
 
         // Set type
-        auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, {} );
-        c_ctx.functions[func].ops[op_id].symbol = type_ids.front();
-        if ( c_ctx.functions[func].vars[ret].value_type == 0 ) {
-            c_ctx.functions[func].vars[ret].value_type = c_ctx.symbol_graph[type_ids.front()].value;
-        }
+        c_ctx.functions[func].vars[ret].value_type_requirements.push_back( c_ctx.symbol_graph[type_ids.front()].value );
 
         // Add attributes
         if ( named[AstChild::right_expr].has_prop( ExprProperty::mut ) ) {
@@ -1983,7 +1982,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
 
         // Check value
         auto op_id =
-            create_call( c_ctx, w_ctx, func, *this, c_ctx.type_table[c_ctx.equals_fn].symbol, 0, { in_var, var } );
+            create_call( c_ctx, w_ctx, func, *this, { c_ctx.type_table[c_ctx.equals_fn].symbol }, 0, { in_var, var } );
         ret = c_ctx.functions[func].ops[op_id].ret;
         break;
     }
@@ -1997,7 +1996,10 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
         auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
         if ( struct_var != 0 ) {
             // Symbol found
-            auto &type = c_ctx.type_table[c_ctx.functions[func].vars[struct_var].value_type];
+            auto &type =
+                c_ctx.type_table
+                    [c_ctx.functions[func].vars[struct_var].value_type_requirements.front()]; // TODO handle multiple
+                                                                                              // possible types?
             if ( c_ctx.symbol_graph[type.symbol].type != c_ctx.struct_type ) {
                 // Is not a struct
                 w_ctx.print_msg<MessageType::err_instantiate_non_struct>(
@@ -2033,7 +2035,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
                     result_var.ref = in_var;
                 }
                 result_var.mut = c_ctx.functions[func].vars[in_var].mut;
-                result_var.value_type = type.members[i].value;
+                result_var.value_type_requirements.push_back( type.members[i].value );
 
                 // Check deconstruction
                 auto &entry = children.front().children[i];
