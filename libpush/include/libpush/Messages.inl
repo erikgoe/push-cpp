@@ -81,6 +81,8 @@ enum class MessageType {
     err_multiple_suitable_functions_for_parameter_ref,
     err_no_suitable_type_found,
     err_multiple_suitable_types_found,
+    err_cannot_implement_non_trait,
+    err_cannot_implament_for,
 
     warning = 5000,
 
@@ -239,6 +241,10 @@ MESSAGE_DEFINITION( MessageType::err_no_suitable_type_found, MessageClass::Error
                     "for this expression" );
 MESSAGE_DEFINITION( MessageType::err_multiple_suitable_types_found, MessageClass::Error, "C",
                     "Multiple suitable types found", "for this expression", "possible type" );
+MESSAGE_DEFINITION( MessageType::err_cannot_implement_non_trait, MessageClass::Error, "C",
+                    "Cannot implement a non trait", "must be a trait" );
+MESSAGE_DEFINITION( MessageType::err_cannot_implament_for, MessageClass::Error, "C", "Cannot implement methods for this type",
+                    "must be a struct/function" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

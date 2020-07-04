@@ -334,6 +334,8 @@ TypeId create_new_internal_type( CrateCtx &c_ctx, Worker &w_ctx ) {
 TypeId create_new_type( CrateCtx &c_ctx, Worker &w_ctx, SymbolId from_symbol ) {
     if ( c_ctx.symbol_graph[from_symbol].value != 0 )
         LOG_ERR( "Attempted to create a type on a symbol which already has a type" );
+    // TODO handle if type already exists (and if symbol types match; e. g. a struct may not be a trait)
+
     SymbolId type_id = c_ctx.type_table.size();
     c_ctx.type_table.emplace_back();
     c_ctx.type_table[type_id].symbol = from_symbol;
@@ -372,7 +374,8 @@ SymbolId instantiate_template( CrateCtx &c_ctx, Worker &w_ctx, SymbolId from_tem
         symbol.original_expr = c_ctx.symbol_graph[from_template].original_expr;
         symbol.pub = c_ctx.symbol_graph[from_template].pub;
         symbol.sub_nodes = c_ctx.symbol_graph[from_template].sub_nodes; // TODO instantiate template methods aswell?
-        symbol.type = c_ctx.symbol_graph[from_template].type;
+        symbol.type = ( c_ctx.symbol_graph[from_template].type == c_ctx.template_struct_type ? c_ctx.struct_type
+                                                                                             : c_ctx.template_fn_type );
 
         // Copy type information
         c_ctx.type_table[new_type] = c_ctx.type_table[from_template];

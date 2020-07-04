@@ -1,20 +1,14 @@
 #prelude(push)
 
-struct A {
-    foo:u32,
-    bar:u32,
-}
+///// Standard stuff
 
-trait op::Add {
-    add(self, other)
-}
+trait std::num::Integer{}
+trait std::base::Iterator{}
 
-impl op::Add for A {
-    add(self:&Self, other:Self) {
-        self.foo + other.foo
-    }
-}
+impl std::num::Integer for u32{}
 
+std::drop(to_drop:u32) -> () {
+}
 std::op::is_equal(left:mut&u32, right:&u32) -> () {
 }
 std::op::assignment(left:mut&u32, right:&u32) -> () {
@@ -34,12 +28,30 @@ std::itr::get(itr:&std::base::Iterator) -> u32 {
 std::itr::next(itr:&std::base::Iterator) -> () {
 }
 
+
+///// Code
+
+struct A {
+    foo:u32,
+    bar:u32,
+}
+
+trait op::Add {
+    add(self, other)
+}
+
+impl op::Add for A {
+    add(self:&Self, other:Self) {
+        self.foo + other.foo
+    }
+}
+
 println(str) -> () {}
 
-fn() -> (u32,u64) {
+/*fn() -> (u32,u64) {
     let a:u32 = 4;
     a+inc(3)
-}
+}*/
 
 inc(val) { val + 1 }
 

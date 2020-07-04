@@ -83,7 +83,7 @@ MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_f
     caller.vars[op.ret].type = MirVariable::Type::rvalue;
 
     // Infer the function call as good as possible
-    if ( infer_function_call( c_ctx, w_ctx, c_ctx.type_table[c_ctx.functions[calling_function].type].symbol, op ) ) {
+    if ( infer_function_call( c_ctx, w_ctx, calling_function, op ) ) {
         // Handle parameter remains
         for ( size_t i = 0; i < parameters.size(); i++ ) {
             bool is_ref = c_ctx.symbol_graph[caller.ops[op_id].symbols.front()].identifier.parameters[i].ref;
@@ -331,7 +331,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         function.params.push_back( id );
 
         function.vars[id].name = entry_symbol.name;
-        function.vars[id].value_type_requirements.push_back( entry_symbol.type );
+        if ( entry_symbol.type != 0 )
+            function.vars[id].value_type_requirements.push_back( entry_symbol.type );
         function.vars[id].mut = entry_symbol.mut;
         if ( entry_symbol.ref )
             function.vars[id].type = MirVariable::Type::p_ref;
@@ -357,19 +358,25 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     // Parse body
     function.ret = expr.children.front().parse_mir( c_ctx, w_ctx, func_id );
 
-    // Infer all types and function calls (if not already)
-    for ( auto &op : function.ops ) {
-        if ( function.vars[op.ret].value_type_requirements.size() != 1 ) {
-            infer_type( c_ctx, w_ctx, symbol_id, op.ret );
-            enforce_type_of_variable( c_ctx, w_ctx, symbol_id, op.ret );
-        }
-        if ( op.symbols.size() != 1 )
-            infer_function_call( c_ctx, w_ctx, symbol_id, op );
-    }
-
     // Drop parameters
     for ( auto p_itr = function.params.rbegin(); p_itr != function.params.rend(); p_itr++ ) {
         drop_variable( c_ctx, w_ctx, func_id, expr, *p_itr );
+    }
+
+    // Infer all types and function calls (if not already)
+    for ( auto &op : function.ops ) {
+        if ( function.vars[op.ret].next_type_check_position != function.ops.size() ) {
+            infer_type( c_ctx, w_ctx, func_id, op.ret );
+            enforce_type_of_variable( c_ctx, w_ctx, func_id, op.ret );
+        }
+        for ( auto &var : op.params ) {
+            if ( function.vars[var].next_type_check_position != function.ops.size() ) {
+                infer_type( c_ctx, w_ctx, func_id, var );
+                enforce_type_of_variable( c_ctx, w_ctx, func_id, var );
+            }
+        }
+        if ( op.type == MirEntry::Type::call && op.symbols.size() != 1 )
+            infer_function_call( c_ctx, w_ctx, func_id, op );
     }
 }
 
@@ -379,10 +386,12 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
         // Prepare types in structs
         for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
-            if ( !c_ctx->symbol_graph[i].original_expr.empty() &&
-                 c_ctx->symbol_graph[i].original_expr.front()->type == ExprType::structure ) {
-                for ( auto &exprs : c_ctx->symbol_graph[i].original_expr ) {
-                    exprs->find_types( *c_ctx, w_ctx );
+            if ( !c_ctx->symbol_graph[i].original_expr.empty() ) {
+                auto expr_type = c_ctx->symbol_graph[i].original_expr.front()->type;
+                if ( expr_type == ExprType::structure || expr_type == ExprType::implementation ) {
+                    for ( auto &exprs : c_ctx->symbol_graph[i].original_expr ) {
+                        exprs->find_types( *c_ctx, w_ctx );
+                    }
                 }
             }
         }
@@ -511,7 +520,7 @@ bool type_has_trait( CrateCtx &c_ctx, Worker &w_ctx, TypeId type, TypeId trait )
         return true;
     } else {
         for ( auto &st : c_ctx.type_table[type].supertypes ) {
-            if ( type_has_trait( c_ctx, w_ctx, type, st ) )
+            if ( type_has_trait( c_ctx, w_ctx, st, trait ) )
                 return true;
         }
         return false;
@@ -676,7 +685,7 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
     // Select a suitable type (set intersecion)
     auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
     std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
-        return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].is_trait;
+        return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type;
     } ); // TODO trait object should also be possible
 
     if ( typeset.size() == 1 ) {
@@ -696,12 +705,9 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
 bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var ) {
     auto &fn = c_ctx.functions[function];
 
-    if ( fn.vars[var].value_type_requirements.size() == 1 )
-        return true; // type is already defined
-
     auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
     std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
-        return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].is_trait;
+        return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type;
     } ); // TODO trait object should also be possible
 
     // TODO select the best fit (with smallest bounds; e. g. prefer u32 over u64)

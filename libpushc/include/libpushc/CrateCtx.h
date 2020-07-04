@@ -133,7 +133,6 @@ struct SymbolGraphNode {
     SymbolIdentifier identifier; // identifies this symbol (may be partially defined)
     std::vector<std::pair<TypeId, String>> template_params; // type-name pairs of template parameters
     bool pub = false; // whether this symbol is public
-    bool is_trait = true; // whether this symbol describes a trait (or natural type)
 
     TypeId value = 0; // type/value of this symbol (every function has its own type; for structs this is struct body;
                       // for (local) variables this is 0)
@@ -234,6 +233,8 @@ struct CrateCtx {
     TypeId struct_type = 0; // internal struct type
     TypeId trait_type = 0; // internal trait type
     TypeId fn_type = 0; // internal function type
+    TypeId template_struct_type = 0; // internal template struct type
+    TypeId template_fn_type = 0; // internal template function type
     TypeId mod_type = 0; // internal module type
     TypeId unit_type = 0; // type of the unit type
     TypeId int_type = 0; // type of the integer trait

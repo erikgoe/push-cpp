@@ -957,7 +957,7 @@ SymbolId AstNode::get_left_symbol_id() {
     }
 }
 
-void AstNode::find_types( CrateCtx &c_ctx, Worker &w_ctx ) {
+bool AstNode::find_types( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( type == ExprType::structure ) {
         for ( auto &member : children.front().children ) {
             // Search for the type
@@ -965,7 +965,7 @@ void AstNode::find_types( CrateCtx &c_ctx, Worker &w_ctx ) {
                 auto type_si = member.named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx );
                 auto type_symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type_si );
                 if ( !expect_exactly_one_symbol( c_ctx, w_ctx, type_symbols, member ) )
-                    return;
+                    return false;
 
                 auto symbol_si = member.named[AstChild::left_expr].get_symbol_chain( c_ctx, w_ctx )->front();
                 auto this_symbol_id = named[AstChild::symbol].get_symbol_id();
@@ -975,7 +975,50 @@ void AstNode::find_types( CrateCtx &c_ctx, Worker &w_ctx ) {
                     type_symbols.front();
             }
         }
+    } else if ( type == ExprType::implementation ) {
+        if ( named.find( AstChild::trait_symbol ) != named.end() ) {
+            // Find trait type
+            auto trait_si = named.at( AstChild::trait_symbol ).get_symbol_chain( c_ctx, w_ctx );
+            auto trait_symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, trait_si );
+            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, trait_symbols, *this ) )
+                return false;
+            auto trait_type_id = c_ctx.symbol_graph[trait_symbols.front()].value;
+
+            // Check if is trait
+            if( c_ctx.symbol_graph[trait_symbols.front()].type != c_ctx.trait_type) {
+                w_ctx.print_msg<MessageType::err_cannot_implement_non_trait>(
+                    MessageInfo( named.at( AstChild::trait_symbol ), 0, FmtStr::Color::Red ) );
+                return false;
+            }
+
+            // Find struct type
+            auto struct_si = named.at( AstChild::struct_symbol ).get_symbol_chain( c_ctx, w_ctx );
+            auto struct_symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, struct_si );
+            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, struct_symbols, *this ) )
+                return false;
+            auto struct_type_id = c_ctx.symbol_graph[struct_symbols.front()].value;
+
+            // Check if is struct
+            auto symbol_type = c_ctx.symbol_graph[struct_symbols.front()].type;
+            if ( symbol_type != c_ctx.struct_type && symbol_type != c_ctx.template_struct_type &&
+                 symbol_type != c_ctx.template_fn_type && symbol_type != c_ctx.fn_type ) {
+                w_ctx.print_msg<MessageType::err_cannot_implament_for>(
+                    MessageInfo( named.at( AstChild::struct_symbol ), 0, FmtStr::Color::Red ) );
+                return false;
+            }
+
+            // Create direct type relation
+            c_ctx.type_table[trait_type_id].subtypes.push_back( struct_type_id );
+            c_ctx.type_table[struct_type_id].supertypes.push_back( trait_type_id );
+
+            // Create transitive type relations
+            for ( auto &super_trait_id : c_ctx.type_table[trait_type_id].supertypes ) {
+                c_ctx.type_table[super_trait_id].subtypes.push_back( struct_type_id );
+                c_ctx.type_table[struct_type_id].supertypes.push_back( super_trait_id );
+            }
+        }
     }
+    return true;
 }
 
 MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func ) {
@@ -1655,11 +1698,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             // First check if it's a method and not a function
             std::remove_if( methods.begin(), methods.end(), [&]( SymbolId m ) {
                 auto &identifier = c_ctx.symbol_graph[m].identifier;
-                if ( identifier.parameters.empty() ||
-                     c_ctx.symbol_graph[c_ctx.symbol_graph[m].parent].type !=
-                         c_ctx.struct_type ) // TODO this check may be weak (rather check
-                                             // if the parameter is actually "self")
-                    return true;
+                return ( identifier.parameters.empty() ||
+                         c_ctx.symbol_graph[c_ctx.symbol_graph[m].parent].type !=
+                             c_ctx.struct_type ); // TODO this check may be weak (rather check
+                                                  // if the parameter is actually "self")
             } );
             if ( methods.empty() ) {
                 w_ctx.print_msg<MessageType::err_method_is_a_free_function>(
