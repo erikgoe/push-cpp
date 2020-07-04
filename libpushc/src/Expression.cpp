@@ -971,8 +971,10 @@ bool AstNode::find_types( CrateCtx &c_ctx, Worker &w_ctx ) {
                 auto this_symbol_id = named[AstChild::symbol].get_symbol_id();
                 auto possible_members = find_member_symbol_by_identifier( c_ctx, w_ctx, symbol_si, this_symbol_id );
 
+                c_ctx.type_table[c_ctx.symbol_graph[this_symbol_id].value].members[possible_members.front()].value =
+                    c_ctx.symbol_graph[type_symbols.front()].value;
                 c_ctx.type_table[c_ctx.symbol_graph[this_symbol_id].value].members[possible_members.front()].type =
-                    type_symbols.front();
+                    c_ctx.struct_type; // TODO not necessary a struct type
             }
         }
     } else if ( type == ExprType::implementation ) {
@@ -985,7 +987,7 @@ bool AstNode::find_types( CrateCtx &c_ctx, Worker &w_ctx ) {
             auto trait_type_id = c_ctx.symbol_graph[trait_symbols.front()].value;
 
             // Check if is trait
-            if( c_ctx.symbol_graph[trait_symbols.front()].type != c_ctx.trait_type) {
+            if ( c_ctx.symbol_graph[trait_symbols.front()].type != c_ctx.trait_type ) {
                 w_ctx.print_msg<MessageType::err_cannot_implement_non_trait>(
                     MessageInfo( named.at( AstChild::trait_symbol ), 0, FmtStr::Color::Red ) );
                 return false;
