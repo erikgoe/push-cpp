@@ -133,6 +133,12 @@ struct SymbolGraphNode {
     SymbolIdentifier identifier; // identifies this symbol (may be partially defined)
     std::vector<std::pair<TypeId, String>> template_params; // type-name pairs of template parameters
     bool pub = false; // whether this symbol is public
+    bool signature_evaluated =
+        false; // is set to true, when the full signature was evaluated (excluding template parameters)
+    bool value_evaluated = false; // is set to true, when the related value (e. g. the function body) was completely
+                                  // evaluated TODO set also for struct, traits, impls, templates and modules
+    bool signature_evaluation_ongoing =
+        false; // is used internally to detect dependency cycles (not used in analyse_function_signature())
 
     TypeId value = 0; // type/value of this symbol (every function has its own type; for structs this is struct body;
                       // for (local) variables this is 0)

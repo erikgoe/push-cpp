@@ -190,13 +190,17 @@ void remove_from_local_living_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImpl
 
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {
     auto &symbol = c_ctx.symbol_graph[function];
-    // TODO find a better method to prevent multiple checks of the same function
-    if ( function && symbol.identifier.eval_type.type == 0 && symbol.identifier.parameters.empty() ) {
+    if ( function && !symbol.signature_evaluated ) {
         auto &expr = *symbol.original_expr.front();
         if ( expr.type != ExprType::func ) {
             LOG_ERR( "Function to analyse is not a function" );
             return;
         }
+
+        bool signature_evaluated = true;
+
+        // Reset identifier from previous analysis
+        symbol.identifier.parameters.clear();
 
         // Parameters
         if ( expr.named.find( AstChild::parameters ) != expr.named.end() ) {
@@ -217,6 +221,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                             // Is not in an impl
                             w_ctx.print_msg<MessageType::err_self_in_free_function>(
                                 MessageInfo( *symbol.original_expr.front(), 0, FmtStr::Color::Red ) );
+                            signature_evaluated = false;
                         }
 
                         new_parameter.type = c_ctx.symbol_graph[symbol.parent].value;
@@ -243,12 +248,14 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                         // Is not in an impl
                         w_ctx.print_msg<MessageType::err_self_in_free_function>(
                             MessageInfo( entry, 0, FmtStr::Color::Red ) );
+                        signature_evaluated = false;
                     }
 
                     // Check if it's the first parameter
                     if ( symbol.identifier.parameters.size() != 1 ) {
                         w_ctx.print_msg<MessageType::err_self_not_first_parameter>(
                             MessageInfo( entry, 0, FmtStr::Color::Red ) );
+                        signature_evaluated = false;
                     }
 
                     new_parameter.type = c_ctx.symbol_graph[symbol.parent].value;
@@ -258,6 +265,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, *parameter_symbol ) )
                         continue;
                     new_parameter.name = symbol_chain->front().name;
+                    signature_evaluated = false;
                 }
             }
         }
@@ -274,6 +282,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     // Is not in an impl
                     w_ctx.print_msg<MessageType::err_self_in_free_function>(
                         MessageInfo( *symbol.original_expr.front(), 0, FmtStr::Color::Red ) );
+                    signature_evaluated = false;
                 }
 
                 symbol.identifier.eval_type.type = c_ctx.symbol_graph[symbol.parent].value;
@@ -289,7 +298,11 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                 symbol.identifier.eval_type.ref = return_symbol.has_prop( ExprProperty::ref );
                 symbol.identifier.eval_type.mut = return_symbol.has_prop( ExprProperty::mut );
             }
+        } else {
+            signature_evaluated = false;
         }
+
+        symbol.signature_evaluated = signature_evaluated; // Set not until here
     }
 }
 
@@ -297,6 +310,9 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
 void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol_id ) {
     auto &symbol = c_ctx.symbol_graph[symbol_id];
     auto expr = *symbol.original_expr.front();
+
+    if ( symbol.value_evaluated || symbol.signature_evaluation_ongoing )
+        return; // Function has already been created (e. g. with a call look ahead)
 
     // Check if only one definition exists (must be at least one)
     if ( symbol.original_expr.size() > 1 ) {
@@ -322,6 +338,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     create_variable( c_ctx, w_ctx, func_id, nullptr, "" ); // unit return value
     analyse_function_signature( c_ctx, w_ctx, symbol_id );
     function.type = symbol.value;
+    symbol.signature_evaluation_ongoing = true; // start evaluation
 
     // Parse parameters
     auto paren_expr = expr.named[AstChild::parameters];
@@ -375,9 +392,45 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
                 enforce_type_of_variable( c_ctx, w_ctx, func_id, var );
             }
         }
-        if ( op.type == MirEntry::Type::call && op.symbols.size() != 1 )
+        if ( op.type == MirEntry::Type::call )
             infer_function_call( c_ctx, w_ctx, func_id, op );
     }
+
+    // Check and set signature
+    auto &identifier = c_ctx.symbol_graph[symbol_id].identifier;
+    if ( function.ret == 0 ||
+         ( !function.vars[function.ret].value_type_requirements.empty() &&
+           identifier.eval_type.type != function.vars[function.ret].value_type_requirements.front() ) ) {
+        if ( identifier.eval_type.type == 0 && function.ret != 0 ) {
+            // Update type
+            identifier.eval_type.type = function.vars[function.ret].value_type_requirements.front();
+        } else {
+            w_ctx.print_msg<MessageType::err_type_does_not_match_signature>(
+                MessageInfo( function.ret != 0 ? *function.vars[function.ret].original_expr
+                                               : *c_ctx.symbol_graph[symbol_id].original_expr.front(),
+                             0, FmtStr::Color::Red ) );
+        }
+    }
+    for ( size_t i = 0; i < identifier.parameters.size(); i++ ) {
+        if ( function.params[i] == 0 ||
+             ( !function.vars[function.params[i]].value_type_requirements.empty() &&
+               identifier.parameters[i].type != function.vars[function.params[i]].value_type_requirements.front() ) ) {
+            if ( identifier.parameters[i].type == 0 && function.params[i] != 0 ) {
+                // Update type
+                identifier.parameters[i].type = function.vars[function.params[i]].value_type_requirements.front();
+            } else {
+                w_ctx.print_msg<MessageType::err_type_does_not_match_signature>(
+                    MessageInfo( function.params[i] != 0 ? *function.vars[function.params[i]].original_expr
+                                                         : *c_ctx.symbol_graph[symbol_id].original_expr.front(),
+                                 0, FmtStr::Color::Red ) );
+            }
+        }
+    }
+
+    // Set evaluation flag
+    c_ctx.symbol_graph[symbol_id].value_evaluated = true;
+    c_ctx.symbol_graph[symbol_id].signature_evaluated = true; // May already be set earlier
+    c_ctx.symbol_graph[symbol_id].signature_evaluation_ongoing = false; // evaluation finished
 }
 
 void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
@@ -548,9 +601,9 @@ std::vector<TypeId> find_common_types( CrateCtx &c_ctx, Worker &w_ctx, std::vect
 
 bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,
                           std::vector<MirVarId> infer_stack ) {
-    if ( call_op.symbols.size() == 1 ) {
-        return true; // Already clear
-    } else if ( call_op.symbols.empty() ) {
+    // TODO add optimization, so that this is not executed multiple times (other than checking if only one symbol is
+    // possible)
+    if ( call_op.symbols.empty() ) {
         w_ctx.print_msg<MessageType::err_no_suitable_function>(
             MessageInfo( *call_op.original_expr, 0, FmtStr::Color::Red ) );
         return false;
@@ -567,6 +620,32 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
     std::vector<SymbolId> selected;
     auto &fn = c_ctx.functions[function];
     for ( auto &s : call_op.symbols ) {
+        // First evaluate function signature if necessary
+        if ( !c_ctx.symbol_graph[s].signature_evaluated ) {
+            if ( c_ctx.symbol_graph[s].signature_evaluation_ongoing ) {
+                // Dependency cycle detected TODO maybe even don't warn at all
+                w_ctx.print_msg<MessageType::warn_function_signature_evaluation_cycle>(
+                    MessageInfo( *c_ctx.symbol_graph[s].original_expr.front(), 0, FmtStr::Color::Yellow ) );
+            } else {
+                // TODO fix this better
+                // Save context to restore
+                auto tmp_curr_living_vars = c_ctx.curr_living_vars;
+                auto tmp_curr_name_mapping = c_ctx.curr_name_mapping;
+                auto tmp_curr_self_var = c_ctx.curr_self_var;
+                auto tmp_curr_self_type = c_ctx.curr_self_type;
+
+                generate_mir_function_impl( c_ctx, w_ctx, s );
+
+                // Restore context
+                c_ctx.curr_living_vars = tmp_curr_living_vars;
+                c_ctx.curr_name_mapping = tmp_curr_name_mapping;
+                c_ctx.curr_self_var = tmp_curr_self_var;
+                c_ctx.curr_self_type = tmp_curr_self_type;
+            }
+        }
+
+        auto &fn = c_ctx.functions[function]; // Update reference (to prevent iterator invalidation)
+        // Check return type
         bool param_matches = false, fn_matches = true;
         for ( auto &requirement : fn.vars[call_op.ret].value_type_requirements ) {
             if ( type_has_trait( c_ctx, w_ctx, requirement, c_ctx.symbol_graph[s].identifier.eval_type.type ) ) {
@@ -577,10 +656,12 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
         if ( !param_matches && !fn.vars[call_op.ret].value_type_requirements.empty() )
             fn_matches = false; // contains no matching type
 
+        // Check parameters
         for ( size_t i = 0; i < call_op.params.size() && fn_matches; i++ ) {
             param_matches = false;
             for ( auto &requirement : fn.vars[call_op.params[i]].value_type_requirements ) {
-                if ( type_has_trait( c_ctx, w_ctx, requirement, c_ctx.symbol_graph[s].identifier.eval_type.type ) ) {
+                if ( type_has_trait( c_ctx, w_ctx, c_ctx.symbol_graph[s].identifier.parameters[i].type,
+                                     requirement ) ) {
                     param_matches = true;
                     break;
                 }
@@ -683,19 +764,22 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
     infer_stack.pop_back();
 
     // Select a suitable type (set intersecion)
-    auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
-    std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
-        return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type;
-    } ); // TODO trait object should also be possible
+    if ( !fn.vars[var].value_type_requirements.empty() ) {
+        auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
+        std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
+            return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type;
+        } ); // TODO trait object should also be possible
 
-    if ( typeset.size() == 1 ) {
-        // Add the final type (delete all other requirements, because they are redundant)
-        fn.vars[var].value_type_requirements.clear();
-        fn.vars[var].value_type_requirements.push_back( *typeset.begin() );
-    } else if ( typeset.empty() ) {
-        w_ctx.print_msg<MessageType::err_no_suitable_type_found>(
-            MessageInfo( *fn.vars[var].original_expr, 0, FmtStr::Color::Red ) );
-        return false;
+        if ( typeset.size() == 1 ) {
+            // Add the final type (delete all other requirements, because they are redundant)
+            fn.vars[var].value_type_requirements.clear();
+            fn.vars[var].value_type_requirements.push_back( *typeset.begin() );
+        } else if ( typeset.empty() ) {
+            // Found requirements, but they cannot be fulfilled
+            w_ctx.print_msg<MessageType::err_no_suitable_type_found>(
+                MessageInfo( *fn.vars[var].original_expr, 0, FmtStr::Color::Red ) );
+            return false;
+        }
     }
     // Multiple suitable types are accepted and are later handled by enforce_type_of_variable() (if not earlier)
 
@@ -705,15 +789,23 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
 bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var ) {
     auto &fn = c_ctx.functions[function];
 
-    auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
-    std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
-        return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type;
-    } ); // TODO trait object should also be possible
+    if ( !fn.vars[var].value_type_requirements.empty() ) {
+        auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
+        std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
+            return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type;
+        } ); // TODO trait object should also be possible
 
-    // TODO select the best fit (with smallest bounds; e. g. prefer u32 over u64)
-    // DEBUG this implementation is only for testing
-    fn.vars[var].value_type_requirements.clear();
-    fn.vars[var].value_type_requirements.push_back( *typeset.begin() );
+        // TODO select the best fit (with smallest bounds; e. g. prefer u32 over u64)
+        // DEBUG this implementation is only for testing
+        fn.vars[var].value_type_requirements.clear();
+        fn.vars[var].value_type_requirements.push_back( *typeset.begin() );
+    } else {
+        // Still no suitable type
+        w_ctx.print_msg<MessageType::err_no_suitable_type_found>(
+            MessageInfo( var == 0 ? *c_ctx.symbol_graph[c_ctx.type_table[fn.type].symbol].original_expr.front()
+                                  : *fn.vars[var].original_expr,
+                         0, FmtStr::Color::Red ) );
+    }
 
     // TODO Fail if no type could be selected, because the domain of the possible types can not be compared
     /*std::vector<MessageInfo> occurrences;
