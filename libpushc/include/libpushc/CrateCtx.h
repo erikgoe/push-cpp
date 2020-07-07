@@ -140,6 +140,8 @@ struct SymbolGraphNode {
     bool signature_evaluation_ongoing =
         false; // is used internally to detect dependency cycles (not used in analyse_function_signature())
 
+    std::vector<String> compiler_annotations; // additional annotations from the user
+
     TypeId value = 0; // type/value of this symbol (every function has its own type; for structs this is struct body;
                       // for (local) variables this is 0)
     TypeId type = 0; // the type behind the value of this symbol

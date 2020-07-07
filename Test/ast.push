@@ -7,24 +7,34 @@ trait std::base::Iterator{}
 
 impl std::num::Integer for u32{}
 
+#stub()
 std::drop(to_drop:u32) -> () {
 }
+#stub()
 std::op::is_equal(left:mut&u32, right:&u32) -> () {
 }
+#stub()
 std::op::assignment(left:mut&u32, right:&u32) -> () {
 }
+#stub()
 std::op::addition(left:&u32, right:&u32) -> u32 {
 }
+#stub()
 std::op::division(left:&u32, right:&u32) -> u32 {
 }
+#stub()
 std::op::bigger(left:&u32, right:&u32) -> bool {
 }
+#stub()
 std::op::in_operator(collection:&u32) -> std::base::Iterator {
 }
+#stub()
 std::itr::valid(itr:&std::base::Iterator) -> bool {
 }
+#stub()
 std::itr::get(itr:&std::base::Iterator) -> u32 {
 }
+#stub()
 std::itr::next(itr:&std::base::Iterator) -> () {
 }
 
@@ -46,6 +56,7 @@ impl op::Add for A {
     }
 }
 
+#stub()
 println(str) -> () {}
 
 fn() -> u32 {

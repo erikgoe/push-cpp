@@ -84,6 +84,7 @@ enum class MessageType {
     err_cannot_implement_non_trait,
     err_cannot_implament_for,
     err_type_does_not_match_signature,
+    err_unknown_compiler_annotation,
 
     warning = 5000,
     warn_function_signature_evaluation_cycle,
@@ -249,10 +250,13 @@ MESSAGE_DEFINITION( MessageType::err_cannot_implament_for, MessageClass::Error, 
                     "Cannot implement methods for this type", "must be a struct/function" );
 MESSAGE_DEFINITION( MessageType::err_type_does_not_match_signature, MessageClass::Error, "C",
                     "Value type does not match the function signature", "this variable" );
+MESSAGE_DEFINITION( MessageType::err_unknown_compiler_annotation, MessageClass::Error, "C",
+                    "Unknown compiler annotation", "here" );
 
-                    
+
 MESSAGE_DEFINITION( MessageType::warn_function_signature_evaluation_cycle, MessageClass::Warning, "C",
-                    "Dependency cycle in function signature detected", "specify the signature of this function, please" );
+                    "Dependency cycle in function signature detected",
+                    "specify the signature of this function, please" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

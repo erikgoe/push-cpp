@@ -176,6 +176,8 @@ struct AstNode {
     bool continue_eval = true; // only for loops (for what value the loop is continued)
     Operator::RangeOperatorType range_type; // only for ranges
 
+    static std::vector<String> known_compiler_annotations; // allowed compiler annotations
+
     // General management
 
     // Returns whether the expr has the specified property

@@ -21,6 +21,7 @@ MessageInfo::MessageInfo( const AstNode &expr, u32 message_idx, FmtStr::Color co
         : MessageInfo( expr.pos_info, message_idx, color ) {}
 
 
+std::vector<String> AstNode::known_compiler_annotations = { "stub" };
 
 // Used with alias statements. Returns the list of the subsitutions rules from the alias expr
 std::vector<SymbolSubstitution> get_substitutions( CrateCtx &c_ctx, Worker &w_ctx, AstNode &expr ) {
@@ -520,6 +521,21 @@ bool AstNode::basic_semantic_check( CrateCtx &c_ctx, Worker &w_ctx ) {
             w_ctx.print_msg<MessageType::err_expected_symbol>( MessageInfo( *this, 0, FmtStr::Color::Red ) );
             return false;
         }
+    } else if ( type == ExprType::compiler_annotation ) {
+        auto annotation_identifier_list = named[AstChild::symbol].get_symbol_chain( c_ctx, w_ctx );
+        if ( annotation_identifier_list->size() != 1 ) {
+            w_ctx.print_msg<MessageType::err_unknown_compiler_annotation>(
+                MessageInfo( named[AstChild::symbol], 0, FmtStr::Color::Red ) );
+            return false;
+        }
+
+        // Check if this annotation is allowed at all
+        if ( std::find( known_compiler_annotations.begin(), known_compiler_annotations.end(),
+                        annotation_identifier_list->front().name ) == known_compiler_annotations.end() ) {
+            w_ctx.print_msg<MessageType::err_unknown_compiler_annotation>(
+                MessageInfo( named[AstChild::symbol], 0, FmtStr::Color::Red ) );
+            return false;
+        }
     }
 
     // Checks based on common entries
@@ -830,6 +846,13 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         switch_scope_to_symbol( c_ctx, w_ctx, new_id );
         c_ctx.symbol_graph[new_id].original_expr.push_back( this );
         c_ctx.symbol_graph[new_id].pub = symbol.has_prop( ExprProperty::pub );
+
+        // Add the annotations
+        c_ctx.symbol_graph[new_id].compiler_annotations.reserve( symbol.annotations.size() );
+        for ( auto &node : annotations ) {
+            c_ctx.symbol_graph[new_id].compiler_annotations.push_back(node.named[AstChild::symbol].get_symbol_chain(c_ctx,w_ctx)->front().name);
+        }
+
         if ( type == ExprType::structure ) {
             c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
 

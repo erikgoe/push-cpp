@@ -397,6 +397,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     }
 
     // Check and set signature
+    bool is_stub = std::find( symbol.compiler_annotations.begin(), symbol.compiler_annotations.end(), "stub" ) !=
+                   symbol.compiler_annotations.end();
     auto &identifier = c_ctx.symbol_graph[symbol_id].identifier;
     if ( function.ret == 0 ||
          ( !function.vars[function.ret].value_type_requirements.empty() &&
@@ -404,7 +406,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         if ( identifier.eval_type.type == 0 && function.ret != 0 ) {
             // Update type
             identifier.eval_type.type = function.vars[function.ret].value_type_requirements.front();
-        } else {
+        } else if ( !is_stub ) {
             w_ctx.print_msg<MessageType::err_type_does_not_match_signature>(
                 MessageInfo( function.ret != 0 ? *function.vars[function.ret].original_expr
                                                : *c_ctx.symbol_graph[symbol_id].original_expr.front(),
@@ -418,7 +420,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
             if ( identifier.parameters[i].type == 0 && function.params[i] != 0 ) {
                 // Update type
                 identifier.parameters[i].type = function.vars[function.params[i]].value_type_requirements.front();
-            } else {
+            } else if ( !is_stub ) {
                 w_ctx.print_msg<MessageType::err_type_does_not_match_signature>(
                     MessageInfo( function.params[i] != 0 ? *function.vars[function.params[i]].original_expr
                                                          : *c_ctx.symbol_graph[symbol_id].original_expr.front(),
