@@ -69,9 +69,11 @@ MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_f
                         std::vector<SymbolId> called_function_candidates, MirVarId result,
                         std::vector<MirVarId> parameters ) {
     FunctionImpl &caller = c_ctx.functions[calling_function];
-    std::remove_if( called_function_candidates.begin(), called_function_candidates.end(), [&]( SymbolId s ) {
-        return parameters.size() != c_ctx.symbol_graph[s].identifier.parameters.size();
-    } );
+    called_function_candidates.erase(
+        std::remove_if(
+            called_function_candidates.begin(), called_function_candidates.end(),
+            [&]( SymbolId s ) { return parameters.size() != c_ctx.symbol_graph[s].identifier.parameters.size(); } ),
+        called_function_candidates.end() );
     if ( called_function_candidates.empty() ) // because all candidates have been removed
         LOG_ERR( "Expected and provided parameter count differ" );
 
@@ -381,7 +383,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
     // Drop parameters
     for ( auto p_itr = function.params.rbegin(); p_itr != function.params.rend(); p_itr++ ) {
-        if ( c_ctx.symbol_graph[symbol_id].identifier.name != "drop" ) // TODO DEBUG add a compiler handler for this case
+        if ( c_ctx.symbol_graph[symbol_id].identifier.name !=
+             "drop" ) // TODO DEBUG add a compiler handler for this case
             drop_variable( c_ctx, w_ctx, func_id, expr, *p_itr );
     }
 
@@ -599,8 +602,9 @@ std::vector<TypeId> find_common_types( CrateCtx &c_ctx, Worker &w_ctx, std::vect
 
     // Create set intersection of types
     for ( auto t_itr = types.begin() + 1; t_itr != types.end(); t_itr++ ) {
-        std::remove_if( typeset.begin(), typeset.end(),
-                        [&]( TypeId t ) { return !type_has_trait( c_ctx, w_ctx, t, *t_itr ); } );
+        typeset.erase( std::remove_if( typeset.begin(), typeset.end(),
+                                       [&]( TypeId t ) { return !type_has_trait( c_ctx, w_ctx, t, *t_itr ); } ),
+                       typeset.end() );
     }
 
     return typeset;
@@ -773,9 +777,11 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
     // Select a suitable type (set intersecion)
     if ( !fn.vars[var].value_type_requirements.empty() ) {
         auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
-        std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
-            return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type;
-        } ); // TODO trait object should also be possible
+        typeset.erase(
+            std::remove_if(
+                typeset.begin(), typeset.end(),
+                [&]( TypeId t ) { return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type; } ),
+            typeset.end() ); // TODO trait object should also be possible
 
         if ( typeset.size() == 1 ) {
             // Add the final type (delete all other requirements, because they are redundant)
@@ -798,9 +804,11 @@ bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId fu
 
     if ( !fn.vars[var].value_type_requirements.empty() ) {
         auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );
-        std::remove_if( typeset.begin(), typeset.end(), [&]( TypeId t ) {
-            return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type;
-        } ); // TODO trait object should also be possible
+        typeset.erase(
+            std::remove_if(
+                typeset.begin(), typeset.end(),
+                [&]( TypeId t ) { return c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type != c_ctx.struct_type; } ),
+            typeset.end() ); // TODO trait object should also be possible
 
         // TODO select the best fit (with smallest bounds; e. g. prefer u32 over u64)
         // DEBUG this implementation is only for testing

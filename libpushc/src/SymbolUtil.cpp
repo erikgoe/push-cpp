@@ -342,12 +342,14 @@ void delete_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId to_delete ) {
         type.symbol = 0;
         type.members.clear();
         for ( auto &sub : type.subtypes ) {
-            std::remove_if( c_ctx.type_table[sub].supertypes.begin(), c_ctx.type_table[sub].supertypes.end(),
-                            [&]( TypeId id ) { return id == symbol.value; } );
+            c_ctx.type_table[sub].supertypes.erase( std::remove( c_ctx.type_table[sub].supertypes.begin(),
+                                                                 c_ctx.type_table[sub].supertypes.end(), symbol.value ),
+                                                    c_ctx.type_table[sub].supertypes.end() );
         }
         for ( auto &sub : type.supertypes ) {
-            std::remove_if( c_ctx.type_table[sub].subtypes.begin(), c_ctx.type_table[sub].subtypes.end(),
-                            [&]( TypeId id ) { return id == symbol.value; } );
+            c_ctx.type_table[sub].subtypes.erase( std::remove( c_ctx.type_table[sub].subtypes.begin(),
+                                                               c_ctx.type_table[sub].subtypes.end(), symbol.value ),
+                                                  c_ctx.type_table[sub].subtypes.end() );
         }
 
         // Handle function body

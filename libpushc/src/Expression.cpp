@@ -1846,13 +1846,16 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             // Access method
 
             // First check if it's a method and not a function
-            std::remove_if( methods.begin(), methods.end(), [&]( SymbolId m ) {
-                auto &identifier = c_ctx.symbol_graph[m].identifier;
-                return ( identifier.parameters.empty() ||
-                         c_ctx.symbol_graph[c_ctx.symbol_graph[m].parent].type !=
-                             c_ctx.struct_type ); // TODO this check may be weak (rather check
-                                                  // if the parameter is actually "self")
-            } );
+            methods.erase(
+                std::remove_if( methods.begin(), methods.end(),
+                                [&]( SymbolId m ) {
+                                    auto &identifier = c_ctx.symbol_graph[m].identifier;
+                                    return ( identifier.parameters.empty() ||
+                                             c_ctx.symbol_graph[c_ctx.symbol_graph[m].parent].type !=
+                                                 c_ctx.struct_type ); // TODO this check may be weak (rather check
+                                                                      // if the parameter is actually "self")
+                                } ),
+                methods.end() );
             if ( methods.empty() ) {
                 w_ctx.print_msg<MessageType::err_method_is_a_free_function>(
                     MessageInfo( *this, 0, FmtStr::Color::Red ),
