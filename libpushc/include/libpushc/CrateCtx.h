@@ -104,13 +104,12 @@ struct SymbolIdentifier {
     // Signature of a parameter or return type
     struct ParamSig {
         TypeId type = 0; // type of the parameter
+        sptr<std::vector<SymbolIdentifier>> tmp_type_symbol; // only while symbols are discovered
         String name; // name of the parameter (not for return types)
         bool ref = false; // whether the value is borrowed
         bool mut = false; // whether the value is mutable
 
-        bool operator==( const ParamSig &other ) const {
-            return type == other.type && name == other.name && ref == other.ref && mut == other.mut;
-        }
+        bool operator==( const ParamSig &other ) const;
     };
     ParamSig eval_type; // the type which is returned when the symbol is evaluated (return type of functions)
     std::vector<ParamSig> parameters; // function parameters
@@ -251,7 +250,7 @@ struct CrateCtx {
     TypeId array_type = 0; // type of the array template type
     TypeId iterator_type = 0; // type of the iterator trait
 
-    TypeId drop_fn = 0; // the function which is called on variable drop
+    std::vector<SymbolId> drop_fn; // functions which are called on variable drop
     TypeId equals_fn = 0; // the function which is called to check if two variables are equal
     TypeId itr_valid_fn = 0; // the function which is called to check if an iterator ist still valid
     TypeId itr_get_fn = 0; // the function which is called to access the value behind a iterator
@@ -271,6 +270,7 @@ struct CrateCtx {
     std::vector<std::map<String, std::vector<MirVarId>>> curr_name_mapping; // mappes names to stacks of shaddowned vars
     MirVarId curr_self_var = 0; // describes the current self parameter var
     TypeId curr_self_type = 0; // describes which type is the current object type
+    std::stack<sptr<std::vector<SymbolIdentifier>>> curr_self_type_symbol_stack; // like curr_left_type, but during symbol discovery
 
     CrateCtx();
 };

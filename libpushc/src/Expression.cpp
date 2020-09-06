@@ -36,6 +36,53 @@ std::vector<SymbolSubstitution> get_substitutions( CrateCtx &c_ctx, Worker &w_ct
     return result;
 }
 
+// Parses symbol parameters and return type
+void parse_params( CrateCtx &c_ctx, Worker &w_ctx, AstNode &node, std::vector<SymbolIdentifier> &symbol_chain ) {
+    auto param_ptr = node.named.find( AstChild::parameters );
+    auto ret_ptr = node.named.find( AstChild::return_type );
+
+    if ( param_ptr != node.named.end() ) {
+        for ( auto &p : param_ptr->second.children ) {
+            SymbolIdentifier::ParamSig sig;
+            auto *name = &p;
+
+            // Find type
+            if ( p.type == ExprType::self ||
+                 ( p.type == ExprType::typed_op && p.named[AstChild::left_expr].type == ExprType::self ) ) {
+                sig.tmp_type_symbol = c_ctx.curr_self_type_symbol_stack.top();
+            } else {
+                if ( p.type == ExprType::typed_op ) {
+                    name = &p.named[AstChild::left_expr];
+                    sig.ref = p.has_prop( ExprProperty::ref );
+                    sig.mut = p.has_prop( ExprProperty::mut );
+                    if ( p.named[AstChild::right_expr].type == ExprType::self_type )
+                        sig.tmp_type_symbol = c_ctx.curr_self_type_symbol_stack.top();
+                    else
+                        sig.tmp_type_symbol = p.named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx );
+                }
+
+                // Parse name
+                auto name_chain = name->get_symbol_chain( c_ctx, w_ctx );
+                if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *name ) )
+                    return;
+                sig.name = name_chain->front().name;
+            }
+            symbol_chain.back().parameters.push_back( sig );
+        }
+    }
+    if ( ret_ptr != node.named.end() ) {
+        SymbolIdentifier::ParamSig sig;
+        auto &r = ret_ptr->second;
+        sig.ref = r.has_prop( ExprProperty::ref );
+        sig.mut = r.has_prop( ExprProperty::mut );
+        if ( r.named[AstChild::right_expr].type == ExprType::self_type )
+            sig.tmp_type_symbol = c_ctx.curr_self_type_symbol_stack.top();
+        else
+            sig.tmp_type_symbol = r.get_symbol_chain( c_ctx, w_ctx );
+        symbol_chain.back().eval_type = sig;
+    }
+}
+
 void AstNode::generate_new_props() {
     switch ( type ) {
     case ExprType::token:
@@ -275,6 +322,9 @@ bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNod
     } else if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
         if ( !symbol_discovery( c_ctx, w_ctx ) )
             return false;
+    } else if ( vpt == VisitorPassType::SYMBOL_RESOLVE ) {
+        if ( !symbol_resolve( c_ctx, w_ctx ) )
+            return false;
     }
 
     bool result = true;
@@ -301,6 +351,9 @@ bool AstNode::visit( CrateCtx &c_ctx, Worker &w_ctx, VisitorPassType vpt, AstNod
     if ( result ) {
         if ( vpt == VisitorPassType::SYMBOL_DISCOVERY ) {
             if ( !post_symbol_discovery( c_ctx, w_ctx ) )
+                return false;
+        } else if ( vpt == VisitorPassType::SYMBOL_RESOLVE ) {
+            if ( !post_symbol_resolve( c_ctx, w_ctx ) )
                 return false;
         }
     }
@@ -838,19 +891,22 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         c_ctx.symbol_graph[new_id].original_expr.push_back( this );
     } else if ( has_prop( ExprProperty::named_scope ) ) {
         auto &symbol = named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol];
-        SymbolId new_id =
-            create_new_local_symbol_from_name_chain( c_ctx, w_ctx, symbol.get_symbol_chain( c_ctx, w_ctx ), symbol );
+        auto symbol_chain = symbol.get_symbol_chain( c_ctx, w_ctx );
+        parse_params( c_ctx, w_ctx, *this, *symbol_chain ); // must be done before the symbol is created
+        SymbolId new_id = create_new_local_symbol_from_name_chain( c_ctx, w_ctx, symbol_chain, symbol );
         scope_symbol = new_id;
         symbol.update_left_symbol_id( c_ctx.symbol_graph[c_ctx.current_scope].sub_nodes.back() );
         symbol.update_symbol_id( new_id );
         switch_scope_to_symbol( c_ctx, w_ctx, new_id );
+        c_ctx.curr_self_type_symbol_stack.push( symbol_chain );
         c_ctx.symbol_graph[new_id].original_expr.push_back( this );
         c_ctx.symbol_graph[new_id].pub = symbol.has_prop( ExprProperty::pub );
 
         // Add the annotations
         c_ctx.symbol_graph[new_id].compiler_annotations.reserve( symbol.annotations.size() );
         for ( auto &node : annotations ) {
-            c_ctx.symbol_graph[new_id].compiler_annotations.push_back(node.named[AstChild::symbol].get_symbol_chain(c_ctx,w_ctx)->front().name);
+            c_ctx.symbol_graph[new_id].compiler_annotations.push_back(
+                node.named[AstChild::symbol].get_symbol_chain( c_ctx, w_ctx )->front().name );
         }
 
         if ( type == ExprType::structure ) {
@@ -921,6 +977,75 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
 bool AstNode::post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
     c_ctx.current_substitutions.pop_back();
 
+    if ( has_prop( ExprProperty::anonymous_scope ) ) {
+        pop_scope( c_ctx, w_ctx );
+    } else if ( has_prop( ExprProperty::named_scope ) ) {
+        c_ctx.curr_self_type_symbol_stack.pop();
+        switch_scope_to_symbol(
+            c_ctx, w_ctx,
+            c_ctx
+                .symbol_graph[named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol]
+                                  .get_left_symbol_id()]
+                .parent );
+    }
+    return true;
+}
+
+bool AstNode::symbol_resolve( CrateCtx &c_ctx, Worker &w_ctx ) {
+    if ( has_prop( ExprProperty::anonymous_scope ) ) {
+        switch_scope_to_symbol( c_ctx, w_ctx, scope_symbol );
+    } else if ( has_prop( ExprProperty::named_scope ) ) {
+        switch_scope_to_symbol( c_ctx, w_ctx, scope_symbol );
+
+        auto &symbol_expr = named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol];
+        auto &symbol = c_ctx.symbol_graph[symbol_expr.get_symbol_id()];
+
+        // Resolve param types
+        for ( auto p_itr = symbol.identifier.parameters.begin(); p_itr != symbol.identifier.parameters.end();
+              p_itr++ ) {
+            if ( p_itr->tmp_type_symbol ) {
+                auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, p_itr->tmp_type_symbol );
+                if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols,
+                                                 named.find( AstChild::parameters )
+                                                     ->second.children[p_itr - symbol.identifier.parameters.begin()]
+                                                     .named[AstChild::right_expr] ) )
+                    return false;
+                p_itr->type = c_ctx.symbol_graph[symbols.front()].value;
+                p_itr->tmp_type_symbol = nullptr;
+            }
+        }
+
+        // Resolve return type
+        if ( symbol.identifier.eval_type.tmp_type_symbol ) {
+            auto symbols =
+                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, symbol.identifier.eval_type.tmp_type_symbol );
+            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, named.find( AstChild::return_type )->second ) )
+                return false;
+            symbol.identifier.eval_type.type = c_ctx.symbol_graph[symbols.front()].value;
+            symbol.identifier.eval_type.tmp_type_symbol = nullptr;
+        }
+
+        // Check if symbol conflicts now with existing symbols
+        if ( auto conflicting_symbols = find_sub_symbol_by_identifier( c_ctx, w_ctx, symbol.identifier, symbol.parent );
+             conflicting_symbols.size() > 1 ) {
+            if ( type == ExprType::func || type == ExprType::func_decl ) {
+                expect_exactly_one_symbol( c_ctx, w_ctx, conflicting_symbols, *this );
+                delete_symbol( c_ctx, w_ctx, symbol_expr.get_symbol_id() );
+            } else {
+                // TODO implement merging of symbols, e. g. structs defined at different places
+                LOG_WARN( "Merging of multiple symbol definitions is not jet fully implemented." );
+            }
+        }
+
+        // Check for special symbols
+        if ( symbol_base_matches( c_ctx, w_ctx, c_ctx.drop_fn.front(), symbol_expr.get_symbol_id() ) ) {
+            c_ctx.drop_fn.push_back( symbol_expr.get_symbol_id() );
+        }
+    }
+    return true;
+}
+
+bool AstNode::post_symbol_resolve( CrateCtx &c_ctx, Worker &w_ctx ) {
     if ( has_prop( ExprProperty::anonymous_scope ) ) {
         pop_scope( c_ctx, w_ctx );
     } else if ( has_prop( ExprProperty::named_scope ) ) {

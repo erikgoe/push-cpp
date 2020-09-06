@@ -21,6 +21,9 @@ sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, S
 // Checks if a symbol identifier matches a symbol identifier pattern
 bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIdentifier &candidate );
 
+// Checks if two symbols have the same name (excluding parameter types, etc)
+bool symbol_base_matches( CrateCtx &c_ctx, Worker &w_ctx, SymbolId pattern, SymbolId candidate );
+
 // Searches for a sub-symbol by name and returns its id
 std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &identifier,
                                                      SymbolId parent );
@@ -81,6 +84,9 @@ SymbolId create_new_relative_symbol_from_name_chain( CrateCtx &c_ctx, Worker &w_
 SymbolId create_new_local_symbol_from_name_chain( CrateCtx &c_ctx, Worker &w_ctx,
                                                   const sptr<std::vector<SymbolIdentifier>> symbol_chain,
                                                   const AstNode &symbol );
+
+// Deletes a symbol. Stubs in e. g. symbol_graph will still remain
+void delete_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId to_delete );
 
 // Creates a new symbol for a member (attribute, method)
 SymbolGraphNode &create_new_member_symbol( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &symbol_identifier,

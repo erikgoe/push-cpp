@@ -11,6 +11,9 @@ impl std::num::Integer for u32{}
 std::drop(to_drop:u32) -> () {
 }
 #stub()
+std::drop(to_drop:A) -> () {
+}
+#stub()
 std::op::is_equal(left:mut&u32, right:&u32) -> () {
 }
 #stub()

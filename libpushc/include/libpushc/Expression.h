@@ -24,6 +24,7 @@ enum class VisitorPassType {
     BASIC_SEMANTIC_CHECK, // checks some basic semantic requirements for each expression
     FIRST_TRANSFORMATION, // transformations which can be done without symbol information
     SYMBOL_DISCOVERY, // discover all symbols in the global declarative scope
+    SYMBOL_RESOLVE, // resolves symbol types for e. g. function parameters
 
     count
 };
@@ -226,6 +227,12 @@ struct AstNode {
 
     // Used in the symbol discovery pass
     bool post_symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx );
+
+    // Resolves missing symbols and types
+    bool symbol_resolve( CrateCtx &c_ctx, Worker &w_ctx );
+
+    // Handles scope cleanup
+    bool post_symbol_resolve( CrateCtx &c_ctx, Worker &w_ctx );
 
     // Updates the internal symbol id reference
     void update_symbol_id( SymbolId new_id );

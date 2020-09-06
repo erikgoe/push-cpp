@@ -30,13 +30,13 @@ sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, S
 
 bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIdentifier &candidate ) {
     if ( candidate.name == pattern.name ) {
-        if ( pattern.eval_type.type == 0 || candidate.eval_type == pattern.eval_type ) {
+        if ( candidate.eval_type == pattern.eval_type ) {
             bool matches = true;
 
             if ( candidate.parameters.size() < pattern.parameters.size() )
                 matches = false;
             for ( size_t i = 0; i < pattern.parameters.size() && matches; i++ ) {
-                if ( pattern.parameters[i].type != 0 && candidate.parameters[i].type != pattern.parameters[i].type )
+                if ( !( candidate.parameters[i] == pattern.parameters[i] ) )
                     matches = false;
             }
 
@@ -52,6 +52,11 @@ bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIde
         }
     }
     return false;
+}
+
+bool symbol_base_matches( CrateCtx &c_ctx, Worker &w_ctx, SymbolId pattern, SymbolId candidate ) {
+    return c_ctx.symbol_graph[pattern].parent == c_ctx.symbol_graph[candidate].parent &&
+           c_ctx.symbol_graph[pattern].identifier.name == c_ctx.symbol_graph[candidate].identifier.name;
 }
 
 std::vector<SymbolId> find_sub_symbol_by_identifier( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &identifier,
@@ -314,6 +319,48 @@ SymbolId create_new_local_symbol_from_name_chain( CrateCtx &c_ctx, Worker &w_ctx
                                                   const AstNode &symbol ) {
     alias_name_chain( c_ctx, w_ctx, *symbol_chain, symbol );
     return create_new_relative_symbol_from_name_chain( c_ctx, w_ctx, symbol_chain, c_ctx.current_scope );
+}
+
+void delete_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId to_delete ) {
+    auto &symbol = c_ctx.symbol_graph[to_delete];
+    c_ctx.symbol_graph[symbol.parent].sub_nodes.erase(
+        std::remove( c_ctx.symbol_graph[symbol.parent].sub_nodes.begin(),
+                     c_ctx.symbol_graph[symbol.parent].sub_nodes.end(), to_delete ),
+        c_ctx.symbol_graph[symbol.parent].sub_nodes.end() );
+    symbol.parent = 0;
+    while ( !symbol.sub_nodes.empty() )
+        delete_symbol( c_ctx, w_ctx, symbol.sub_nodes.front() );
+    symbol.identifier = SymbolIdentifier();
+    symbol.signature_evaluated = true;
+    symbol.value_evaluated = true;
+    symbol.signature_evaluation_ongoing = false;
+    symbol.type = 0;
+
+    // Handle type
+    if ( symbol.value != 0 ) {
+        auto &type = c_ctx.type_table[symbol.value];
+        type.symbol = 0;
+        type.members.clear();
+        for ( auto &sub : type.subtypes ) {
+            std::remove_if( c_ctx.type_table[sub].supertypes.begin(), c_ctx.type_table[sub].supertypes.end(),
+                            [&]( TypeId id ) { return id == symbol.value; } );
+        }
+        for ( auto &sub : type.supertypes ) {
+            std::remove_if( c_ctx.type_table[sub].subtypes.begin(), c_ctx.type_table[sub].subtypes.end(),
+                            [&]( TypeId id ) { return id == symbol.value; } );
+        }
+
+        // Handle function body
+        if ( type.function_body != 0 ) {
+            auto &fn = c_ctx.functions[type.function_body];
+            fn.type = 0;
+            fn.ops.clear();
+            fn.vars.clear();
+            fn.drop_list.clear();
+        }
+        type.function_body = 0;
+    }
+    symbol.value = 0;
 }
 
 SymbolGraphNode &create_new_member_symbol( CrateCtx &c_ctx, Worker &w_ctx, const SymbolIdentifier &symbol_identifier,

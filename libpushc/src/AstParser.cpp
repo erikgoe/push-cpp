@@ -451,7 +451,8 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
     // Most basic functions
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.drop_fn, cfg.scope_access_operator ) );
-    c_ctx.drop_fn = create_new_type( c_ctx, w_ctx, new_symbol );
+    create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.drop_fn.push_back( new_symbol );
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.equals_fn, cfg.scope_access_operator ) );

@@ -144,9 +144,7 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, Ast
 
     // Create drop operation
     if ( var.type == MirVariable::Type::value || var.type == MirVariable::Type::rvalue ) {
-        auto op = MirEntry{
-            &original_expr, MirEntry::Type::call, 0, { variable }, { c_ctx.type_table[c_ctx.drop_fn].symbol }
-        };
+        auto op = MirEntry{ &original_expr, MirEntry::Type::call, 0, { variable }, c_ctx.drop_fn };
         c_ctx.functions[function].ops.push_back( op );
     }
 
@@ -309,6 +307,10 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
 // Creates a function from a FuncExpr specified by @param symbolId
 void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol_id ) {
     auto &symbol = c_ctx.symbol_graph[symbol_id];
+
+    if ( symbol.original_expr.empty() )
+        return; // this is a virtual symbol (i. e. declared through the prelude, but never defined)
+
     auto expr = *symbol.original_expr.front();
 
     if ( symbol.value_evaluated || symbol.signature_evaluation_ongoing )
@@ -336,6 +338,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     c_ctx.functions.emplace_back();
     FunctionImpl &function = c_ctx.functions.back();
     create_variable( c_ctx, w_ctx, func_id, nullptr, "" ); // unit return value
+    function.vars.front().value_type_requirements.push_back(
+        c_ctx.unit_type ); // add unit type requirement to unit return value
     analyse_function_signature( c_ctx, w_ctx, symbol_id );
     function.type = symbol.value;
     symbol.signature_evaluation_ongoing = true; // start evaluation
@@ -377,7 +381,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 
     // Drop parameters
     for ( auto p_itr = function.params.rbegin(); p_itr != function.params.rend(); p_itr++ ) {
-        drop_variable( c_ctx, w_ctx, func_id, expr, *p_itr );
+        if ( c_ctx.symbol_graph[symbol_id].identifier.name != "drop" ) // TODO DEBUG add a compiler handler for this case
+            drop_variable( c_ctx, w_ctx, func_id, expr, *p_itr );
     }
 
     // Infer all types and function calls (if not already)

@@ -14,6 +14,7 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/CrateCtx.h"
 #include "libpushc/Expression.h"
+#include "libpushc/SymbolUtil.h"
 
 bool SyntaxRule::matches_reversed( std::vector<AstNode> &rev_list ) {
     if ( rev_list.size() < expr_list.size() )
@@ -25,6 +26,15 @@ bool SyntaxRule::matches_reversed( std::vector<AstNode> &rev_list ) {
         }
     }
     return true;
+}
+
+bool SymbolIdentifier::ParamSig::operator==( const ParamSig &other ) const {
+    if ( name != other.name || ref != other.ref || mut != other.mut )
+        return false;
+    if ( tmp_type_symbol != nullptr || other.tmp_type_symbol != nullptr )
+        return false;
+    return type == 0 || other.type == 0 ||
+           type == other.type; // type == 0 means the type of this is not known, so it's a candidate
 }
 
 CrateCtx::CrateCtx() {

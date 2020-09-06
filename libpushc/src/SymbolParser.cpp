@@ -28,5 +28,8 @@ void parse_symbols( sptr<CrateCtx> c_ctx, JobsBuilder &jb, UnitCtx &parent_ctx )
         if ( successful )
             successful =
                 c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SYMBOL_DISCOVERY, dummy_root_parent, false );
+        if ( successful )
+            successful =
+                c_ctx->ast->visit( *c_ctx, w_ctx, VisitorPassType::SYMBOL_RESOLVE, dummy_root_parent, false );
     } );
 }
