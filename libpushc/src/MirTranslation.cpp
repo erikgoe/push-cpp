@@ -704,6 +704,9 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
 
     auto &fn = c_ctx.functions[function];
 
+    if ( var == 0 )
+        return true; // unit type is already well-defined
+
     if ( fn.vars[var].type == MirVariable::Type::label || fn.vars[var].type == MirVariable::Type::symbol )
         return false; // Skip typeless variables (labels and symbols)
 
