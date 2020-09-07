@@ -1265,20 +1265,18 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, name_chain );
 
             if ( !symbols.empty() ) {
-                if ( expect_exactly_one_symbol( c_ctx, w_ctx, symbols, *this ) ) {
-                    ret = create_variable( c_ctx, w_ctx, func, this );
-                    auto &result_var = c_ctx.functions[func].vars[ret];
-                    result_var.type = MirVariable::Type::symbol;
-                    result_var.value_type_requirements.reserve( symbols.size() );
-                    for ( auto &s : symbols ) {
-                        result_var.value_type_requirements.push_back( c_ctx.symbol_graph[s].value );
-                    }
-                    found = true;
-
-                    // Create cosmetic operation
-                    auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
-                    c_ctx.functions[func].ops[op_id].symbols = symbols;
+                ret = create_variable( c_ctx, w_ctx, func, this );
+                auto &result_var = c_ctx.functions[func].vars[ret];
+                result_var.type = MirVariable::Type::symbol;
+                result_var.value_type_requirements.reserve( symbols.size() );
+                for ( auto &s : symbols ) {
+                    result_var.value_type_requirements.push_back( c_ctx.symbol_graph[s].value );
                 }
+                found = true;
+
+                // Create cosmetic operation
+                auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
+                c_ctx.functions[func].ops[op_id].symbols = symbols;
             }
         }
 
@@ -1320,7 +1318,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 params.push_back( pe.parse_mir( c_ctx, w_ctx, func ) );
             }
 
-            ret = c_ctx.functions[func].ops[create_call( c_ctx, w_ctx, func, *this, possible_callees, 0, params )].ret;
+            auto tmp_op = create_call(
+                c_ctx, w_ctx, func, *this, possible_callees, 0,
+                params ); // this is needed, because some segmentation error probably caused by evaluation order
+            ret = c_ctx.functions[func].ops[tmp_op].ret;
         }
         break;
     }
