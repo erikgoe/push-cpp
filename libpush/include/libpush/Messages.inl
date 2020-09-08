@@ -87,7 +87,6 @@ enum class MessageType {
     err_unknown_compiler_annotation,
 
     warning = 5000,
-    warn_function_signature_evaluation_cycle,
 
     notification = 10000,
 
@@ -253,10 +252,6 @@ MESSAGE_DEFINITION( MessageType::err_type_does_not_match_signature, MessageClass
 MESSAGE_DEFINITION( MessageType::err_unknown_compiler_annotation, MessageClass::Error, "C",
                     "Unknown compiler annotation", "here" );
 
-
-MESSAGE_DEFINITION( MessageType::warn_function_signature_evaluation_cycle, MessageClass::Warning, "C",
-                    "Dependency cycle in function signature detected",
-                    "specify the signature of this function, please" );
 
 
 MESSAGE_DEFINITION( MessageType::test_message, MessageClass::Error, "X", "Test error message.", "message for this",

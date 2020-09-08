@@ -645,11 +645,7 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
     for ( auto &s : call_op.symbols ) {
         // First evaluate function signature if necessary
         if ( !c_ctx.symbol_graph[s].signature_evaluated ) {
-            if ( c_ctx.symbol_graph[s].signature_evaluation_ongoing ) {
-                // Dependency cycle detected TODO maybe even don't warn at all
-                w_ctx.print_msg<MessageType::warn_function_signature_evaluation_cycle>(
-                    MessageInfo( *c_ctx.symbol_graph[s].original_expr.front(), 0, FmtStr::Color::Yellow ) );
-            } else {
+            if ( !c_ctx.symbol_graph[s].signature_evaluation_ongoing ) {
                 // TODO fix this better
                 // Save context to restore
                 auto tmp_curr_living_vars = c_ctx.curr_living_vars;
