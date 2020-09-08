@@ -1245,9 +1245,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         ret = c_ctx.functions[func].ops[op_id].ret;
         break;
     }
-    case ExprType::atomic_symbol: {
+    case ExprType::atomic_symbol:
+    case ExprType::scope_access: {
         auto name_chain = get_symbol_chain( c_ctx, w_ctx );
-        if ( !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *this ) )
+        if ( type != ExprType::scope_access && !expect_unscoped_variable( c_ctx, w_ctx, *name_chain, *this ) )
             break;
 
         bool found = false;
