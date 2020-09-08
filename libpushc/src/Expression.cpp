@@ -21,7 +21,7 @@ MessageInfo::MessageInfo( const AstNode &expr, u32 message_idx, FmtStr::Color co
         : MessageInfo( expr.pos_info, message_idx, color ) {}
 
 
-std::vector<String> AstNode::known_compiler_annotations = { "stub" };
+std::vector<String> AstNode::known_compiler_annotations = { "stub", "drop_handler" };
 
 // Used with alias statements. Returns the list of the subsitutions rules from the alias expr
 std::vector<SymbolSubstitution> get_substitutions( CrateCtx &c_ctx, Worker &w_ctx, AstNode &expr ) {

@@ -8,9 +8,11 @@ trait std::base::Iterator{}
 impl std::num::Integer for u32{}
 
 #stub()
+#drop_handler()
 std::drop(to_drop:u32) -> () {
 }
 #stub()
+#drop_handler()
 std::drop(to_drop:A) -> () {
 }
 #stub()
@@ -63,13 +65,11 @@ println(str:A) -> () {}
 
 fn() -> u32 {
     let a:u32 = 4;
-    a+X::inc(3)
+    a+inc(3)
 }
 
-mod X{
 inc(val:u32) { val + 1 }
 inc(val:A) {}
-}
 
 /*g() -> u32 {
     let x:A = 1;
