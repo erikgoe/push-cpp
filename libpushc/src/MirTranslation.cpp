@@ -141,14 +141,14 @@ MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
 
 void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
                     MirVarId variable ) {
-    if ( variable == 0 )
+    if ( variable == 0 || variable == 1 )
         return;
 
     auto &var = c_ctx.functions[function].vars[variable];
 
     // Create drop operation
     if ( var.type == MirVariable::Type::value || var.type == MirVariable::Type::rvalue ) {
-        auto op = MirEntry{ &original_expr, MirEntry::Type::call, 0, { variable }, c_ctx.drop_fn };
+        auto op = MirEntry{ &original_expr, MirEntry::Type::call, 1, { variable }, c_ctx.drop_fn };
         c_ctx.functions[function].ops.push_back( op );
     }
 
@@ -158,7 +158,7 @@ void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, Ast
 
 void remove_from_local_living_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
                                     MirVarId variable ) {
-    if ( variable == 0 )
+    if ( variable == 0 || variable == 1 )
         return;
 
     auto &var = c_ctx.functions[function].vars[variable];
@@ -341,8 +341,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     FunctionImplId func_id = c_ctx.functions.size();
     c_ctx.functions.emplace_back();
     FunctionImpl *function = &c_ctx.functions.back();
+    create_variable( c_ctx, w_ctx, func_id, nullptr, "" ); // invalid variable
     create_variable( c_ctx, w_ctx, func_id, nullptr, "" ); // unit return value
-    function->vars.front().value_type_requirements.push_back(
+    function->vars[1].value_type_requirements.push_back(
         c_ctx.unit_type ); // add unit type requirement to unit return value
     analyse_function_signature( c_ctx, w_ctx, symbol_id );
     function->type = symbol.value;
@@ -373,7 +374,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
          ( paren_expr.children.front().type == ExprType::self ||
            ( paren_expr.children.front().type == ExprType::typed_op &&
              paren_expr.children.front().named[AstChild::left_expr].type == ExprType::self ) ) ) {
-        c_ctx.curr_self_var = 1; // per convention
+        c_ctx.curr_self_var = 2; // per convention
         c_ctx.curr_self_type = c_ctx.symbol_graph[symbol.parent].value;
     } else {
         c_ctx.curr_self_var = 0;
@@ -480,6 +481,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
             auto &fn = c_ctx->functions[i];
             auto get_var_name = [&fn]( MirVarId id ) -> String {
                 if ( id == 0 )
+                    return " INVALID_VAR";
+                else if ( id == 1 )
                     return " ()";
                 String type_str =
                     ( fn.vars[id].type == MirVariable::Type::rvalue
@@ -675,6 +678,8 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
             fn_matches = false; // contains no matching type
 
         // Check parameters
+        if ( call_op.params.size() != c_ctx.symbol_graph[s].identifier.parameters.size() )
+            fn_matches = false;
         for ( size_t i = 0; i < call_op.params.size() && fn_matches; i++ ) {
             param_matches = false;
             for ( auto &requirement : fn.vars[call_op.params[i]].value_type_requirements ) {
@@ -706,13 +711,15 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
 
 bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var,
                  std::vector<MirVarId> infer_stack ) {
+    if ( var == 0 )
+        return false; // invalid variable
+    else if ( var == 1 )
+        return true; // unit type is already well-defined
+
     if ( std::find( infer_stack.begin(), infer_stack.end(), var ) != infer_stack.end() )
         return false; // Variable is currently inferred (infer cycle)
 
     auto *fn = &c_ctx.functions[function];
-
-    if ( var == 0 )
-        return true; // unit type is already well-defined
 
     if ( fn->vars[var].type == MirVariable::Type::label || fn->vars[var].type == MirVariable::Type::symbol )
         return false; // Skip typeless variables (labels and symbols)

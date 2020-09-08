@@ -1211,7 +1211,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         break;
     }
     case ExprType::unit: {
-        ret = 0; // set the unit variable
+        ret = 1; // set the unit variable
         break;
     }
     case ExprType::numeric_literal: {
