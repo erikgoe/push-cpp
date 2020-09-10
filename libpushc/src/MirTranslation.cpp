@@ -426,8 +426,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
             identifier.eval_type.type = function->vars[function->ret].value_type_requirements.front();
         } else if ( !annotation_is_stub ) {
             w_ctx.print_msg<MessageType::err_type_does_not_match_signature>(
-                MessageInfo( function->ret != 0 ? *function->vars[function->ret].original_expr
-                                                : *c_ctx.symbol_graph[symbol_id].original_expr.front(),
+                MessageInfo( function->vars[function->ret].original_expr != nullptr
+                                 ? *function->vars[function->ret].original_expr
+                                 : *c_ctx.symbol_graph[symbol_id].original_expr.front(),
                              0, FmtStr::Color::Red ) );
         }
     }
@@ -440,8 +441,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
                 identifier.parameters[i].type = function->vars[function->params[i]].value_type_requirements.front();
             } else if ( !annotation_is_stub ) {
                 w_ctx.print_msg<MessageType::err_type_does_not_match_signature>(
-                    MessageInfo( function->params[i] != 0 ? *function->vars[function->params[i]].original_expr
-                                                          : *c_ctx.symbol_graph[symbol_id].original_expr.front(),
+                    MessageInfo( function->vars[function->params[i]].original_expr != nullptr
+                                     ? *function->vars[function->params[i]].original_expr
+                                     : *c_ctx.symbol_graph[symbol_id].original_expr.front(),
                                  0, FmtStr::Color::Red ) );
             }
         }
@@ -456,6 +458,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
 void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
     jb.add_job<void>( []( Worker &w_ctx ) {
         auto c_ctx = w_ctx.do_query( get_ast )->jobs.back()->to<sptr<CrateCtx>>();
+
+        auto start_time = std::chrono::system_clock::now();
 
         // Prepare types in structs
         for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
@@ -586,6 +590,9 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
             }
         }
         log( "----------------" );
+
+        auto duration = std::chrono::system_clock::now() - start_time;
+        log( "MIR took " + to_string( duration.count() / 1000000 ) + " milliseconds" );
     } );
 }
 
@@ -720,7 +727,7 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
     auto *fn = &c_ctx.functions[function];
 
     if ( fn->vars[var].type == MirVariable::Type::label || fn->vars[var].type == MirVariable::Type::symbol )
-        return false; // Skip typeless variables (labels and symbols)
+        return true; // Skip typeless variables (labels and symbols)
 
     infer_stack.push_back( var );
 
@@ -748,7 +755,9 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                 break;
             case MirEntry::Type::bind:
                 // Pass type requirements. Bind contains only one parameter
-                fn->vars[var].value_type_requirements = fn->vars[op.params.front()].value_type_requirements;
+                fn->vars[var].value_type_requirements.insert(
+                    fn->vars[var].value_type_requirements.end(), fn->vars[op.params.front()].value_type_requirements.begin(),
+                    fn->vars[op.params.front()].value_type_requirements.end() );
                 break;
             case MirEntry::Type::inv:
                 // fn->vars[var].value_type_requirements.insert(c_ctx.boolean_type); // TODO
@@ -820,6 +829,14 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
 
 bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var ) {
     auto &fn = c_ctx.functions[function];
+
+    if ( var == 0 )
+        return false; // invalid variable
+    else if ( var == 1 )
+        return true; // unit type is already well-defined
+
+    if ( fn.vars[var].type == MirVariable::Type::label || fn.vars[var].type == MirVariable::Type::symbol )
+        return true; // Skip typeless variables (labels and symbols)
 
     if ( !fn.vars[var].value_type_requirements.empty() ) {
         auto typeset = find_common_types( c_ctx, w_ctx, fn.vars[var].value_type_requirements );

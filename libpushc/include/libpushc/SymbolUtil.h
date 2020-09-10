@@ -21,6 +21,9 @@ sptr<std::vector<SymbolIdentifier>> split_symbol_chain( const String &chained, S
 // Checks if a symbol identifier matches a symbol identifier pattern
 bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIdentifier &candidate );
 
+// Checks if the base (name and template values) of a symbol identifier matches a symbol identifier pattern
+bool symbol_identifier_base_matches( const SymbolIdentifier &pattern, const SymbolIdentifier &candidate );
+
 // Checks if two symbols have the same name (excluding parameter types, etc)
 bool symbol_base_matches( CrateCtx &c_ctx, Worker &w_ctx, SymbolId pattern, SymbolId candidate );
 

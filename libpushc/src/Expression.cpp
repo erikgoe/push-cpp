@@ -1765,7 +1765,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 vars.push_back( var );
 
                 // Add type check operation TODO handle if struct member is not already typed
-                c_ctx.functions[func].vars[var].value_type_requirements.push_back( type.members[i].type );
+                c_ctx.functions[func].vars[var].value_type_requirements.push_back( type.members[i].value );
             }
 
             // Merge values into type
@@ -1806,7 +1806,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Find methods
         std::vector<SymbolId> methods;
         for ( auto &node : c_ctx.symbol_graph[base_symbol].sub_nodes ) {
-            if ( symbol_identifier_matches( member_chain->front(), c_ctx.symbol_graph[node].identifier ) ) {
+            if ( symbol_identifier_base_matches( member_chain->front(), c_ctx.symbol_graph[node].identifier ) ) {
                 methods.push_back( node );
             }
         }
@@ -1869,6 +1869,9 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             auto &result_var = c_ctx.functions[func].vars[ret];
             result_var.type = MirVariable::Type::symbol;
             result_var.base_ref = obj;
+            for ( auto &s : methods ) {
+                result_var.value_type_requirements.push_back( c_ctx.symbol_graph[s].value );
+            }
 
             // Create cosmetic operation
             auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, { obj } );

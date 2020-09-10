@@ -9,11 +9,23 @@ impl std::num::Integer for u32{}
 
 #stub()
 #drop_handler()
+std::drop(to_drop:()) -> () {
+}
+#stub()
+#drop_handler()
 std::drop(to_drop:u32) -> () {
 }
 #stub()
 #drop_handler()
 std::drop(to_drop:A) -> () {
+}
+#stub()
+#drop_handler()
+std::drop(to_drop:std::str::String) -> () {
+}
+#stub()
+#drop_handler()
+std::drop(to_drop:bool) -> () {
 }
 #stub()
 std::op::is_equal(left:mut&u32, right:&u32) -> () {
@@ -61,19 +73,20 @@ impl op::Add for A {
     }
 }
 
-println(str:A) -> () {}
+println(str:std::str::String) -> () {}
 
 fn() -> u32 {
     let a:u32 = 4;
     a+inc(3)
 }
 
-inc(val:u32) { val + 1 }
+inc(val:u32) -> u32 { val + 1 }
+inc(val:u32) -> () {}
 inc(val:A) {}
 
-/*g() -> u32 {
-    let x:A = 1;
-    x.add(1);
+g() -> u32 {
+    let x:A = A{1, 2};
+    x.add(A{3,4});
     let A{a,b} = x;
 
     let x:A = A{42,40+3};
@@ -86,16 +99,15 @@ inc(val:A) {}
     x.foo // TODO lifetime error
 }
 
-h() {
+/*h() {
     //let itr:std::base::Iterator = 1;
     for i in 0 { // Don't mind the type
         // stuff
     }
 }*/
 
-/*
 x() {
-    let b:mut = 3;
+    let b:mut u32 = 3;
     {
         let a = A{1,2};
         b = y(a);
@@ -105,4 +117,4 @@ x() {
 
 y(val:&A) {
     val.foo
-}*/
+}

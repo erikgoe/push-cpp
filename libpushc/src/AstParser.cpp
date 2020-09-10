@@ -423,52 +423,63 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
     SymbolId new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, make_shared<std::vector<SymbolIdentifier>>( 1, SymbolIdentifier{ "()" } ) );
     c_ctx.unit_type = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.struct_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.integer_trait, cfg.scope_access_operator ) );
     c_ctx.int_type = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.struct_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.string_trait, cfg.scope_access_operator ) );
     c_ctx.str_type = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.struct_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.tuple_trait, cfg.scope_access_operator ) );
     c_ctx.tuple_type = create_new_type( c_ctx, w_ctx, new_symbol );
     c_ctx.symbol_graph[new_symbol].identifier.template_values.push_back(
         std::make_pair( c_ctx.type_type, ConstValue() ) ); // Make it a template TODO make variadic
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.template_struct_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.array_trait, cfg.scope_access_operator ) );
     c_ctx.array_type = create_new_type( c_ctx, w_ctx, new_symbol );
     c_ctx.symbol_graph[new_symbol].identifier.template_values.push_back(
         std::make_pair( c_ctx.type_type, ConstValue() ) ); // Make it a template TODO make variadic
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.template_struct_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.iterator_trait, cfg.scope_access_operator ) );
     c_ctx.iterator_type = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.struct_type;
 
     // Most basic functions
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.drop_fn, cfg.scope_access_operator ) );
     create_new_type( c_ctx, w_ctx, new_symbol );
     c_ctx.drop_fn.push_back( new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.fn_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.equals_fn, cfg.scope_access_operator ) );
     c_ctx.equals_fn = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.fn_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.itr_valid_fn, cfg.scope_access_operator ) );
     c_ctx.itr_valid_fn = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.fn_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.itr_get_fn, cfg.scope_access_operator ) );
     c_ctx.itr_get_fn = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.fn_type;
 
     new_symbol = create_new_global_symbol_from_name_chain(
         c_ctx, w_ctx, split_symbol_chain( cfg.itr_next_fn, cfg.scope_access_operator ) );
     c_ctx.itr_next_fn = create_new_type( c_ctx, w_ctx, new_symbol );
+    c_ctx.symbol_graph[new_symbol].type = c_ctx.fn_type;
 
     // Memblob types
     for ( auto &mbt : cfg.memblob_types ) {
@@ -476,6 +487,7 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
             c_ctx, w_ctx, split_symbol_chain( mbt.first, cfg.scope_access_operator ) );
         TypeId new_type = create_new_type( c_ctx, w_ctx, new_symbol );
         c_ctx.type_table[new_type].additional_mem_size = mbt.second;
+        c_ctx.symbol_graph[new_symbol].type = c_ctx.struct_type;
     }
 
     // Literals
@@ -506,6 +518,10 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         load_base_types( *c_ctx, w_ctx, w_ctx.unit_ctx()->prelude_conf );
         load_syntax_rules( w_ctx, *c_ctx );
 
+        auto duration = std::chrono::system_clock::now() - start_time;
+        log( "Prelude took " + to_string( duration.count() / 1000000 ) + " milliseconds" );
+        start_time = std::chrono::system_clock::now();
+
         // parse global scope
         *c_ctx->ast = parse_scope( input, w_ctx, *c_ctx, TT::eof, nullptr );
         w_ctx.do_query( parse_symbols, c_ctx );
@@ -528,8 +544,8 @@ void parse_ast( JobsBuilder &jb, UnitCtx &parent_ctx ) {
             }
         }
         log( "----------------" );
-        auto duration = std::chrono::system_clock::now() - start_time;
-        log( "Took " + to_string( duration.count() / 1000000 ) + " milliseconds" );
+        duration = std::chrono::system_clock::now() - start_time;
+        log( "AST took " + to_string( duration.count() / 1000000 ) + " milliseconds" );
 
         return c_ctx;
     } );

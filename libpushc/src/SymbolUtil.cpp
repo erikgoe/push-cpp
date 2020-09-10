@@ -54,6 +54,23 @@ bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIde
     return false;
 }
 
+bool symbol_identifier_base_matches( const SymbolIdentifier &pattern, const SymbolIdentifier &candidate ) {
+    if ( candidate.name == pattern.name ) {
+        bool matches = true;
+
+        if ( candidate.template_values.size() < pattern.template_values.size() )
+            matches = false;
+        for ( size_t i = 0; i < pattern.template_values.size() && matches; i++ ) {
+            if ( pattern.template_values[i].first != 0 &&
+                 candidate.template_values[i].first != pattern.template_values[i].first )
+                matches = false;
+        }
+
+        return matches;
+    }
+    return false;
+}
+
 bool symbol_base_matches( CrateCtx &c_ctx, Worker &w_ctx, SymbolId pattern, SymbolId candidate ) {
     return c_ctx.symbol_graph[pattern].parent == c_ctx.symbol_graph[candidate].parent &&
            c_ctx.symbol_graph[pattern].identifier.name == c_ctx.symbol_graph[candidate].identifier.name;
@@ -375,7 +392,7 @@ SymbolGraphNode &create_new_member_symbol( CrateCtx &c_ctx, Worker &w_ctx, const
 }
 
 TypeId create_new_internal_type( CrateCtx &c_ctx, Worker &w_ctx ) {
-    SymbolId type_id = c_ctx.type_table.size();
+    TypeId type_id = c_ctx.type_table.size();
     c_ctx.type_table.emplace_back();
     return type_id;
 }
