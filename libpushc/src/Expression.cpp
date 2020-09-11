@@ -1788,7 +1788,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Determine the final type of the object
         infer_type( c_ctx, w_ctx, func, obj );
-        enforce_type_of_variable( c_ctx, w_ctx, func, obj );
+        if ( !enforce_type_of_variable( c_ctx, w_ctx, func, obj ) ) {
+            ret = 0;
+            break;
+        }
 
         auto base_symbol = c_ctx.type_table[c_ctx.functions[func].vars[obj].value_type_requirements.front()]
                                .symbol; // TODO handle multiple possible types?

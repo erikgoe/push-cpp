@@ -856,6 +856,7 @@ bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId fu
             MessageInfo( var == 0 ? *c_ctx.symbol_graph[c_ctx.type_table[fn.type].symbol].original_expr.front()
                                   : *fn.vars[var].original_expr,
                          0, FmtStr::Color::Red ) );
+        return false;
     }
 
     // TODO Fail if no type could be selected, because the domain of the possible types can not be compared
