@@ -101,7 +101,7 @@ TypeId create_new_internal_type( CrateCtx &c_ctx, Worker &w_ctx );
 // Creates a new type from a existing symbol
 TypeId create_new_type( CrateCtx &c_ctx, Worker &w_ctx, SymbolId from_symbol );
 
-// Instantiates a template, by creating a new type and symbol if necessary
+// Instantiates a template (proposal), by creating a new type and symbol if necessary
 SymbolId instantiate_template( CrateCtx &c_ctx, Worker &w_ctx, SymbolId from_template,
                                std::vector<std::pair<TypeId, ConstValue>> &template_values );
 

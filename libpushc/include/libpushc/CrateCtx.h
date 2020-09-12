@@ -83,11 +83,11 @@ public:
     }
     // Returns the data interpreted as a specific type if the type sizes match
     template <typename T>
-    std::optional<const T &> get() const {
-        if ( sizeof( T ) == _data.size() )
-            return nullptr;
+    std::optional<const T *> get() const {
+        if ( sizeof( T ) != _data.size() )
+            return std::nullopt;
         else
-            return reinterpret_cast<T>( _data.data() );
+            return reinterpret_cast<const T *>( _data.data() );
     }
     // Returns the raw data
     const std::vector<u8> &get_raw() const { return _data; }
@@ -104,6 +104,7 @@ struct SymbolIdentifier {
     // Signature of a parameter or return type
     struct ParamSig {
         TypeId type = 0; // type of the parameter
+        size_t template_type_index = 0; // If this is set, the type is defined by a template symbol
         sptr<std::vector<SymbolIdentifier>> tmp_type_symbol; // only while symbols are discovered
         String name; // name of the parameter (not for return types)
         bool ref = false; // whether the value is borrowed
@@ -138,9 +139,11 @@ struct SymbolGraphNode {
                                   // evaluated TODO set also for struct, traits, impls, templates and modules
     bool signature_evaluation_ongoing =
         false; // is used internally to detect dependency cycles (not used in analyse_function_signature())
+    bool proposed = false; // if it's not sure whether this symbol is used
 
     std::vector<String> compiler_annotations; // additional annotations from the user
 
+    size_t template_type_index = 0; // like SymbolIdentifier::ParamSig::template_type_index
     TypeId value = 0; // type/value of this symbol (every function has its own type; for structs this is struct body;
                       // for (local) variables this is 0)
     TypeId type = 0; // the type behind the value of this symbol
@@ -241,6 +244,7 @@ struct CrateCtx {
     TypeId trait_type = 0; // internal trait type
     TypeId fn_type = 0; // internal function type
     TypeId template_struct_type = 0; // internal template struct type
+    TypeId template_trait_type = 0; // internal template trait type
     TypeId template_fn_type = 0; // internal template function type
     TypeId mod_type = 0; // internal module type
     TypeId unit_type = 0; // type of the unit type
@@ -270,7 +274,8 @@ struct CrateCtx {
     std::vector<std::map<String, std::vector<MirVarId>>> curr_name_mapping; // mappes names to stacks of shaddowned vars
     MirVarId curr_self_var = 0; // describes the current self parameter var
     TypeId curr_self_type = 0; // describes which type is the current object type
-    std::stack<sptr<std::vector<SymbolIdentifier>>> curr_self_type_symbol_stack; // like curr_left_type, but during symbol discovery
+    std::stack<sptr<std::vector<SymbolIdentifier>>>
+        curr_self_type_symbol_stack; // like curr_left_type, but during symbol discovery
 
     CrateCtx();
 };

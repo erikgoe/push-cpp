@@ -85,6 +85,8 @@ enum class MessageType {
     err_cannot_implament_for,
     err_type_does_not_match_signature,
     err_unknown_compiler_annotation,
+    err_template_name_ambiguous,
+    err_template_signature_incomplete,
 
     warning = 5000,
 
@@ -251,6 +253,12 @@ MESSAGE_DEFINITION( MessageType::err_type_does_not_match_signature, MessageClass
                     "Value type does not match the function signature", "this variable" );
 MESSAGE_DEFINITION( MessageType::err_unknown_compiler_annotation, MessageClass::Error, "C",
                     "Unknown compiler annotation", "here" );
+MESSAGE_DEFINITION( MessageType::err_template_name_ambiguous, MessageClass::Error, "C",
+                    "Template symbol is already used", "second definition" );
+MESSAGE_DEFINITION(
+    MessageType::err_template_signature_incomplete, MessageClass::Error, "C",
+    "Template type signature incomplete. Please specify all parameter types and the return type explicitly",
+    "this function" );
 
 
 

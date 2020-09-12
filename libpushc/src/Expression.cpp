@@ -910,7 +910,8 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
         }
 
         if ( type == ExprType::structure ) {
-            c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
+            c_ctx.symbol_graph[new_id].type =
+                ( symbol.type == ExprType::template_postfix ? c_ctx.template_struct_type : c_ctx.struct_type );
 
             // Handle type
             if ( c_ctx.symbol_graph[new_id].value == 0 )
@@ -956,16 +957,20 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                 new_member.pub = symbol->has_prop( ExprProperty::pub );
             }
         } else if ( type == ExprType::trait ) {
-            c_ctx.symbol_graph[new_id].type = c_ctx.trait_type;
+            c_ctx.symbol_graph[new_id].type =
+                ( symbol.type == ExprType::template_postfix ? c_ctx.template_trait_type : c_ctx.trait_type );
             // Handle type
             if ( c_ctx.symbol_graph[new_id].value == 0 )
                 create_new_type( c_ctx, w_ctx, new_id );
         } else if ( type == ExprType::implementation ) {
-            c_ctx.symbol_graph[new_id].type = c_ctx.struct_type;
+            c_ctx.symbol_graph[new_id].type =
+                ( symbol.type == ExprType::template_postfix ? c_ctx.template_struct_type : c_ctx.struct_type );
         } else if ( type == ExprType::module ) {
             c_ctx.symbol_graph[new_id].type = c_ctx.mod_type;
+            // TODO check somewhere that module symbols are not template-postfixed
         } else { // function
-            c_ctx.symbol_graph[new_id].type = c_ctx.fn_type;
+            c_ctx.symbol_graph[new_id].type =
+                ( symbol.type == ExprType::template_postfix ? c_ctx.template_fn_type : c_ctx.fn_type );
             // Handle type
             if ( c_ctx.symbol_graph[new_id].value == 0 )
                 create_new_type( c_ctx, w_ctx, new_id );
@@ -1000,28 +1005,102 @@ bool AstNode::symbol_resolve( CrateCtx &c_ctx, Worker &w_ctx ) {
         auto &symbol_expr = named[type == ExprType::implementation ? AstChild::struct_symbol : AstChild::symbol];
         auto &symbol = c_ctx.symbol_graph[symbol_expr.get_symbol_id()];
 
+        // Resolve template parameters
+        if ( symbol_expr.type == ExprType::template_postfix ) {
+            symbol.template_params.reserve( symbol_expr.children.size() + 1 );
+            symbol.template_params.emplace_back(); // invalid parameter
+            for ( auto &param : symbol_expr.children ) {
+                AstNode *identifier = &param;
+                TypeId param_type = c_ctx.type_type;
+                if ( param.type == ExprType::typed_op ) {
+                    identifier = &param.named[AstChild::left_expr];
+
+                    auto symbols = find_local_symbol_by_identifier_chain(
+                        c_ctx, w_ctx, param.named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx ) );
+                    if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, param.named[AstChild::right_expr] ) )
+                        return false;
+
+                    param_type = c_ctx.symbol_graph[symbols.front()].value;
+                }
+
+                auto symbol_chain = identifier->get_symbol_chain( c_ctx, w_ctx );
+                if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, *identifier ) )
+                    return false;
+
+                // Check if symbol already exists
+                if ( std::find_if( symbol.template_params.begin(), symbol.template_params.end(), [&]( auto &&pair ) {
+                         return pair.second == symbol_chain->front().name;
+                     } ) != symbol.template_params.end() ) {
+                    w_ctx.print_msg<MessageType::err_template_name_ambiguous>(
+                        MessageInfo( param, 0, FmtStr::Color::Red ) );
+                    return false;
+                }
+
+                // Add new template parameter
+                symbol.template_params.push_back( std::make_pair( param_type, symbol_chain->front().name ) );
+            }
+        }
+
         // Resolve param types
         for ( auto p_itr = symbol.identifier.parameters.begin(); p_itr != symbol.identifier.parameters.end();
               p_itr++ ) {
             if ( p_itr->tmp_type_symbol ) {
-                auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, p_itr->tmp_type_symbol );
-                if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols,
-                                                 named.find( AstChild::parameters )
-                                                     ->second.children[p_itr - symbol.identifier.parameters.begin()]
-                                                     .named[AstChild::right_expr] ) )
-                    return false;
-                p_itr->type = c_ctx.symbol_graph[symbols.front()].value;
+                // Search in template parameters
+                size_t template_var_index = 0;
+                if ( p_itr->tmp_type_symbol->size() == 1 && p_itr->tmp_type_symbol->front().template_values.empty() ) {
+                    // Single symbol
+                    for ( size_t i = 1; i < symbol.template_params.size(); i++ ) {
+                        if ( symbol.template_params[i].second == p_itr->tmp_type_symbol->front().name ) {
+                            // Symbol matches
+                            template_var_index = i;
+                            break;
+                        }
+                    }
+                }
+
+                if ( template_var_index != 0 ) {
+                    p_itr->template_type_index = template_var_index;
+                } else {
+                    // Search in global symbol tree
+                    auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, p_itr->tmp_type_symbol );
+                    if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols,
+                                                     named.find( AstChild::parameters )
+                                                         ->second.children[p_itr - symbol.identifier.parameters.begin()]
+                                                         .named[AstChild::right_expr] ) )
+                        return false;
+                    p_itr->type = c_ctx.symbol_graph[symbols.front()].value;
+                }
                 p_itr->tmp_type_symbol = nullptr;
             }
         }
 
         // Resolve return type
         if ( symbol.identifier.eval_type.tmp_type_symbol ) {
-            auto symbols =
-                find_local_symbol_by_identifier_chain( c_ctx, w_ctx, symbol.identifier.eval_type.tmp_type_symbol );
-            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, named.find( AstChild::return_type )->second ) )
-                return false;
-            symbol.identifier.eval_type.type = c_ctx.symbol_graph[symbols.front()].value;
+            // Search in template parameters
+            size_t template_var_index = 0;
+            if ( symbol.identifier.eval_type.tmp_type_symbol->size() == 1 &&
+                 symbol.identifier.eval_type.tmp_type_symbol->front().template_values.empty() ) {
+                // Single symbol
+                for ( size_t i = 1; i < symbol.template_params.size(); i++ ) {
+                    if ( symbol.template_params[i].second ==
+                         symbol.identifier.eval_type.tmp_type_symbol->front().name ) {
+                        // Symbol matches
+                        template_var_index = i;
+                        break;
+                    }
+                }
+            }
+
+            if ( template_var_index != 0 ) {
+                symbol.identifier.eval_type.template_type_index = template_var_index;
+            } else {
+                // Search in global symbol tree
+                auto symbols =
+                    find_local_symbol_by_identifier_chain( c_ctx, w_ctx, symbol.identifier.eval_type.tmp_type_symbol );
+                if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbols, named.find( AstChild::return_type )->second ) )
+                    return false;
+                symbol.identifier.eval_type.type = c_ctx.symbol_graph[symbols.front()].value;
+            }
             symbol.identifier.eval_type.tmp_type_symbol = nullptr;
         }
 
@@ -1085,20 +1164,24 @@ SymbolId AstNode::get_symbol_id() {
 }
 
 void AstNode::update_left_symbol_id( SymbolId new_id ) {
-    if ( type == ExprType::scope_access ) {
-        named[AstChild::base].update_left_symbol_id( new_id );
-    } else if ( type == ExprType::atomic_symbol || type == ExprType::template_postfix ) {
+    if ( type == ExprType::atomic_symbol ) {
         update_symbol_id( new_id );
+    } else if ( type == ExprType::scope_access ) {
+        named[AstChild::base].update_left_symbol_id( new_id );
+    } else if ( type == ExprType::template_postfix ) {
+        named[AstChild::symbol].update_left_symbol_id( new_id );
     } else {
         LOG_ERR( "Symbol has no left sub-symbol" );
     }
 }
 
 SymbolId AstNode::get_left_symbol_id() {
-    if ( type == ExprType::scope_access ) {
-        return named[AstChild::base].get_left_symbol_id();
-    } else if ( type == ExprType::atomic_symbol || type == ExprType::template_postfix ) {
+    if ( type == ExprType::atomic_symbol ) {
         return get_symbol_id();
+    } else if ( type == ExprType::scope_access ) {
+        return named[AstChild::base].get_left_symbol_id();
+    } else if ( type == ExprType::template_postfix ) {
+        return named[AstChild::symbol].get_left_symbol_id();
     } else {
         LOG_ERR( "Symbol has no left sub-symbol" );
         return 0;
@@ -1262,6 +1345,34 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         }
 
         if ( !found ) {
+            // Search for a template parameter
+            auto &fn_symbol = c_ctx.symbol_graph[c_ctx.type_table[c_ctx.functions[func].type].symbol];
+            size_t param_index =
+                std::find_if( fn_symbol.template_params.begin(), fn_symbol.template_params.end(),
+                              [&]( auto &&pair ) { return pair.second == name_chain->front().name; } ) -
+                fn_symbol.template_params.begin();
+
+            if ( param_index != 0 ) {
+                if ( fn_symbol.identifier.template_values[param_index].first == c_ctx.type_type ) {
+                    ret = create_variable( c_ctx, w_ctx, func, this );
+                    auto &result_var = c_ctx.functions[func].vars[ret];
+                    result_var.type = MirVariable::Type::symbol;
+                    result_var.value_type_requirements.push_back(
+                        *fn_symbol.identifier.template_values[param_index].second.get<TypeId>().value() );
+
+                    // Create cosmetic operation
+                    auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::symbol, ret, {} );
+                    c_ctx.functions[func].ops[op_id].symbols = {
+                        c_ctx.type_table[result_var.value_type_requirements.front()].symbol
+                    };
+                } else {
+                    ret = 0; // TODO create literal data value
+                }
+                found = true;
+            }
+        }
+
+        if ( !found ) {
             // Search for a symbol
             auto symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, name_chain );
 
@@ -1282,7 +1393,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         }
 
         if ( !found ) {
-            // Frist check if the symbol was just dropped earlier
+            // Check if the symbol was just dropped earlier
             for ( auto itr = c_ctx.functions[func].drop_list.rbegin(); itr != c_ctx.functions[func].drop_list.rend();
                   itr++ ) {
                 if ( itr->first == name_chain->front().name ) {

@@ -416,6 +416,7 @@ void load_base_types( CrateCtx &c_ctx, Worker &w_ctx, PreludeConfig &cfg ) {
     c_ctx.trait_type = create_new_internal_type( c_ctx, w_ctx );
     c_ctx.fn_type = create_new_internal_type( c_ctx, w_ctx );
     c_ctx.template_struct_type = create_new_internal_type( c_ctx, w_ctx );
+    c_ctx.template_trait_type = create_new_internal_type( c_ctx, w_ctx );
     c_ctx.template_fn_type = create_new_internal_type( c_ctx, w_ctx );
     c_ctx.mod_type = create_new_internal_type( c_ctx, w_ctx );
 

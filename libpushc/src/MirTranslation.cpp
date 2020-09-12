@@ -228,18 +228,38 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
 
                         new_parameter.type = c_ctx.symbol_graph[symbol.parent].value;
                     } else {
-                        // Normal type
-                        auto types = find_local_symbol_by_identifier_chain(
-                            c_ctx, w_ctx, type_symbol.get_symbol_chain( c_ctx, w_ctx ) );
+                        auto type_sc = type_symbol.get_symbol_chain( c_ctx, w_ctx );
 
-                        if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, type_symbol ) )
-                            continue;
+                        // Search in template parameters
+                        size_t template_var_index = 0;
+                        if ( type_sc->size() == 1 && type_sc->front().template_values.empty() ) {
+                            // Single symbol
+                            for ( size_t i = 1; i < symbol.template_params.size(); i++ ) {
+                                if ( symbol.template_params[i].second == type_sc->front().name ) {
+                                    // Symbol matches
+                                    template_var_index = i;
+                                    break;
+                                }
+                            }
+                        }
 
-                        new_parameter.type = c_ctx.symbol_graph[types.front()].value;
+                        if ( template_var_index != 0 ) {
+                            new_parameter.template_type_index = template_var_index;
+                        } else {
+                            // Search in global symbol tree
+                            auto types = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type_sc );
+
+                            if ( !expect_exactly_one_symbol( c_ctx, w_ctx, types, type_symbol ) )
+                                continue;
+
+                            new_parameter.type = c_ctx.symbol_graph[types.front()].value;
+                        }
                     }
 
                     new_parameter.ref = type_symbol.has_prop( ExprProperty::ref );
                     new_parameter.mut = type_symbol.has_prop( ExprProperty::mut );
+                } else {
+                    signature_evaluated = false;
                 }
 
                 if ( parameter_symbol->type == ExprType::self ) {
@@ -267,7 +287,6 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, *parameter_symbol ) )
                         continue;
                     new_parameter.name = symbol_chain->front().name;
-                    signature_evaluated = false;
                 }
             }
         }
@@ -289,17 +308,36 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
 
                 symbol.identifier.eval_type.type = c_ctx.symbol_graph[symbol.parent].value;
             } else {
-                // Normal return type
-                auto return_symbols = find_local_symbol_by_identifier_chain(
-                    c_ctx, w_ctx, return_symbol.get_symbol_chain( c_ctx, w_ctx ) );
+                auto type_sc = return_symbol.get_symbol_chain( c_ctx, w_ctx );
 
-                if ( !expect_exactly_one_symbol( c_ctx, w_ctx, return_symbols, return_symbol ) )
-                    return;
+                // Search in template parameters
+                size_t template_var_index = 0;
+                if ( type_sc->size() == 1 && type_sc->front().template_values.empty() ) {
+                    // Single symbol
+                    for ( size_t i = 1; i < symbol.template_params.size(); i++ ) {
+                        if ( symbol.template_params[i].second == type_sc->front().name ) {
+                            // Symbol matches
+                            template_var_index = i;
+                            break;
+                        }
+                    }
+                }
 
-                symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].value;
-                symbol.identifier.eval_type.ref = return_symbol.has_prop( ExprProperty::ref );
-                symbol.identifier.eval_type.mut = return_symbol.has_prop( ExprProperty::mut );
+                if ( template_var_index != 0 ) {
+                    symbol.identifier.eval_type.template_type_index = template_var_index;
+                } else {
+                    // Search in global symbol tree
+                    auto return_symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, type_sc );
+
+                    if ( !expect_exactly_one_symbol( c_ctx, w_ctx, return_symbols, return_symbol ) )
+                        return;
+
+                    symbol.identifier.eval_type.type = c_ctx.symbol_graph[return_symbols.front()].value;
+                }
             }
+
+            symbol.identifier.eval_type.ref = return_symbol.has_prop( ExprProperty::ref );
+            symbol.identifier.eval_type.mut = return_symbol.has_prop( ExprProperty::mut );
         } else {
             signature_evaluated = false;
         }
@@ -411,6 +449,15 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         if ( op.type == MirEntry::Type::call ) {
             infer_function_call( c_ctx, w_ctx, func_id, op );
             function = &c_ctx.functions[func_id]; // update ref
+
+            // DEBUG check
+            if ( op.symbols.size() != 1 )
+                LOG_ERR( "Function call symbols still ambiguous!" );
+
+            // Fulfill function proposals
+            if ( c_ctx.symbol_graph[op.symbols.front()].proposed ) {
+                c_ctx.symbol_graph[op.symbols.front()].proposed = false;
+            }
         }
     }
 
@@ -476,7 +523,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
         // Generate the Mir function bodies
         for ( size_t i = 0; i < c_ctx->symbol_graph.size(); i++ ) {
             if ( c_ctx->symbol_graph[i].original_expr.size() == 1 &&
-                 c_ctx->symbol_graph[i].original_expr.front()->type == ExprType::func ) {
+                 c_ctx->symbol_graph[i].original_expr.front()->type == ExprType::func &&
+                 c_ctx->symbol_graph[i].type == c_ctx->fn_type && !c_ctx->symbol_graph[i].proposed ) {
                 generate_mir_function_impl( *c_ctx, w_ctx, i );
             }
         }
@@ -506,7 +554,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
             };
 
             log( " fn " + to_string( i ) + " - " +
-                 get_full_symbol_name( *c_ctx, w_ctx, c_ctx->type_table[fn.type].symbol ) );
+                 get_full_symbol_name( *c_ctx, w_ctx, c_ctx->type_table[fn.type].symbol ) +
+                 ( c_ctx->symbol_graph[c_ctx->type_table[fn.type].symbol].proposed ? " [proposed]" : "" ) );
 
             // Parameters
             for ( auto &p : fn.params ) {
@@ -612,6 +661,9 @@ bool type_has_trait( CrateCtx &c_ctx, Worker &w_ctx, TypeId type, TypeId trait )
 // Creates the set intersection of all subtypes of the @param types
 std::vector<TypeId> find_common_types( CrateCtx &c_ctx, Worker &w_ctx, std::vector<TypeId> types ) {
     std::vector<TypeId> typeset;
+    if ( types.empty() )
+        return typeset;
+
     typeset.push_back( types.front() );
     typeset.insert( typeset.end(), c_ctx.type_table[types.front()].subtypes.begin(),
                     c_ctx.type_table[types.front()].subtypes.end() );
@@ -648,58 +700,183 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
 
     // Decide which function to call
     std::vector<SymbolId> selected;
+    bool found_template = false;
     auto &fn = c_ctx.functions[function];
-    for ( auto &s : call_op.symbols ) {
-        // First evaluate function signature if necessary
-        if ( !c_ctx.symbol_graph[s].signature_evaluated ) {
-            if ( !c_ctx.symbol_graph[s].signature_evaluation_ongoing ) {
-                // TODO fix this better
-                // Save context to restore
-                auto tmp_curr_living_vars = c_ctx.curr_living_vars;
-                auto tmp_curr_name_mapping = c_ctx.curr_name_mapping;
-                auto tmp_curr_self_var = c_ctx.curr_self_var;
-                auto tmp_curr_self_type = c_ctx.curr_self_type;
+    std::vector<SymbolId> symbols_to_add;
+    for ( auto s_itr = call_op.symbols.begin(); s_itr != call_op.symbols.end(); s_itr++ ) {
+        auto &s = *s_itr;
+        // Handle template functions
+        if ( c_ctx.symbol_graph[s].type == c_ctx.template_fn_type ) {
+            // It's a template
+            analyse_function_signature( c_ctx, w_ctx, s );
+            if ( !c_ctx.symbol_graph[s].signature_evaluated ) {
+                // TODO implement inference of template function parameter types. Unspecified paremters must be equally
+                // typed for all template instances! Otherwise they would introduce new "invisible" template parameters
+                w_ctx.print_msg<MessageType::err_template_signature_incomplete>(
+                    MessageInfo( *call_op.original_expr, 0, FmtStr::Color::Red ) );
+                return false;
+            }
+        } else {
+            // Not a template
 
-                generate_mir_function_impl( c_ctx, w_ctx, s );
+            // First evaluate function signature if necessary
+            if ( !c_ctx.symbol_graph[s].signature_evaluated ) {
+                if ( !c_ctx.symbol_graph[s].signature_evaluation_ongoing ) {
+                    // TODO fix this better
+                    // Save context to restore
+                    auto tmp_curr_living_vars = c_ctx.curr_living_vars;
+                    auto tmp_curr_name_mapping = c_ctx.curr_name_mapping;
+                    auto tmp_curr_self_var = c_ctx.curr_self_var;
+                    auto tmp_curr_self_type = c_ctx.curr_self_type;
 
-                // Restore context
-                c_ctx.curr_living_vars = tmp_curr_living_vars;
-                c_ctx.curr_name_mapping = tmp_curr_name_mapping;
-                c_ctx.curr_self_var = tmp_curr_self_var;
-                c_ctx.curr_self_type = tmp_curr_self_type;
+                    generate_mir_function_impl( c_ctx, w_ctx, s );
+
+                    // Restore context
+                    c_ctx.curr_living_vars = tmp_curr_living_vars;
+                    c_ctx.curr_name_mapping = tmp_curr_name_mapping;
+                    c_ctx.curr_self_var = tmp_curr_self_var;
+                    c_ctx.curr_self_type = tmp_curr_self_type;
+                }
             }
         }
+
+        // Template stuff
+        auto new_symbol_chain = get_symbol_chain_from_symbol( c_ctx, w_ctx, s );
+        auto &sc_back = new_symbol_chain->back();
+        sc_back.template_values.resize( c_ctx.symbol_graph[s].template_params.size() );
 
         auto &fn = c_ctx.functions[function]; // Update reference (to prevent iterator invalidation)
+
         // Check return type
         bool param_matches = false, fn_matches = true;
-        for ( auto &requirement : fn.vars[call_op.ret].value_type_requirements ) {
-            if ( type_has_trait( c_ctx, w_ctx, requirement, c_ctx.symbol_graph[s].identifier.eval_type.type ) ) {
-                param_matches = true;
-                break;
+        if ( c_ctx.symbol_graph[s].identifier.eval_type.template_type_index != 0 ) {
+            // Template type
+
+            if ( c_ctx.symbol_graph[s].type != c_ctx.template_fn_type )
+                LOG_ERR( "Non-template with template return type" );
+
+            if ( !fn.vars[call_op.ret].value_type_requirements.empty() ) {
+                enforce_type_of_variable( c_ctx, w_ctx, function, call_op.ret );
+                auto common_types = find_common_types( c_ctx, w_ctx, fn.vars[call_op.ret].value_type_requirements );
+                if ( common_types.size() > 1 ) {
+                    w_ctx.print_msg<MessageType::err_multiple_suitable_types_found>(
+                        MessageInfo( *call_op.original_expr, 0, FmtStr::Color::Red ) );
+                    return false;
+                }
+                auto new_param = std::make_pair( c_ctx.type_type, ConstValue( common_types.front() ) );
+                if ( sc_back.template_values[c_ctx.symbol_graph[s].identifier.eval_type.template_type_index].first !=
+                         0 &&
+                     sc_back.template_values[c_ctx.symbol_graph[s].identifier.eval_type.template_type_index] !=
+                         new_param ) {
+                    fn_matches = false;
+                } else {
+                    sc_back.template_values[c_ctx.symbol_graph[s].identifier.eval_type.template_type_index] = new_param;
+                    sc_back.eval_type.type = common_types.front();
+                    sc_back.eval_type.template_type_index = 0;
+                }
             }
+        } else {
+            // Normal type
+            for ( auto &requirement : fn.vars[call_op.ret].value_type_requirements ) {
+                if ( type_has_trait( c_ctx, w_ctx, requirement, c_ctx.symbol_graph[s].identifier.eval_type.type ) ) {
+                    param_matches = true;
+                    break;
+                }
+            }
+            if ( !param_matches && !fn.vars[call_op.ret].value_type_requirements.empty() )
+                fn_matches = false; // contains no matching type
         }
-        if ( !param_matches && !fn.vars[call_op.ret].value_type_requirements.empty() )
-            fn_matches = false; // contains no matching type
 
         // Check parameters
         if ( call_op.params.size() != c_ctx.symbol_graph[s].identifier.parameters.size() )
             fn_matches = false;
         for ( size_t i = 0; i < call_op.params.size() && fn_matches; i++ ) {
-            param_matches = false;
-            for ( auto &requirement : fn.vars[call_op.params[i]].value_type_requirements ) {
-                if ( type_has_trait( c_ctx, w_ctx, c_ctx.symbol_graph[s].identifier.parameters[i].type,
-                                     requirement ) ) {
-                    param_matches = true;
-                    break;
+            if ( c_ctx.symbol_graph[s].identifier.parameters[i].template_type_index != 0 ) {
+                // Template type
+
+                if ( c_ctx.symbol_graph[s].type != c_ctx.template_fn_type )
+                    LOG_ERR( "Non-template with template parameters" );
+
+                if ( !fn.vars[call_op.params[i]].value_type_requirements.empty() ) {
+                    enforce_type_of_variable( c_ctx, w_ctx, function, call_op.params[i] );
+                    auto common_types =
+                        find_common_types( c_ctx, w_ctx, fn.vars[call_op.params[i]].value_type_requirements );
+                    if ( common_types.size() > 1 ) {
+                        w_ctx.print_msg<MessageType::err_multiple_suitable_types_found>(
+                            MessageInfo( *call_op.original_expr, 0, FmtStr::Color::Red ) );
+                        return false;
+                    }
+                    auto new_param = std::make_pair( c_ctx.type_type, ConstValue( common_types.front() ) );
+                    if ( sc_back.template_values[c_ctx.symbol_graph[s].identifier.parameters[i].template_type_index]
+                                 .first != 0 &&
+                         sc_back.template_values[c_ctx.symbol_graph[s].identifier.parameters[i].template_type_index] !=
+                             new_param ) {
+                        fn_matches = false;
+                    } else {
+                        sc_back.template_values[c_ctx.symbol_graph[s].identifier.parameters[i].template_type_index] =
+                            new_param;
+                        sc_back.parameters[i].type = common_types.front();
+                        sc_back.parameters[i].template_type_index = 0;
+                    }
                 }
+            } else {
+                // Normal type
+                param_matches = false;
+                for ( auto &requirement : fn.vars[call_op.params[i]].value_type_requirements ) {
+                    if ( type_has_trait( c_ctx, w_ctx, c_ctx.symbol_graph[s].identifier.parameters[i].type,
+                                         requirement ) ) {
+                        param_matches = true;
+                        break;
+                    }
+                }
+                if ( !param_matches && !fn.vars[call_op.params[i]].value_type_requirements.empty() )
+                    fn_matches = false; // contains no matching type
             }
-            if ( !param_matches && !fn.vars[call_op.params[i]].value_type_requirements.empty() )
-                fn_matches = false; // contains no matching type
         }
 
-        if ( fn_matches ) {
-            selected.push_back( s );
+        // Final symbol checks
+        if ( c_ctx.symbol_graph[s].type == c_ctx.template_fn_type ) {
+            // Template
+
+            // Check if all parameters where used
+            for ( auto &p : sc_back.template_values )
+                if ( p.first == 0 )
+                    fn_matches = false; // not all parameters where set
+
+            // Check if function is already instantiated
+            auto possible_equal_symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, new_symbol_chain );
+            if ( !possible_equal_symbols.empty() ) {
+                fn_matches = false; // already instantiated
+
+                // Should only be one symbol
+                if ( possible_equal_symbols.size() != 1 )
+                    LOG_ERR( "Multiple possible symbols for a template instantiation found" );
+
+                if ( std::find( call_op.symbols.begin(), call_op.symbols.end(), possible_equal_symbols.front() ) ==
+                     call_op.symbols.end() )
+                    symbols_to_add.push_back( possible_equal_symbols.front() ); // Add symbol if not already included
+            }
+
+            if ( fn_matches ) {
+                found_template = true;
+
+                // Instantiate function
+                auto new_symbol = instantiate_template( c_ctx, w_ctx, s, sc_back.template_values );
+
+                selected.push_back( new_symbol );
+            }
+
+        } else {
+            // Not a template
+            if ( fn_matches ) {
+                selected.push_back( s );
+            }
+        }
+
+        // Insert missing symbols. This is done here to prevent iterator invalidation
+        if ( !symbols_to_add.empty() ) {
+            s_itr = call_op.symbols.insert( s_itr, symbols_to_add.begin(), symbols_to_add.end() ) - 1;
+            symbols_to_add.clear();
         }
     }
 
@@ -756,7 +933,8 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
             case MirEntry::Type::bind:
                 // Pass type requirements. Bind contains only one parameter
                 fn->vars[var].value_type_requirements.insert(
-                    fn->vars[var].value_type_requirements.end(), fn->vars[op.params.front()].value_type_requirements.begin(),
+                    fn->vars[var].value_type_requirements.end(),
+                    fn->vars[op.params.front()].value_type_requirements.begin(),
                     fn->vars[op.params.front()].value_type_requirements.end() );
                 break;
             case MirEntry::Type::inv:
