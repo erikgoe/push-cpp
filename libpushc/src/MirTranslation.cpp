@@ -678,6 +678,15 @@ std::vector<TypeId> find_common_types( CrateCtx &c_ctx, Worker &w_ctx, std::vect
                        typeset.end() );
     }
 
+    // Remove all traits (only types should be returned)
+    typeset.erase( std::remove_if( typeset.begin(), typeset.end(),
+                                   [&]( TypeId t ) {
+                                       auto symbol_type = c_ctx.symbol_graph[c_ctx.type_table[t].symbol].type;
+                                       return symbol_type == c_ctx.trait_type ||
+                                              symbol_type == c_ctx.template_trait_type;
+                                   } ),
+                   typeset.end() );
+
     return typeset;
 }
 
@@ -755,14 +764,8 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
             if ( c_ctx.symbol_graph[s].type != c_ctx.template_fn_type )
                 LOG_ERR( "Non-template with template return type" );
 
-            if ( !fn.vars[call_op.ret].value_type_requirements.empty() ) {
-                enforce_type_of_variable( c_ctx, w_ctx, function, call_op.ret );
-                auto common_types = find_common_types( c_ctx, w_ctx, fn.vars[call_op.ret].value_type_requirements );
-                if ( common_types.size() > 1 ) {
-                    w_ctx.print_msg<MessageType::err_multiple_suitable_types_found>(
-                        MessageInfo( *call_op.original_expr, 0, FmtStr::Color::Red ) );
-                    return false;
-                }
+            auto common_types = find_common_types( c_ctx, w_ctx, fn.vars[call_op.ret].value_type_requirements );
+            if ( common_types.size() == 1 ) {
                 auto new_param = std::make_pair( c_ctx.type_type, ConstValue( common_types.front() ) );
                 if ( sc_back.template_values[c_ctx.symbol_graph[s].identifier.eval_type.template_type_index].first !=
                          0 &&
@@ -797,15 +800,9 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
                 if ( c_ctx.symbol_graph[s].type != c_ctx.template_fn_type )
                     LOG_ERR( "Non-template with template parameters" );
 
-                if ( !fn.vars[call_op.params[i]].value_type_requirements.empty() ) {
-                    enforce_type_of_variable( c_ctx, w_ctx, function, call_op.params[i] );
-                    auto common_types =
-                        find_common_types( c_ctx, w_ctx, fn.vars[call_op.params[i]].value_type_requirements );
-                    if ( common_types.size() > 1 ) {
-                        w_ctx.print_msg<MessageType::err_multiple_suitable_types_found>(
-                            MessageInfo( *call_op.original_expr, 0, FmtStr::Color::Red ) );
-                        return false;
-                    }
+                auto common_types =
+                    find_common_types( c_ctx, w_ctx, fn.vars[call_op.params[i]].value_type_requirements );
+                if ( common_types.size() == 1 ) {
                     auto new_param = std::make_pair( c_ctx.type_type, ConstValue( common_types.front() ) );
                     if ( sc_back.template_values[c_ctx.symbol_graph[s].identifier.parameters[i].template_type_index]
                                  .first != 0 &&
