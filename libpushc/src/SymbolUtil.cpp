@@ -44,7 +44,7 @@ bool symbol_identifier_matches( const SymbolIdentifier &pattern, const SymbolIde
                 matches = false;
             for ( size_t i = 0; i < pattern.template_values.size() && matches; i++ ) {
                 if ( pattern.template_values[i].first != 0 &&
-                     candidate.template_values[i].first != pattern.template_values[i].first )
+                     candidate.template_values[i] != pattern.template_values[i] )
                     matches = false;
             }
 

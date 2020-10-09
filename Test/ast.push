@@ -6,6 +6,7 @@ trait std::num::Integer{}
 trait std::base::Iterator{}
 
 impl std::num::Integer for u32{}
+impl std::num::Integer for u16{}
 
 #stub()
 #drop_handler()
@@ -64,7 +65,7 @@ fn() -> u32 {
     let a:u32 = 4;
     fn_t( a );
     fn_t( A{ 4,1 } );
-    fn_t( 100 );
+    fn_t<u16>( 100 );
     a+inc( 3 )
 }
 

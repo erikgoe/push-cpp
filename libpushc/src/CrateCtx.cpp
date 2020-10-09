@@ -33,8 +33,25 @@ bool SymbolIdentifier::ParamSig::operator==( const ParamSig &other ) const {
         return false;
     if ( tmp_type_symbol != nullptr || other.tmp_type_symbol != nullptr )
         return false;
+    if ( template_type_index != 0 && other.template_type_index != 0 &&
+         template_type_index != other.template_type_index )
+        return false;
     return type == 0 || other.type == 0 ||
            type == other.type; // type == 0 means the type of this is not known, so it's a candidate
+}
+
+void TypeSelection::add_requirement( const TypeSelection &type ) {
+    if ( type.is_final() ) {
+        if ( type.final_type == final_type )
+            return;
+        assert( final_type == 0 );
+        type_requirements.push_back( type.final_type );
+    } else {
+        if ( type.get_requirements().size() == 1 && type.get_requirements().front() == final_type )
+            return;
+        assert( final_type == 0 );
+        add_requirements( type.get_requirements() );
+    }
 }
 
 CrateCtx::CrateCtx() {

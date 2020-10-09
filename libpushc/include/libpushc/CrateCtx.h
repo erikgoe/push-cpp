@@ -97,6 +97,49 @@ public:
     bool operator==( const ConstValue &other ) const { return _data == other._data; }
 };
 
+// Manages the type/value of a symbol
+class TypeSelection {
+    std::vector<TypeId>
+        type_requirements; // requirements on the type while it is not terminated TODO make this a set(?)
+    TypeId final_type = 0; // final type of the value (cannot be changed later)
+
+public:
+    bool is_final() const { return final_type != 0; }
+    bool has_any_requirements() const { return final_type != 0 || !type_requirements.empty(); }
+    bool has_unfinalized_requirements() const { return final_type == 0 && !type_requirements.empty(); }
+    void set_final_type( TypeId type ) {
+        // assert( type != 0 );
+        assert( final_type == 0 );
+        final_type = type;
+        type_requirements.clear();
+    }
+    TypeId get_final_type() const {
+        assert( type_requirements.empty() );
+        return final_type;
+    }
+    void add_requirement( TypeId type ) {
+        if ( type == final_type )
+            return;
+        assert( final_type == 0 );
+        type_requirements.push_back( type );
+    }
+    void add_requirement( const TypeSelection &type );
+    void add_requirements( const std::vector<TypeId> &types ) {
+        if ( types.size() == 0 && types.front() == final_type )
+            return;
+        assert( final_type == 0 );
+        type_requirements.insert( type_requirements.end(), types.begin(), types.end() );
+    }
+    void reserve_requirement_memory( size_t size ) { type_requirements.reserve( type_requirements.size() + size ); }
+    const std::vector<TypeId> &get_requirements() const { return type_requirements; }
+    const std::vector<TypeId> get_all_requirements() const {
+        if ( final_type == 0 )
+            return type_requirements;
+        else
+            return { final_type };
+    }
+};
+
 // Identifies a local symbol (must be chained to get a full symbol identification)
 struct SymbolIdentifier {
     String name; // the local symbol name (empty means anonymous scope)
@@ -187,7 +230,10 @@ struct MirEntry {
 
     MirVarId ret = 0; // variable which will contain the result
     std::vector<MirVarId> params; // parameters for this instruction
-    std::vector<SymbolId> symbols; // possible symbols (e. g. for calls)
+    std::vector<SymbolId>
+        symbols; // possible symbols (e. g. for calls) TODO maybe replace this by a reference to the mir variable
+    std::vector<MirVarId> template_args; // only for symbols, with explicit template arguments
+    bool inference_finished = false; // only for calls (whose symbols need to be inferred first)
     MirLiteral data; // contains literal data or a pointer to it
     MirIntrinsic intrinsic = MirIntrinsic::none; // if it's an intrinsic operation
 };
@@ -208,8 +254,8 @@ struct MirVariable {
     } type = Type::value;
 
     String name; // the original variable name (temporaries have an empty name)
-    std::vector<TypeId>
-        value_type_requirements; // requirements on the type of the value of this variable TODO make this a set
+    TypeSelection value_type;
+    std::vector<MirVarId> template_args; // only for symbols, with explicit template arguments
     bool mut = false; // whether this variable can be updated
     MirVarId ref = 0; // referred variable (for l_ref or for method access; should never reference a l_ref)
     size_t member_idx = 0; // used for member access operations
@@ -269,6 +315,7 @@ struct CrateCtx {
 
     SymbolId current_scope = ROOT_SYMBOL; // new symbols are created on top of this one
     std::vector<std::vector<SymbolSubstitution>> current_substitutions; // Substitution rules for each new scope
+    SymbolId first_adhoc_symbol = 0; // the first symbol which does not occur in the source code
 
     std::vector<std::vector<MirVarId>> curr_living_vars;
     std::vector<std::map<String, std::vector<MirVarId>>> curr_name_mapping; // mappes names to stacks of shaddowned vars

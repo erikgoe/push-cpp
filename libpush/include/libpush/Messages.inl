@@ -87,6 +87,7 @@ enum class MessageType {
     err_unknown_compiler_annotation,
     err_template_name_ambiguous,
     err_template_signature_incomplete,
+    err_too_many_explicit_template_args,
 
     warning = 5000,
 
@@ -259,6 +260,8 @@ MESSAGE_DEFINITION(
     MessageType::err_template_signature_incomplete, MessageClass::Error, "C",
     "Template type signature incomplete. Please specify all parameter types and the return type explicitly",
     "this function" );
+MESSAGE_DEFINITION( MessageType::err_too_many_explicit_template_args, MessageClass::Error, "C",
+                    "Too many explicit template argument provided", "for this call" );
 
 
 
