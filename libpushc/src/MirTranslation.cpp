@@ -67,7 +67,7 @@ std::vector<MessageInfo> generate_error_messages_of_symbols( CrateCtx &c_ctx, Wo
 
 MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_function, AstNode &original_expr,
                         std::vector<SymbolId> called_function_candidates, MirVarId result,
-                        std::vector<MirVarId> parameters, std::vector<MirVarId> template_params ) {
+                        std::vector<MirVarId> parameters, ParamContainer template_params ) {
     FunctionImpl *caller = &c_ctx.functions[calling_function];
     called_function_candidates.erase(
         std::remove_if(
@@ -837,14 +837,25 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
         if ( c_ctx.symbol_graph[s].type == c_ctx.template_fn_type ) {
             // Template
 
+            // Generate permutation
+            std::vector<size_t> template_args_permutation;
+            std::vector<String> template_arg_names;
+            template_arg_names.reserve( c_ctx.symbol_graph[s].template_params.size() );
+            for ( auto &p : c_ctx.symbol_graph[s].template_params )
+                template_arg_names.push_back( p.second );
+            if ( !call_op.template_args.get_param_permutation( template_arg_names, template_args_permutation ) )
+                fn_matches = false;
+
             // Combine all parameters
             for ( size_t i = 1; i < template_values.size() && fn_matches; i++ ) {
                 auto common_types = find_common_types( c_ctx, w_ctx, template_values[i] );
 
                 // Explict parameters
-                if ( call_op.template_args.size() > i - 1 && call_op.template_args[i - 1] != 0 &&
-                     enforce_type_of_variable( c_ctx, w_ctx, function, call_op.template_args[i - 1] ) ) {
-                    auto &v = c_ctx.functions[function].vars[call_op.template_args[i - 1]];
+                if ( call_op.template_args.get_param( template_args_permutation[i] ) != 0 &&
+                     enforce_type_of_variable( c_ctx, w_ctx, function,
+                                               call_op.template_args.get_param( template_args_permutation[i] ) ) ) {
+                    auto &v = c_ctx.functions[function]
+                                  .vars[call_op.template_args.get_param( template_args_permutation[i] )];
                     if ( v.type == MirVariable::Type::symbol ) {
                         if ( std::find( common_types.begin(), common_types.end(), v.value_type.get_final_type() ) !=
                              common_types.end() ) {

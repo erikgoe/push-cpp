@@ -2011,7 +2011,12 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         for ( auto &c : children ) {
             if ( c.has_prop( ExprProperty::assignment ) ) {
-                // TODO named parameters
+                auto symbol_chain = c.named[AstChild::left_expr].get_symbol_chain( c_ctx, w_ctx );
+                if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, c.named[AstChild::left_expr] ) )
+                    break;
+
+                c_ctx.functions[func].vars[ret].template_args.push_back(
+                    symbol_chain->front().name, c.named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func ) );
             } else {
                 c_ctx.functions[func].vars[ret].template_args.push_back( c.parse_mir( c_ctx, w_ctx, func ) );
             }

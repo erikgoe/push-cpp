@@ -27,7 +27,7 @@ MirEntryId create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 // Creates a MIR function call from a symbol id. Handles dangling varameters etc. See crate_operation.
 MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_function, AstNode &original_expr,
                         std::vector<SymbolId> called_function_candidates, MirVarId result,
-                        std::vector<MirVarId> parameters, std::vector<MirVarId> template_params );
+                        std::vector<MirVarId> parameters, ParamContainer template_params );
 
 // Creates a new local variable and returns its id
 MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode *original_expr,

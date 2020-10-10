@@ -54,6 +54,39 @@ void TypeSelection::add_requirement( const TypeSelection &type ) {
     }
 }
 
+bool ParamContainer::get_param_permutation( const std::vector<String> &names, std::vector<size_t> &out_permutation ) {
+    out_permutation.resize( names.size() );
+    out_permutation[0] = SIZE_MAX; // First is invalid
+    size_t next_unnamed = 0;
+
+    for ( size_t i = 1; i < names.size(); i++ ) {
+        size_t candidate = SIZE_MAX;
+
+        // Search for named match
+        for ( size_t j = 0; j < params.size(); j++ ) {
+            if ( params[j].first == names[i] ) {
+                if ( candidate != SIZE_MAX )
+                    return false; // multiple matches found
+                candidate = j;
+            }
+        }
+
+        // Search for unnamed match
+        if ( candidate == SIZE_MAX ) {
+            for ( size_t j = next_unnamed; j < params.size(); j++ ) {
+                if ( params[j].first.empty() ) {
+                    candidate = j;
+                    next_unnamed = j + 1;
+                    break;
+                }
+            }
+        }
+
+        out_permutation[i] = candidate;
+    }
+    return true;
+}
+
 CrateCtx::CrateCtx() {
     ast = make_shared<AstNode>();
     symbol_graph.resize( 2 );

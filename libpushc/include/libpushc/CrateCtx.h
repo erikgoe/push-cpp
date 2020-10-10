@@ -204,6 +204,25 @@ struct TypeTableEntry {
     FunctionImplId function_body = 0; // the function body, if it's a function
 };
 
+// Stores parameter configurations
+class ParamContainer {
+    std::vector<std::pair<String, MirVarId>> params; // pairs of names and their variables
+
+public:
+    size_t size() const { return params.size(); }
+    bool empty() const { return params.empty(); }
+    void push_back( String &name, MirVarId var ) { params.push_back( std::make_pair( name, var ) ); }
+    void push_back( MirVarId var ) { params.push_back( std::make_pair( "", var ) ); }
+    MirVarId get_param( size_t index ) {
+        if ( index == SIZE_MAX )
+            return 0;
+        return params[index].second;
+    }
+
+    // Selects a matching permutation of the parameters
+    bool get_param_permutation( const std::vector<String> &names, std::vector<size_t> &out_permutation );
+};
+
 // Represent s a MIR instruction inside a function
 struct MirEntry {
     AstNode *original_expr;
@@ -232,7 +251,7 @@ struct MirEntry {
     std::vector<MirVarId> params; // parameters for this instruction
     std::vector<SymbolId>
         symbols; // possible symbols (e. g. for calls) TODO maybe replace this by a reference to the mir variable
-    std::vector<MirVarId> template_args; // only for symbols, with explicit template arguments
+    ParamContainer template_args; // only for symbols, with explicit template arguments
     bool inference_finished = false; // only for calls (whose symbols need to be inferred first)
     MirLiteral data; // contains literal data or a pointer to it
     MirIntrinsic intrinsic = MirIntrinsic::none; // if it's an intrinsic operation
@@ -255,7 +274,7 @@ struct MirVariable {
 
     String name; // the original variable name (temporaries have an empty name)
     TypeSelection value_type;
-    std::vector<MirVarId> template_args; // only for symbols, with explicit template arguments
+    ParamContainer template_args; // only for symbols, with explicit template arguments
     bool mut = false; // whether this variable can be updated
     MirVarId ref = 0; // referred variable (for l_ref or for method access; should never reference a l_ref)
     size_t member_idx = 0; // used for member access operations
