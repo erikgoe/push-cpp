@@ -15,6 +15,8 @@
 #include "libpushc/stdafx.h"
 #include "libpushc/Intrinsics.h"
 
+struct CrateCtx;
+
 // Identifies a type
 using TypeId = u32;
 
@@ -102,6 +104,7 @@ class TypeSelection {
     std::vector<TypeId>
         type_requirements; // requirements on the type while it is not terminated TODO make this a set(?)
     TypeId final_type = 0; // final type of the value (cannot be changed later)
+    std::vector<MirVarId> type_group; // includes variables with _exactly_ the same type (not transitive)
 
 public:
     bool is_final() const { return final_type != 0; }
@@ -131,13 +134,12 @@ public:
         type_requirements.insert( type_requirements.end(), types.begin(), types.end() );
     }
     void reserve_requirement_memory( size_t size ) { type_requirements.reserve( type_requirements.size() + size ); }
-    const std::vector<TypeId> &get_requirements() const { return type_requirements; }
-    const std::vector<TypeId> get_all_requirements() const {
-        if ( final_type == 0 )
-            return type_requirements;
-        else
-            return { final_type };
-    }
+
+    // Returns all type requirements including those of the type group and respecting if the type is already final
+    const std::vector<TypeId> get_all_requirements( CrateCtx *c_ctx, FunctionImplId fn ) const;
+
+    // Add a variable to the type groups
+    void bind_variable( CrateCtx *c_ctx, FunctionImplId fn, MirVarId var, MirVarId own_id );
 };
 
 // Identifies a local symbol (must be chained to get a full symbol identification)

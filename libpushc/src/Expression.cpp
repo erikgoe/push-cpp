@@ -1415,8 +1415,9 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         if ( callee_var != 0 ) {
             // Symbol found
             std::vector<SymbolId> possible_callees;
-            possible_callees.reserve( c_ctx.functions[func].vars[callee_var].value_type.get_all_requirements().size() );
-            for ( auto &t : c_ctx.functions[func].vars[callee_var].value_type.get_all_requirements() ) {
+            possible_callees.reserve(
+                c_ctx.functions[func].vars[callee_var].value_type.get_all_requirements( &c_ctx, func ).size() );
+            for ( auto &t : c_ctx.functions[func].vars[callee_var].value_type.get_all_requirements( &c_ctx, func ) ) {
                 possible_callees.push_back( c_ctx.type_table[t].symbol );
                 analyse_function_signature( c_ctx, w_ctx, c_ctx.type_table[t].symbol );
             }
@@ -1851,7 +1852,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             // Symbol found
             auto &type = c_ctx.type_table[c_ctx.functions[func]
                                               .vars[struct_var]
-                                              .value_type.get_all_requirements()
+                                              .value_type.get_all_requirements( &c_ctx, func )
                                               .front()]; // TODO handle multiple possible types?
             if ( c_ctx.symbol_graph[type.symbol].type != c_ctx.struct_type ) {
                 // Is not a struct
@@ -1865,7 +1866,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             ret = create_variable( c_ctx, w_ctx, func, this );
             auto &result_var = c_ctx.functions[func].vars[ret];
             result_var.type = MirVariable::Type::rvalue;
-            result_var.value_type.add_requirement( c_ctx.functions[func].vars[struct_var].value_type );
+            result_var.value_type.add_requirement(
+                c_ctx.functions[func].vars[struct_var].value_type ); // TODO maybe enforce types first?
 
             // Check member count
             if ( type.members.size() != children.front().children.size() ) {
@@ -1913,8 +1915,9 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             break;
         }
 
-        auto base_symbol = c_ctx.type_table[c_ctx.functions[func].vars[obj].value_type.get_all_requirements().front()]
-                               .symbol; // TODO handle multiple possible types?
+        auto base_symbol =
+            c_ctx.type_table[c_ctx.functions[func].vars[obj].value_type.get_all_requirements( &c_ctx, func ).front()]
+                .symbol; // TODO handle multiple possible types?
 
         // Get member name
         auto member_chain = named[AstChild::member].get_symbol_chain( c_ctx, w_ctx );
@@ -2128,7 +2131,7 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             // Symbol found
             auto &type = c_ctx.type_table[c_ctx.functions[func]
                                               .vars[struct_var]
-                                              .value_type.get_all_requirements()
+                                              .value_type.get_all_requirements( &c_ctx, func )
                                               .front()]; // TODO handle multiple possible types?
             if ( c_ctx.symbol_graph[type.symbol].type != c_ctx.struct_type ) {
                 // Is not a struct
@@ -2343,7 +2346,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
             // Symbol found
             auto &type = c_ctx.type_table[c_ctx.functions[func]
                                               .vars[struct_var]
-                                              .value_type.get_all_requirements()
+                                              .value_type.get_all_requirements( &c_ctx, func )
                                               .front()]; // TODO handle multiple
                                                          // possible types?
             if ( c_ctx.symbol_graph[type.symbol].type != c_ctx.struct_type ) {

@@ -47,12 +47,48 @@ void TypeSelection::add_requirement( const TypeSelection &type ) {
         assert( final_type == 0 );
         type_requirements.push_back( type.final_type );
     } else {
-        if ( type.get_requirements().size() == 1 && type.get_requirements().front() == final_type )
+        if ( type.type_requirements.size() == 1 && type.type_requirements.front() == final_type )
             return;
         assert( final_type == 0 );
-        add_requirements( type.get_requirements() );
+        add_requirements( type.type_requirements );
     }
 }
+
+const std::vector<TypeId> TypeSelection::get_all_requirements( CrateCtx *c_ctx, FunctionImplId fn ) const {
+    std::vector<TypeId> ret;
+
+    // Collect all types in the type group
+    for ( auto &var : type_group ) {
+        auto &ts = c_ctx->functions[fn].vars[var].value_type;
+        if ( ts.final_type != 0 ) {
+            ret.push_back( ts.final_type );
+        } else {
+            ret.insert( ret.end(), ts.type_requirements.begin(), ts.type_requirements.end() );
+        }
+    }
+
+    // Add the own type requirements
+    if ( final_type == 0 ) {
+        ret.insert( ret.begin(), type_requirements.begin(), type_requirements.end() );
+    } else {
+        ret.push_back( final_type );
+    }
+
+    return ret;
+}
+
+void TypeSelection::bind_variable( CrateCtx *c_ctx, FunctionImplId fn, MirVarId var, MirVarId own_id ) {
+    auto tmp_tg = type_group;
+    auto &other_tg = c_ctx->functions[fn].vars[var].value_type.type_group;
+
+    type_group.insert( type_group.end(), other_tg.begin(), other_tg.end() );
+    type_group.push_back( var );
+
+    // Update the corresponding variable
+    other_tg.push_back( own_id );
+    other_tg.insert( other_tg.end(), tmp_tg.begin(), tmp_tg.end() );
+}
+
 
 const MirVarId &ParamContainerIterator::operator*() const {
     return container->params[index].second;
