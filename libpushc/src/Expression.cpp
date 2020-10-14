@@ -1052,7 +1052,12 @@ bool AstNode::symbol_resolve( CrateCtx &c_ctx, Worker &w_ctx ) {
                     for ( size_t i = 1; i < symbol.template_params.size(); i++ ) {
                         if ( symbol.template_params[i].second == p_itr->tmp_type_symbol->front().name ) {
                             // Symbol matches
-                            template_var_index = i;
+                            if ( symbol.template_params[i].first != c_ctx.type_type ) {
+                                w_ctx.print_msg<MessageType::err_template_parameter_not_type>(
+                                    MessageInfo( *symbol.original_expr.front(), 0, FmtStr::Color::Red ) );
+                            } else {
+                                template_var_index = i;
+                            }
                             break;
                         }
                     }
@@ -1085,7 +1090,12 @@ bool AstNode::symbol_resolve( CrateCtx &c_ctx, Worker &w_ctx ) {
                     if ( symbol.template_params[i].second ==
                          symbol.identifier.eval_type.tmp_type_symbol->front().name ) {
                         // Symbol matches
-                        template_var_index = i;
+                        if ( symbol.template_params[i].first != c_ctx.type_type ) {
+                            w_ctx.print_msg<MessageType::err_template_parameter_not_type>(
+                                MessageInfo( *symbol.original_expr.front(), 0, FmtStr::Color::Red ) );
+                        } else {
+                            template_var_index = i;
+                        }
                         break;
                     }
                 }

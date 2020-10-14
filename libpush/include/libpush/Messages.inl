@@ -88,6 +88,7 @@ enum class MessageType {
     err_template_name_ambiguous,
     err_template_signature_incomplete,
     err_too_many_explicit_template_args,
+    err_template_parameter_not_type,
 
     warning = 5000,
 
@@ -262,6 +263,8 @@ MESSAGE_DEFINITION(
     "this function" );
 MESSAGE_DEFINITION( MessageType::err_too_many_explicit_template_args, MessageClass::Error, "C",
                     "Too many explicit template argument provided", "for this call" );
+MESSAGE_DEFINITION( MessageType::err_template_parameter_not_type, MessageClass::Error, "C",
+                    "Type of the template parameter is not a symbol", "required here" );
 
 
 

@@ -239,7 +239,13 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                             for ( size_t i = 1; i < symbol.template_params.size(); i++ ) {
                                 if ( symbol.template_params[i].second == type_sc->front().name ) {
                                     // Symbol matches
-                                    template_var_index = i;
+
+                                    if ( symbol.template_params[i].first != c_ctx.type_type ) {
+                                        w_ctx.print_msg<MessageType::err_template_parameter_not_type>(
+                                            MessageInfo( type_symbol, 0, FmtStr::Color::Red ) );
+                                    } else {
+                                        template_var_index = i;
+                                    }
                                     break;
                                 }
                             }
@@ -319,7 +325,12 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     for ( size_t i = 1; i < symbol.template_params.size(); i++ ) {
                         if ( symbol.template_params[i].second == type_sc->front().name ) {
                             // Symbol matches
-                            template_var_index = i;
+                            if ( symbol.template_params[i].first != c_ctx.type_type ) {
+                                w_ctx.print_msg<MessageType::err_template_parameter_not_type>(
+                                    MessageInfo( return_symbol, 0, FmtStr::Color::Red ) );
+                            } else {
+                                template_var_index = i;
+                            }
                             break;
                         }
                     }
@@ -884,6 +895,7 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
                         }
                     } else {
                         // TODO constant evaluation
+                        common_types = v.value_type.get_all_requirements( &c_ctx, function );
                     }
                 }
 
