@@ -1421,11 +1421,20 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 analyse_function_signature( c_ctx, w_ctx, c_ctx.type_table[t].symbol );
             }
 
-            std::vector<MirVarId> params;
+            ParamContainer params;
             if ( c_ctx.functions[func].vars[callee_var].base_ref != 0 )
                 params.push_back( c_ctx.functions[func].vars[callee_var].base_ref ); // member access
             for ( auto &pe : named[AstChild::parameters].children ) {
-                params.push_back( pe.parse_mir( c_ctx, w_ctx, func ) );
+                if ( pe.has_prop( ExprProperty::assignment ) ) {
+                    auto symbol_chain = pe.named[AstChild::left_expr].get_symbol_chain( c_ctx, w_ctx );
+                    if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, pe.named[AstChild::left_expr] ) )
+                        break;
+
+                    params.push_back( symbol_chain->front().name,
+                                      pe.named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func ) );
+                } else {
+                    params.push_back( pe.parse_mir( c_ctx, w_ctx, func ) );
+                }
             }
 
             auto tmp_op = create_call(
@@ -1462,7 +1471,10 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto left_result = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
         auto right_result = named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
 
-        auto op_id = create_call( c_ctx, w_ctx, func, *this, calls, 0, { left_result, right_result }, {} );
+        ParamContainer params;
+        params.push_back( left_result );
+        params.push_back( right_result );
+        auto op_id = create_call( c_ctx, w_ctx, func, *this, calls, 0, params, {} );
 
         ret = c_ctx.functions[func].ops[op_id].ret;
         break;
@@ -1865,7 +1877,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             }
 
             // Crate member values
-            std::vector<MirVarId> vars;
+            ParamContainer vars;
             vars.reserve( type.members.size() );
             for ( size_t i = 0; i < type.members.size(); i++ ) {
                 auto &entry = children.front().children[i];
@@ -1880,8 +1892,8 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::merge, ret, vars );
 
             // Drop vars if necessary
-            for ( auto var_itr = vars.rbegin(); var_itr != vars.rend(); var_itr++ ) {
-                drop_variable( c_ctx, w_ctx, func, children.front(), *var_itr );
+            for ( size_t i = vars.size() - 1; i >= 0; i-- ) {
+                drop_variable( c_ctx, w_ctx, func, children.front(), vars.get_param( i ) );
             }
         }
 
@@ -2311,8 +2323,11 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
         auto var = parse_mir( c_ctx, w_ctx, func );
 
         // Check value
-        auto op_id = create_call( c_ctx, w_ctx, func, *this, { c_ctx.type_table[c_ctx.equals_fn].symbol }, 0,
-                                  { in_var, var }, {} );
+        ParamContainer params;
+        params.push_back( in_var );
+        params.push_back( var );
+        auto op_id =
+            create_call( c_ctx, w_ctx, func, *this, { c_ctx.type_table[c_ctx.equals_fn].symbol }, 0, params, {} );
         ret = c_ctx.functions[func].ops[op_id].ret;
         break;
     }

@@ -54,12 +54,19 @@ void TypeSelection::add_requirement( const TypeSelection &type ) {
     }
 }
 
-bool ParamContainer::get_param_permutation( const std::vector<String> &names, std::vector<size_t> &out_permutation ) {
-    out_permutation.resize( names.size() );
-    out_permutation[0] = SIZE_MAX; // First is invalid
-    size_t next_unnamed = 0;
+const MirVarId &ParamContainerIterator::operator*() const {
+    return container->params[index].second;
+}
 
-    for ( size_t i = 1; i < names.size(); i++ ) {
+const size_t ParamContainer::INVALID_POSITION_VAL = SIZE_MAX;
+
+bool ParamContainer::get_param_permutation( const std::vector<String> &names, std::vector<size_t> &out_permutation,
+                                            bool skip_first ) {
+    out_permutation.resize( names.size() );
+    size_t next_unnamed = 0;
+    size_t used_parmeter_count = 0;
+
+    for ( size_t i = ( skip_first ? 1 : 0 ); i < names.size(); i++ ) {
         size_t candidate = SIZE_MAX;
 
         // Search for named match
@@ -68,6 +75,7 @@ bool ParamContainer::get_param_permutation( const std::vector<String> &names, st
                 if ( candidate != SIZE_MAX )
                     return false; // multiple matches found
                 candidate = j;
+                used_parmeter_count++;
             }
         }
 
@@ -77,6 +85,7 @@ bool ParamContainer::get_param_permutation( const std::vector<String> &names, st
                 if ( params[j].first.empty() ) {
                     candidate = j;
                     next_unnamed = j + 1;
+                    used_parmeter_count++;
                     break;
                 }
             }
@@ -84,7 +93,24 @@ bool ParamContainer::get_param_permutation( const std::vector<String> &names, st
 
         out_permutation[i] = candidate;
     }
+
+    if ( used_parmeter_count < params.size() )
+        return false; // some parameter was not used in the permutation. This can be caused by using a not-existing
+                      // parameter name
+
     return true;
+}
+
+void ParamContainer::apply_param_permutation( const std::vector<String> &names ) {
+    std::vector<size_t> parameter_permutation;
+    if ( !get_param_permutation( names, parameter_permutation ) )
+        LOG_ERR( "Could not apply parameter permutation (invalid)" );
+
+    decltype( params ) new_params;
+    new_params.reserve( params.size() );
+    for ( size_t i = 0; i < params.size(); i++ )
+        new_params.push_back( params[parameter_permutation[i]] );
+    params = new_params;
 }
 
 CrateCtx::CrateCtx() {

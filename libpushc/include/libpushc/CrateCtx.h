@@ -204,23 +204,75 @@ struct TypeTableEntry {
     FunctionImplId function_body = 0; // the function body, if it's a function
 };
 
+class ParamContainer;
+// Iterator for the ParamContainer. Allows range-based for loop, etc
+class ParamContainerIterator {
+    const ParamContainer *container;
+    size_t index;
+
+public:
+    ParamContainerIterator( const ParamContainer *container, size_t index = 0 ) {
+        this->container = container;
+        this->index = index;
+    }
+    ParamContainerIterator &operator++() {
+        index++;
+        return *this;
+    }
+    size_t operator-( const ParamContainerIterator &other ) const {
+        if ( container != other.container )
+            return 0;
+        return index - other.index;
+    }
+    bool operator==( const ParamContainerIterator &other ) const {
+        return container == other.container && index == other.index;
+    }
+    bool operator!=( const ParamContainerIterator &other ) const { return !operator==( other ); }
+    const MirVarId &operator*() const;
+};
+
 // Stores parameter configurations
 class ParamContainer {
     std::vector<std::pair<String, MirVarId>> params; // pairs of names and their variables
 
 public:
+    static const size_t INVALID_POSITION_VAL; // Used to specify an invalid parameter position
+
+    ParamContainer() {}
+    ParamContainer( MirVarId single_var ) { push_back( single_var ); }
     size_t size() const { return params.size(); }
     bool empty() const { return params.empty(); }
+    void reserve( size_t count ) { params.reserve( count ); }
     void push_back( String &name, MirVarId var ) { params.push_back( std::make_pair( name, var ) ); }
     void push_back( MirVarId var ) { params.push_back( std::make_pair( "", var ) ); }
-    MirVarId get_param( size_t index ) {
-        if ( index == SIZE_MAX )
+
+    ParamContainerIterator begin() const { return ParamContainerIterator( this, 0 ); }
+    ParamContainerIterator end() const { return ParamContainerIterator( this, params.size() ); }
+    ParamContainerIterator find( MirVarId &var ) {
+        return ParamContainerIterator(
+            this, std::find_if( params.begin(), params.end(), [&]( auto &pair ) { return pair.second == var; } ) -
+                      params.begin() );
+    }
+
+    // @param map_invalid_to_zero is used with templates which can resolve parameters which have not been passed
+    // explicitly
+    MirVarId get_param( size_t index, bool map_invalid_to_zero = false ) {
+        if ( index == SIZE_MAX ) {
+            if ( !map_invalid_to_zero )
+                LOG_ERR( "Invalid parameter permutation detected!" );
             return 0;
+        }
         return params[index].second;
     }
 
     // Selects a matching permutation of the parameters
-    bool get_param_permutation( const std::vector<String> &names, std::vector<size_t> &out_permutation );
+    bool get_param_permutation( const std::vector<String> &names, std::vector<size_t> &out_permutation,
+                                bool skip_first = false );
+
+    // Applies the permutation, so that future calls to get_param will be follow this order
+    void apply_param_permutation( const std::vector<String> &names );
+
+    friend class ParamContainerIterator;
 };
 
 // Represent s a MIR instruction inside a function
@@ -248,7 +300,7 @@ struct MirEntry {
 
 
     MirVarId ret = 0; // variable which will contain the result
-    std::vector<MirVarId> params; // parameters for this instruction
+    ParamContainer params; // parameters for this instruction
     std::vector<SymbolId>
         symbols; // possible symbols (e. g. for calls) TODO maybe replace this by a reference to the mir variable
     ParamContainer template_args; // only for symbols, with explicit template arguments

@@ -22,12 +22,12 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx );
 
 // Creates a new mir operation and does some checks. @param result = 0 will create a new variable
 MirEntryId create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
-                             MirEntry::Type type, MirVarId result, std::vector<MirVarId> parameters );
+                             MirEntry::Type type, MirVarId result, ParamContainer parameters );
 
 // Creates a MIR function call from a symbol id. Handles dangling varameters etc. See crate_operation.
 MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_function, AstNode &original_expr,
                         std::vector<SymbolId> called_function_candidates, MirVarId result,
-                        std::vector<MirVarId> parameters, ParamContainer template_params );
+                        ParamContainer parameters, ParamContainer template_params );
 
 // Creates a new local variable and returns its id
 MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode *original_expr,
