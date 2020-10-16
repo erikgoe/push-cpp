@@ -141,6 +141,7 @@ enum class AstChild {
     select, // match
     parameters, // func, annotation
     return_type, // func
+    where_clause, // func, struct, trait, impl
     left_expr, // operator, typed
     right_expr, // operator, typed
     base, // array/member/scope access

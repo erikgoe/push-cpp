@@ -704,6 +704,63 @@ std::vector<TypeId> find_common_types( CrateCtx &c_ctx, Worker &w_ctx, std::vect
     return typeset;
 }
 
+// Tests if the given where clause is fulfilled. @param clause is required for this recursive implementation
+bool is_where_clause_fulfilled( CrateCtx &c_ctx, Worker &w_ctx, AstNode *clause, SymbolGraphNode &symbol,
+                                SymbolIdentifier &symbol_identifier_back ) {
+    // TODO implement constant evaluation, currently only trait bounds are checked
+
+    if ( clause->has_prop( ExprProperty::shortcut_and ) ) {
+        return is_where_clause_fulfilled( c_ctx, w_ctx, &clause->named[AstChild::left_expr], symbol,
+                                          symbol_identifier_back ) &&
+               is_where_clause_fulfilled( c_ctx, w_ctx, &clause->named[AstChild::right_expr], symbol,
+                                          symbol_identifier_back );
+    } else if ( clause->has_prop( ExprProperty::shortcut_or ) ) {
+        return is_where_clause_fulfilled( c_ctx, w_ctx, &clause->named[AstChild::left_expr], symbol,
+                                          symbol_identifier_back ) ||
+               is_where_clause_fulfilled( c_ctx, w_ctx, &clause->named[AstChild::right_expr], symbol,
+                                          symbol_identifier_back );
+    } else {
+        // Normal clause
+        if ( clause->type != ExprType::typed_op ) {
+            LOG_WARN( "Arbitrary where clauses are currenlty not implemented. Only trait bounds are supported" );
+            return false;
+        }
+
+        // Get all the symbol data
+        auto lhs_symbol_chain = clause->named[AstChild::left_expr].get_symbol_chain( c_ctx, w_ctx );
+        if ( !expect_unscoped_variable( c_ctx, w_ctx, *lhs_symbol_chain, *clause ) )
+            return false;
+        auto rhs_symbol_chain = clause->named[AstChild::right_expr].get_symbol_chain( c_ctx, w_ctx );
+        auto rhs_symbols = find_local_symbol_by_identifier_chain( c_ctx, w_ctx, rhs_symbol_chain );
+        if ( !expect_exactly_one_symbol( c_ctx, w_ctx, rhs_symbols, clause->named[AstChild::right_expr] ) )
+            return false;
+        auto rhs_type = c_ctx.symbol_graph[rhs_symbols.front()].value;
+
+        // Find the types and check them
+        auto template_param_itr =
+            std::find_if( symbol.template_params.begin(), symbol.template_params.end(),
+                          [&]( auto &&pair ) { return pair.second == lhs_symbol_chain->front().name; } );
+        if ( template_param_itr != symbol.template_params.end() ) {
+            auto opt_type = symbol_identifier_back.template_values[template_param_itr - symbol.template_params.begin()]
+                                .second.get<TypeId>();
+            if ( !opt_type.has_value() ) {
+                w_ctx.print_msg<MessageType::err_template_parameter_not_type>(
+                    MessageInfo( *symbol.original_expr.front(), 0, FmtStr::Color::Red ) );
+                return false;
+            }
+
+            auto &supertypes = c_ctx.type_table[*opt_type.value()].supertypes;
+            if ( *opt_type.value() != rhs_type &&
+                 std::find( supertypes.begin(), supertypes.end(), rhs_type ) == supertypes.end() )
+                return false; // type does fulfill requirement
+        } else {
+            LOG_ERR( "Symbol in where clause is not a template argument" );
+            return false;
+        }
+    }
+    return true;
+}
+
 bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,
                           std::vector<MirVarId> infer_stack ) {
     // TODO add optimization, so that this is not executed multiple times (other than checking if only one symbol is
@@ -906,6 +963,12 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
                     sc_back.template_values[i] = std::make_pair( c_ctx.type_type, ConstValue( chosen_type ) );
                 }
             }
+
+            // Check the where clause
+            if ( fn_matches && c_ctx.symbol_graph[s].where_clause &&
+                 !is_where_clause_fulfilled( c_ctx, w_ctx, c_ctx.symbol_graph[s].where_clause, c_ctx.symbol_graph[s],
+                                             sc_back ) )
+                fn_matches = false;
 
             // Check if function is already instantiated
             if ( fn_matches ) {

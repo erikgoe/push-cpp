@@ -110,6 +110,14 @@ define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadrup
 define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, double_list, fn_head -> head, completed -> child ); // function without an explicit return type
 define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, fn_head -> head, "->", symbol_like -> return_type, completed -> child ); // function with an explicit return type
 
+// Functions with where clause
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, array_spec -> symbol, "where", expr -> where_clause, completed -> child ); // lambda without an explicit return type nor parameters
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, sextuple_list, array_spec -> symbol, "->", symbol_like -> return_type, "where", expr -> where_clause, completed -> child ); // lambda with an explicit return type, but no parameters
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8 BIAS 11, rtl, quadruple_list, symbol -> symbol, "where", expr -> where_clause, completed -> child ); // function without an explicit return type nor parameters
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, sextuple_list, symbol -> symbol, "->", symbol_like -> return_type, "where", expr -> where_clause, completed -> child ); // function with an explicit return type, but no parameters
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, quadruple_list, fn_head -> head, "where", expr -> where_clause, completed -> child ); // function without an explicit return type
+define_mci_rule( SYNTAX, FUNCTION_DEFINITION, std::op::Function, 8, rtl, sextuple_list, fn_head -> head, "->", symbol_like -> return_type, "where", expr -> where_clause, completed -> child ); // function with an explicit return type
+
 // Special specifiers
 define_mci_rule( SYNTAX, MACRO, 8, rtl, triple_list, symbol -> symbol, "!", expr -> child ); // macro
 define_mci_rule( SYNTAX, ANNOTATION, 8, rtl, double_list, "#", fn_head -> head ); // compiler annotation
@@ -191,6 +199,11 @@ define_mci_rule( SYNTAX, STRUCTURE, 31, rtl, single_list, "struct" ); // anonymo
 define_mci_rule( SYNTAX, TRAIT, 31 BIAS 9, rtl, triple_list, "trait", symbol -> symbol, completed -> child ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
 define_mci_rule( SYNTAX, IMPLEMENTATION, 31 BIAS 9, rtl, triple_list, "impl", symbol -> struct_symbol, completed -> child ); // impl-blocks which defines methods for a struct independent of a trait
 define_mci_rule( SYNTAX, IMPLEMENTATION, 31 BIAS 9, rtl, quintuple_list, "impl", symbol -> trait_symbol, "for", symbol -> struct_symbol, completed -> child ); // impl-blocks which defines a trait for a struct
+
+define_mci_rule( SYNTAX, STRUCTURE, 31 BIAS 9, rtl, quintuple_list, "struct", symbol -> symbol, "where", expr -> where_clause, completed -> child ); // struct declarations are defined by the keyword "struct", a identifier and the following body.
+define_mci_rule( SYNTAX, TRAIT, 31 BIAS 9, rtl, quintuple_list, "trait", symbol -> symbol, "where", expr -> where_clause, completed -> child ); // trait declarations start with the "trait" keyword, then the new traits' name and the body with its method.
+define_mci_rule( SYNTAX, IMPLEMENTATION, 31 BIAS 9, rtl, quintuple_list, "impl", symbol -> struct_symbol, "where", expr -> where_clause, completed -> child ); // impl-blocks which defines methods for a struct independent of a trait
+define_mci_rule( SYNTAX, IMPLEMENTATION, 31 BIAS 9, rtl, septuple_list, "impl", symbol -> trait_symbol, "for", symbol -> struct_symbol, "where", expr -> where_clause, completed -> child ); // impl-blocks which defines a trait for a struct
 
 // Special assignments
 define_mci_rule( SYNTAX, ALIAS_BINDING, 32, rtl, double_list, "use", assignment -> child ); // use-statement begins with the keyword "use" and ends with an assignment of the new identifier.

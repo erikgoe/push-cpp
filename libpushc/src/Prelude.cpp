@@ -196,6 +196,8 @@ size_t parse_list_size( sptr<SourceInput> &input ) {
         return 5;
     else if ( token.content == "sextuple_list" )
         return 6;
+    else if ( token.content == "septuple_list" )
+        return 7;
     else
         return 0;
 }

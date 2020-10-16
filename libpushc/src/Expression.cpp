@@ -909,6 +909,15 @@ bool AstNode::symbol_discovery( CrateCtx &c_ctx, Worker &w_ctx ) {
                 node.named[AstChild::symbol].get_symbol_chain( c_ctx, w_ctx )->front().name );
         }
 
+        // Add the where-clause
+        if ( auto where_clause = named.find( AstChild::where_clause ); where_clause != named.end() ) {
+            if ( where_clause->second.type == ExprType::term ) { // resolve parenthesis
+                c_ctx.symbol_graph[new_id].where_clause = &where_clause->second.children.front();
+            } else {
+                c_ctx.symbol_graph[new_id].where_clause = &where_clause->second;
+            }
+        }
+
         if ( type == ExprType::structure ) {
             c_ctx.symbol_graph[new_id].type =
                 ( symbol.type == ExprType::template_postfix ? c_ctx.template_struct_type : c_ctx.struct_type );
@@ -2016,6 +2025,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         break;
     }
     case ExprType::typed_op: {
+        // TODO call the operator implementation instead or do some constant evaluation magic
         ret = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
         if ( ret == 0 )
             break; // Error, don't do anything
@@ -2531,6 +2541,9 @@ String AstNode::get_debug_repr() const {
                                                                : "<anonymous>" ) +
                ( named.find( AstChild::return_type ) != named.end()
                      ? " -> " + named.at( AstChild::return_type ).get_debug_repr()
+                     : "" ) +
+               ( named.find( AstChild::where_clause ) != named.end()
+                     ? " where " + named.at( AstChild::where_clause ).get_debug_repr()
                      : "" ) +
                " " + children.front().get_debug_repr() + ")" + add_debug_data;
     case ExprType::func_decl:

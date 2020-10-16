@@ -187,6 +187,7 @@ struct SymbolGraphNode {
     bool proposed = false; // if it's not sure whether this symbol is used
 
     std::vector<String> compiler_annotations; // additional annotations from the user
+    AstNode *where_clause = nullptr; // where-clause to this symbols
 
     size_t template_type_index = 0; // like SymbolIdentifier::ParamSig::template_type_index
     TypeId value = 0; // type/value of this symbol (every function has its own type; for structs this is struct body;

@@ -74,6 +74,7 @@ void load_syntax_rules( Worker &w_ctx, CrateCtx &c_ctx ) {
                                                  { "selector", AstChild::select },
                                                  { "parameters", AstChild::parameters },
                                                  { "return_type", AstChild::return_type },
+                                                 { "where_clause", AstChild::where_clause },
                                                  { "left", AstChild::left_expr },
                                                  { "right", AstChild::right_expr },
                                                  { "base", AstChild::base },
