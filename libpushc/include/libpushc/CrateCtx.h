@@ -287,6 +287,7 @@ struct MirEntry {
         nop, // no operation
         intrinsic, // some intrinsic operation
         literal, // literal definition
+        type, // type binding
         call, // function call
         bind, // assign/move a variable into another
         member, // member access
@@ -304,9 +305,7 @@ struct MirEntry {
 
     MirVarId ret = 0; // variable which will contain the result
     ParamContainer params; // parameters for this instruction
-    std::vector<SymbolId>
-        symbols; // possible symbols (e. g. for calls) TODO maybe replace this by a reference to the mir variable
-    ParamContainer template_args; // only for symbols, with explicit template arguments
+    MirVarId symbol = 0; // Variables which holds symbol data
     bool inference_finished = false; // only for calls (whose symbols need to be inferred first)
     MirLiteral data; // contains literal data or a pointer to it
     MirIntrinsic intrinsic = MirIntrinsic::none; // if it's an intrinsic operation
@@ -327,14 +326,19 @@ struct MirVariable {
         count
     } type = Type::value;
 
+    // Ast data
     String name; // the original variable name (temporaries have an empty name)
-    TypeSelection value_type;
     ParamContainer template_args; // only for symbols, with explicit template arguments
     bool mut = false; // whether this variable can be updated
     MirVarId ref = 0; // referred variable (for l_ref or for method access; should never reference a l_ref)
-    size_t member_idx = 0; // used for member access operations
-    MirVarId base_ref; // used for a method call to specify the "self" object (may also be a l_ref)
+    SymbolIdentifier member_identifier; // used while types haven't been resolved
+    MirVarId base_ref = 0; // used for a method call to specify the "self" object (may also be a l_ref)
+    std::vector<SymbolId> symbol_set; // stores symbols which are identified with this variable. "One of them"
     AstNode *original_expr = nullptr; // refers to the original variable or expression
+
+    // Mainly Mir data
+    TypeSelection value_type; // "All of them"
+    size_t member_idx = 0; // used for member access operations
     MirEntryId next_type_check_position = 0; // optimizes the iterative type inference
 };
 
