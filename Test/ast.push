@@ -65,7 +65,7 @@ impl op::Add for A {
 fn() -> u32 {
     let a:u32 = 4;
     fn_t<u32, u64>( 1, 2 );
-    a+inc( 3 )
+    inc( 3 )
 }
 
 fn_t<T, S> ( param1:&T, param2:&S ) -> T

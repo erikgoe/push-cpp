@@ -1087,6 +1087,13 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
 
         if ( op.ret == var ) {
             switch ( op.type ) {
+            case MirEntry::Type::type: {
+                // Has exactly one parameter (the type)
+                auto &type_var = fn->vars[op.params.get_param( 0 )];
+                if ( expect_exactly_one_symbol( c_ctx, w_ctx, type_var.symbol_set, *type_var.original_expr ) ) {
+                    fn->vars[var].value_type.add_requirement( c_ctx.symbol_graph[type_var.symbol_set.front()].value );
+                }
+            } break;
             case MirEntry::Type::call:
                 if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) ) {
                     fn = &c_ctx.functions[function]; // update ref
@@ -1107,6 +1114,7 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
             case MirEntry::Type::bind:
                 // Pass type requirements. Bind contains exactly one parameter
                 infer_type( c_ctx, w_ctx, function, op.params.get_param( 0 ), infer_stack );
+                fn = &c_ctx.functions[function]; // update ref
                 fn->vars[var].value_type.bind_variable( &c_ctx, function, op.params.get_param( 0 ), var );
                 break;
             case MirEntry::Type::inv:
@@ -1122,6 +1130,9 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
             }
         } else if ( op.params.find( var ) != op.params.end() ) {
             switch ( op.type ) {
+            case MirEntry::Type::type:
+                fn->vars[var].value_type.add_requirement( c_ctx.type_type );
+                break;
             case MirEntry::Type::call:
                 if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) ) {
                     fn = &c_ctx.functions[function]; // update ref
@@ -1144,6 +1155,7 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
             case MirEntry::Type::bind:
                 // The return variable will create the binding
                 infer_type( c_ctx, w_ctx, function, op.ret, infer_stack );
+                fn = &c_ctx.functions[function]; // update ref
                 break;
             case MirEntry::Type::cond_jmp_z:
                 // fn->vars[var].value_type.add_requirement(c_ctx.boolean_type); // TODO
