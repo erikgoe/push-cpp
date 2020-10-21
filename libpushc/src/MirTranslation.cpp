@@ -986,13 +986,18 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
                     auto &v =
                         c_ctx.functions[function].vars[template_args.get_param( template_args_permutation[i], true )];
                     if ( v.type == MirVariable::Type::symbol ) {
-                        if ( std::find( common_types.begin(), common_types.end(), v.value_type.get_final_type() ) !=
-                             common_types.end() ) {
-                            // Explicit type is possible
-                            common_types.clear();
-                            common_types.push_back( v.value_type.get_final_type() );
-                        } else {
+                        if ( !expect_exactly_one_symbol( c_ctx, w_ctx, v.symbol_set, *v.original_expr ) ) {
                             fn_matches = false;
+                        } else {
+                            TypeId symbol_type = c_ctx.symbol_graph[v.symbol_set.front()].value;
+                            if ( std::find( common_types.begin(), common_types.end(), symbol_type ) !=
+                                 common_types.end() ) {
+                                // Explicit type is possible
+                                common_types.clear();
+                                common_types.push_back( symbol_type );
+                            } else {
+                                fn_matches = false;
+                            }
                         }
                     } else {
                         // TODO constant evaluation
