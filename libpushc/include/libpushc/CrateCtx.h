@@ -297,7 +297,8 @@ struct MirEntry {
         jmp, // unconditional jump
         inv, // binary invert a value (should only apply to machine primitives)
         cast, // type cast
-        symbol, // cosmetic operation to access a symbol
+        symbol, // cosmetic operation to access a symbol TODO delete
+        ret, // return operation
 
         count
     } type = Type::nop;

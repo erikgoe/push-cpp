@@ -427,6 +427,10 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     c_ctx.functions[func_id].ret = expr.children.front().parse_mir( c_ctx, w_ctx, func_id );
     function = &c_ctx.functions[func_id]; // update ref
 
+    // Add return operation
+    create_operation( c_ctx, w_ctx, func_id, *function->vars[function->ret].original_expr, MirEntry::Type::ret,
+                      function->ret, {} );
+
     // Drop parameters
     bool annotation_is_drop = std::find( symbol.compiler_annotations.begin(), symbol.compiler_annotations.end(),
                                          "drop_handler" ) != symbol.compiler_annotations.end();
@@ -467,6 +471,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
             } else if ( symbols.size() > 1 ) {
                 w_ctx.print_msg<MessageType::err_multiple_suitable_functions>(
                     MessageInfo( *op.original_expr, 0, FmtStr::Color::Red ) );
+            } else {
+                LOG_ERR( "call inference error; exactly one symbol but not finished" );
             }
         }
     }
@@ -606,6 +612,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "cast";
                 else if ( op.type == MirEntry::Type::symbol )
                     str = "symbol";
+                else if ( op.type == MirEntry::Type::ret )
+                    str = "ret";
                 else
                     str = "UNKNOWN COMMAND";
 
@@ -632,9 +640,6 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
 
                 log( "  " + str );
             }
-
-            // Return value
-            log( "  ret" + get_var_name( fn.ret ) );
 
             // Variables
             log( "\n  VARS:" );
@@ -1125,6 +1130,11 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                     fn->vars[var].value_type.add_requirement(
                         c_ctx.symbol_graph[fn->vars[op.symbol].symbol_set.front()].value );
                 break;
+            case MirEntry::Type::ret: {
+                auto &fn_symbol = c_ctx.symbol_graph[c_ctx.type_table[fn->type].symbol];
+                if ( fn_symbol.identifier.eval_type.type != 0 )
+                    fn->vars[var].value_type.add_requirement( fn_symbol.identifier.eval_type.type );
+            } break;
             default:
                 break; // does not change any types
             }

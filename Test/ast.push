@@ -74,7 +74,7 @@ fn_t<T, S> ( param1:&T, param2:&S ) -> T
 }
 
 inc(val:u32) -> u32 { val + 1 }
-//inc(val:u32) -> () {}
+inc(val:u32) -> () {}
 //inc(val:A) {}
 
 /*g() -> u32 {
