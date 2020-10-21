@@ -43,6 +43,9 @@ void remove_from_local_living_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImpl
 // Analyses the function signature and updates the type if necessary
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function );
 
+// Resolves the mir operations of a function and initiates type inference
+bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function );
+
 // Decide which function overloading to call
 bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,
                           std::vector<MirVarId> infer_stack = std::vector<MirVarId>() );

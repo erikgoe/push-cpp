@@ -322,6 +322,7 @@ struct MirVariable {
         not_dropped, // variable which requires no dropping routine
         label, // just a label specifier
         symbol, // just a static symbol specifier
+        undecided, // used with member access
 
         count
     } type = Type::value;

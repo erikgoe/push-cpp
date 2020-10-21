@@ -1901,7 +1901,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::member, 0, { obj } );
         ret = c_ctx.functions[func].ops[op_id].ret;
         auto &result_var = c_ctx.functions[func].vars[ret];
-        result_var.type = MirVariable::Type::l_ref;
+        result_var.type = MirVariable::Type::undecided;
         result_var.member_identifier = member_chain->front();
         result_var.base_ref = obj;
 

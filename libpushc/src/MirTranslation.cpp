@@ -440,42 +440,9 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         }
     }
 
-    // Infer all types and function calls (if not already)
-    for ( auto &op : function->ops ) {
-        if ( function->vars[op.ret].type != MirVariable::Type::symbol ) {
-            infer_type( c_ctx, w_ctx, func_id, op.ret );
-            enforce_type_of_variable( c_ctx, w_ctx, func_id, op.ret );
-            function = &c_ctx.functions[func_id]; // update ref
-        }
-        for ( auto &var : op.params ) {
-            if ( function->vars[var].type != MirVariable::Type::symbol ) {
-                infer_type( c_ctx, w_ctx, func_id, var );
-                enforce_type_of_variable( c_ctx, w_ctx, func_id, var );
-                function = &c_ctx.functions[func_id]; // update ref
-            }
-        }
-        if ( op.type == MirEntry::Type::call ) {
-            infer_function_call( c_ctx, w_ctx, func_id, op );
-            function = &c_ctx.functions[func_id]; // update ref
-
-            auto &symbols = function->vars[op.symbol].symbol_set;
-
-            if ( op.inference_finished ) {
-                // Fulfill function proposals
-                if ( c_ctx.symbol_graph[symbols.front()].proposed ) {
-                    c_ctx.symbol_graph[symbols.front()].proposed = false;
-                }
-            } else if ( symbols.empty() ) {
-                w_ctx.print_msg<MessageType::err_no_suitable_function>(
-                    MessageInfo( *op.original_expr, 0, FmtStr::Color::Red ) );
-            } else if ( symbols.size() > 1 ) {
-                w_ctx.print_msg<MessageType::err_multiple_suitable_functions>(
-                    MessageInfo( *op.original_expr, 0, FmtStr::Color::Red ) );
-            } else {
-                LOG_ERR( "call inference error; exactly one symbol but not finished" );
-            }
-        }
-    }
+    // Infer all types and function calls
+    infer_operations( c_ctx, w_ctx, func_id );
+    function = &c_ctx.functions[func_id]; // update ref
 
     // TODO handle drops
 
@@ -570,7 +537,10 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                                             ? "n"
                                             : fn.vars[id].type == MirVariable::Type::label
                                                   ? "b"
-                                                  : fn.vars[id].type == MirVariable::Type::symbol ? "s" : "" );
+                                                  : fn.vars[id].type == MirVariable::Type::symbol
+                                                        ? "s"
+                                                        : fn.vars[id].type == MirVariable::Type::undecided ? "UNDECIDED"
+                                                                                                           : "" );
                 return " " + fn.vars[id].name + "%" + type_str + to_string( id );
             };
 
@@ -800,6 +770,55 @@ bool is_where_clause_fulfilled( CrateCtx &c_ctx, Worker &w_ctx, AstNode *clause,
         } else {
             LOG_ERR( "Symbol in where clause is not a template argument" );
             return false;
+        }
+    }
+    return true;
+}
+
+bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
+    auto *fn = &c_ctx.functions[function];
+    for ( auto &op : fn->ops ) {
+        // Infer types
+        if ( fn->vars[op.ret].type != MirVariable::Type::symbol ) {
+            infer_type( c_ctx, w_ctx, function, op.ret );
+            if ( !enforce_type_of_variable( c_ctx, w_ctx, function, op.ret ) )
+                return false;
+            fn = &c_ctx.functions[function]; // update ref
+        }
+        for ( auto &var : op.params ) {
+            if ( fn->vars[var].type != MirVariable::Type::symbol ) {
+                infer_type( c_ctx, w_ctx, function, var );
+                if ( !enforce_type_of_variable( c_ctx, w_ctx, function, var ) )
+                    return false;
+                fn = &c_ctx.functions[function]; // update ref
+            }
+        }
+
+        // Check if call is unambiguous and finalize it
+        if ( op.type == MirEntry::Type::call ) {
+            if ( !infer_function_call( c_ctx, w_ctx, function, op ) )
+                return false;
+            fn = &c_ctx.functions[function]; // update ref
+
+            auto &symbols = fn->vars[op.symbol].symbol_set;
+
+            if ( op.inference_finished ) {
+                // Fulfill function proposals
+                if ( c_ctx.symbol_graph[symbols.front()].proposed ) {
+                    c_ctx.symbol_graph[symbols.front()].proposed = false;
+                }
+            } else if ( symbols.empty() ) {
+                w_ctx.print_msg<MessageType::err_no_suitable_function>(
+                    MessageInfo( *op.original_expr, 0, FmtStr::Color::Red ) );
+                return false;
+            } else if ( symbols.size() > 1 ) {
+                w_ctx.print_msg<MessageType::err_multiple_suitable_functions>(
+                    MessageInfo( *op.original_expr, 0, FmtStr::Color::Red ) );
+                return false;
+            } else {
+                LOG_ERR( "call inference error; exactly one symbol but not finished" );
+                return false;
+            }
         }
     }
     return true;
@@ -1068,6 +1087,85 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
     return true;
 }
 
+bool resolve_member_access( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &op ) {
+    if ( !enforce_type_of_variable( c_ctx, w_ctx, function, op.params.get_param( 0 ) ) )
+        return false;
+
+    auto *fn = &c_ctx.functions[function];
+    auto &base_type = c_ctx.type_table[fn->vars[op.params.get_param( 0 )].value_type.get_final_type()];
+
+    // Find Attributes
+    auto attrs = find_member_symbol_by_identifier( c_ctx, w_ctx, fn->vars[op.ret].member_identifier, base_type.symbol );
+
+    // Find methods
+    std::vector<SymbolId> methods;
+    for ( auto &node : c_ctx.symbol_graph[base_type.symbol].sub_nodes ) {
+        if ( symbol_identifier_base_matches( fn->vars[op.ret].member_identifier, c_ctx.symbol_graph[node].identifier ) )
+            methods.push_back( node );
+    }
+
+    if ( attrs.empty() && methods.empty() ) {
+        w_ctx.print_msg<MessageType::err_symbol_not_found>(
+            MessageInfo( *fn->vars[op.ret].original_expr, 0, FmtStr::Color::Red ) );
+        return false;
+    } else if ( attrs.size() > 1 ) { // methods may be overloaded, just check attributes
+        std::vector<MessageInfo> notes;
+        for ( auto &attr : attrs ) {
+            if ( !c_ctx.symbol_graph[attr].original_expr.empty() )
+                notes.push_back( MessageInfo( *c_ctx.symbol_graph[attr].original_expr.front(), 1 ) );
+        }
+        w_ctx.print_msg<MessageType::err_member_symbol_is_ambiguous>(
+            MessageInfo( *fn->vars[op.ret].original_expr, 0, FmtStr::Color::Red ), notes );
+        return false;
+    }
+
+    // Update operation
+    auto &result_var = fn->vars[op.ret];
+    if ( !attrs.empty() ) {
+        // Access attribute
+        auto &base_var = fn->vars[op.params.get_param( 0 )];
+        fn->vars[op.ret].member_idx = attrs.front();
+        fn->vars[op.ret].type = MirVariable::Type::l_ref;
+        if ( base_var.type == MirVariable::Type::l_ref ) {
+            // Pass reference (never reference a l_ref)
+            result_var.ref = base_var.ref;
+            result_var.member_idx += base_var.member_idx;
+        } else {
+            result_var.ref = op.params.get_param( 0 );
+        }
+        result_var.mut = base_var.mut;
+        result_var.value_type.add_requirement( base_type.members[attrs.front()].value );
+    } else {
+        // Access method
+
+        // First check if it's a method and not a function
+        methods.erase(
+            std::remove_if( methods.begin(), methods.end(),
+                            [&]( SymbolId m ) {
+                                auto &identifier = c_ctx.symbol_graph[m].identifier;
+                                return ( identifier.parameters.empty() ||
+                                         c_ctx.symbol_graph[c_ctx.symbol_graph[m].parent].type !=
+                                             c_ctx.struct_type ); // TODO this check may be weak (rather check
+                                                                  // if the parameter is actually "self")
+                            } ),
+            methods.end() );
+        if ( methods.empty() ) {
+            w_ctx.print_msg<MessageType::err_method_is_a_free_function>(
+                MessageInfo( *result_var.original_expr, 0, FmtStr::Color::Red ),
+                { MessageInfo( *c_ctx.symbol_graph[methods.front()].original_expr.front(), 1 ) } );
+            return false;
+        }
+
+        op.type = MirEntry::Type::call;
+        result_var.type = MirVariable::Type::symbol;
+        result_var.base_ref = op.params.get_param( 0 );
+        for ( auto &s : methods ) {
+            result_var.value_type.add_requirement( c_ctx.symbol_graph[s].value );
+        }
+    }
+    return true;
+}
+
 bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var,
                  std::vector<MirVarId> infer_stack ) {
     if ( var == 0 )
@@ -1100,6 +1198,15 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                     fn->vars[var].value_type.add_requirement( c_ctx.symbol_graph[type_var.symbol_set.front()].value );
                 }
             } break;
+            case MirEntry::Type::member:
+                if ( fn->vars[var].type == MirVariable::Type::undecided ) {
+                    if ( !resolve_member_access( c_ctx, w_ctx, function, op ) )
+                        break;
+                    fn = &c_ctx.functions[function]; // update ref
+                }
+                if ( op.type == MirEntry::Type::member )
+                    break;
+                // fallthrough if type == MirEntry::Type::call
             case MirEntry::Type::call:
                 if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) ) {
                     fn = &c_ctx.functions[function]; // update ref
