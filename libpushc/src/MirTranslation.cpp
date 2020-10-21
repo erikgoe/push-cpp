@@ -1075,17 +1075,20 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
     else if ( var == 1 )
         return true; // unit type is already well-defined
 
-    if ( std::find( infer_stack.begin(), infer_stack.end(), var ) != infer_stack.end() )
-        return false; // Variable is currently inferred (infer cycle)
-
     auto *fn = &c_ctx.functions[function];
+
+    if ( fn->vars[var].type_inference_finished )
+        return true; // type was already inferred
 
     if ( fn->vars[var].type == MirVariable::Type::label )
         return true; // Skip typeless variables (labels)
 
+    if ( std::find( infer_stack.begin(), infer_stack.end(), var ) != infer_stack.end() )
+        return false; // Variable is currently inferred (infer cycle)
+
     infer_stack.push_back( var );
 
-    for ( size_t i = fn->vars[var].next_type_check_position; i < fn->ops.size(); i++ ) {
+    for ( size_t i = 0; i < fn->ops.size(); i++ ) {
         auto &op = fn->ops[i];
 
         if ( op.ret == var ) {
@@ -1176,8 +1179,8 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
             }
         }
     }
-    fn->vars[var].next_type_check_position = fn->ops.size(); // optimizes the iterative type inference process
 
+    fn->vars[var].type_inference_finished = true; // inference finished
     infer_stack.pop_back();
 
     return true;
