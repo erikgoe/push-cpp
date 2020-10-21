@@ -586,6 +586,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "intrinsic";
                 else if ( op.type == MirEntry::Type::literal )
                     str = "literal";
+                else if ( op.type == MirEntry::Type::type )
+                    str = "type";
                 else if ( op.type == MirEntry::Type::call )
                     str = "call";
                 else if ( op.type == MirEntry::Type::bind )
@@ -637,6 +639,11 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
             // Variables
             log( "\n  VARS:" );
             for ( size_t i = 1; i < fn.vars.size(); i++ ) {
+                String symbols;
+                for ( auto s : fn.vars[i].symbol_set ) {
+                    symbols += " " + get_full_symbol_name( *c_ctx, w_ctx, s );
+                }
+
                 log(
                     "  " + get_var_name( i ) + " :" + ( fn.vars[i].mut ? "mut" : "" ) +
                     ( fn.vars[i].type == MirVariable::Type::l_ref || fn.vars[i].type == MirVariable::Type::p_ref
@@ -646,6 +653,7 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                         *c_ctx, w_ctx,
                         c_ctx->type_table[fn.vars[i].value_type.is_final() ? fn.vars[i].value_type.get_final_type() : 0]
                             .symbol ) +
+                    ( fn.vars[i].symbol_set.empty() ? "" : "symbols" + symbols ) +
                     ( fn.vars[i].ref != 0
                           ? " ->" + get_var_name( fn.vars[i].ref ) + " +" + to_string( fn.vars[i].member_idx )
                           : "" ) +
@@ -1047,10 +1055,9 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
             for ( auto &p : c_ctx.symbol_graph[symbols.front()].identifier.parameters )
                 parameter_names.push_back( p.name );
             call_op.params.apply_param_permutation( parameter_names );
-
-            return true;
         }
     }
+    return true;
 }
 
 bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var,
@@ -1076,8 +1083,7 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
         if ( op.ret == var ) {
             switch ( op.type ) {
             case MirEntry::Type::call:
-                if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) &&
-                     c_ctx.functions[function].vars[op.symbol].symbol_set.size() == 1 ) {
+                if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) ) {
                     fn = &c_ctx.functions[function]; // update ref
                     std::vector<TypeId> types;
                     types.reserve( fn->vars[op.symbol].symbol_set.size() );
@@ -1094,7 +1100,8 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                 fn = &c_ctx.functions[function]; // update ref
                 break;
             case MirEntry::Type::bind:
-                // Pass type requirements. Bind contains only one parameter
+                // Pass type requirements. Bind contains exactly one parameter
+                infer_type( c_ctx, w_ctx, function, op.params.get_param( 0 ), infer_stack );
                 fn->vars[var].value_type.bind_variable( &c_ctx, function, op.params.get_param( 0 ), var );
                 break;
             case MirEntry::Type::inv:
@@ -1111,8 +1118,7 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
         } else if ( op.params.find( var ) != op.params.end() ) {
             switch ( op.type ) {
             case MirEntry::Type::call:
-                if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) &&
-                     c_ctx.functions[function].vars[op.symbol].symbol_set.size() == 1 ) {
+                if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) ) {
                     fn = &c_ctx.functions[function]; // update ref
                     std::vector<TypeId> types;
                     types.reserve( fn->vars[op.symbol].symbol_set.size() );
@@ -1129,6 +1135,10 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                     }
                 }
                 fn = &c_ctx.functions[function]; // update ref
+                break;
+            case MirEntry::Type::bind:
+                // The return variable will create the binding
+                infer_type( c_ctx, w_ctx, function, op.ret, infer_stack );
                 break;
             case MirEntry::Type::cond_jmp_z:
                 // fn->vars[var].value_type.add_requirement(c_ctx.boolean_type); // TODO

@@ -339,7 +339,7 @@ struct MirVariable {
     // Mainly Mir data
     TypeSelection value_type; // "All of them"
     size_t member_idx = 0; // used for member access operations
-    MirEntryId next_type_check_position = 0; // optimizes the iterative type inference
+    MirEntryId next_type_check_position = 0; // optimizes the iterative type inference TODO replace by a boolean latch
 };
 
 // Represents the content of a function
