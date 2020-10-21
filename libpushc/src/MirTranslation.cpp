@@ -610,8 +610,6 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "jmp";
                 else if ( op.type == MirEntry::Type::cast )
                     str = "cast";
-                else if ( op.type == MirEntry::Type::symbol )
-                    str = "symbol";
                 else if ( op.type == MirEntry::Type::ret )
                     str = "ret";
                 else
