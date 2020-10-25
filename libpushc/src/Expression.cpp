@@ -1867,8 +1867,17 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             vars.reserve( children.front().children.size() );
             for ( size_t i = 0; i < children.front().children.size(); i++ ) {
                 auto &entry = children.front().children[i];
-                auto var = entry.parse_mir( c_ctx, w_ctx, func );
-                vars.push_back( var );
+
+                if ( entry.has_prop( ExprProperty::assignment ) ) {
+                    auto symbol_chain = entry.named[AstChild::left_expr].get_symbol_chain( c_ctx, w_ctx );
+                    if ( !expect_unscoped_variable( c_ctx, w_ctx, *symbol_chain, entry.named[AstChild::left_expr] ) )
+                        break;
+
+                    vars.push_back( symbol_chain->front().name,
+                                    entry.named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func ) );
+                } else {
+                    vars.push_back( entry.parse_mir( c_ctx, w_ctx, func ) );
+                }
             }
 
             // Merge values into type

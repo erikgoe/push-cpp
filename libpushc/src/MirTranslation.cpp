@@ -1188,14 +1188,24 @@ bool infer_struct_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function,
         std::remove_if( symbol_var.symbol_set.begin(), symbol_var.symbol_set.end(),
                         [&]( auto &&s ) {
                             auto &members = c_ctx.type_table[c_ctx.symbol_graph[s].value].members;
+
+                            // Check member count
                             if ( members.size() != op.params.size() )
                                 return true;
 
+                            // Generate permutation
+                            std::vector<size_t> member_permutation;
+                            std::vector<String> member_names;
+                            member_names.reserve( members.size() );
+                            for ( auto &p : members )
+                                member_names.push_back( p.identifier.name );
+                            if ( !op.params.get_param_permutation( member_names, member_permutation ) )
+                                return false;
+
                             // Check the type of every member
                             for ( size_t i = 0; i < members.size(); i++ ) {
-                                for ( auto &requirement :
-                                      fn.vars[op.params.get_param( i )].value_type.get_all_requirements( &c_ctx,
-                                                                                                         function ) ) {
+                                for ( auto &requirement : fn.vars[op.params.get_param( member_permutation[i] )]
+                                                              .value_type.get_all_requirements( &c_ctx, function ) ) {
                                     if ( !type_has_trait( c_ctx, w_ctx, members[i].value, requirement ) ) {
                                         return true;
                                     }
@@ -1210,8 +1220,15 @@ bool infer_struct_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function,
     if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbol_var.symbol_set, *op.original_expr ) )
         return false;
 
-    // Add type requirements
+    // Resolve permutation
     auto &final_type = c_ctx.type_table[c_ctx.symbol_graph[symbol_var.symbol_set.front()].value];
+    std::vector<String> member_permutation;
+    member_permutation.reserve( final_type.members.size() );
+    for ( auto &p : final_type.members )
+        member_permutation.push_back( p.identifier.name );
+    op.params.apply_param_permutation( member_permutation );
+
+    // Add type requirements
     fn.vars[op.ret].value_type.add_requirement( c_ctx.symbol_graph[symbol_var.symbol_set.front()].value );
     for ( size_t i = 0; i < op.params.size(); i++ ) {
         fn.vars[op.params.get_param( i )].value_type.add_requirement( final_type.members[i].value );

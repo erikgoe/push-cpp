@@ -47,7 +47,7 @@ std::itr::next(itr:&std::base::Iterator) -> () {
 
 struct A {
     foo:u32,
-    bar:u32,
+    bar:u64,
 }
 
 trait op::Add {
@@ -63,7 +63,7 @@ impl op::Add for A {
 //println(str:std::str::String) -> () {}
 
 fn() -> u32 {
-    let a = A{1,2};
+    let a = A{bar=1,2};
     a.foo
 }
 
