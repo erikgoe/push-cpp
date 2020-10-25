@@ -1374,7 +1374,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                     ret = create_variable( c_ctx, w_ctx, func, this );
                     auto &result_var = c_ctx.functions[func].vars[ret];
                     result_var.type = MirVariable::Type::symbol;
-                    result_var.value_type.set_final_type( c_ctx.type_type );
+                    result_var.value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
                     result_var.symbol_set.push_back(
                         c_ctx
                             .type_table[*fn_symbol.identifier.template_values[param_index].second.get<TypeId>().value()]
@@ -1394,7 +1394,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 ret = create_variable( c_ctx, w_ctx, func, this );
                 auto &result_var = c_ctx.functions[func].vars[ret];
                 result_var.type = MirVariable::Type::symbol;
-                result_var.value_type.set_final_type( c_ctx.type_type );
+                result_var.value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
                 result_var.symbol_set = symbols;
                 found = true;
             }
@@ -1461,7 +1461,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Create call var
         auto call_var = create_variable( c_ctx, w_ctx, func, this );
         c_ctx.functions[func].vars[call_var].type = MirVariable::Type::symbol;
-        c_ctx.functions[func].vars[call_var].value_type.set_final_type( c_ctx.type_type );
+        c_ctx.functions[func].vars[call_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
         c_ctx.functions[func].vars[call_var].symbol_set = calls;
 
         auto left_result = named[AstChild::left_expr].parse_mir( c_ctx, w_ctx, func );
@@ -1697,7 +1697,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             // Create call var
             auto call_var = create_variable( c_ctx, w_ctx, func, this );
             c_ctx.functions[func].vars[call_var].type = MirVariable::Type::symbol;
-            c_ctx.functions[func].vars[call_var].value_type.set_final_type( c_ctx.type_type );
+            c_ctx.functions[func].vars[call_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
             c_ctx.functions[func].vars[call_var].symbol_set = calls;
 
             // Create iterator
@@ -1721,7 +1721,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Create call var
         auto call_var = create_variable( c_ctx, w_ctx, func, this );
         c_ctx.functions[func].vars[call_var].type = MirVariable::Type::symbol;
-        c_ctx.functions[func].vars[call_var].value_type.set_final_type( c_ctx.type_type );
+        c_ctx.functions[func].vars[call_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
         c_ctx.functions[func].vars[call_var].symbol_set = { c_ctx.type_table[c_ctx.itr_valid_fn].symbol };
         auto cond = create_call( c_ctx, w_ctx, func, named[AstChild::itr], call_var, 0, { iterator } );
 
@@ -1739,7 +1739,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             // Create call var
             auto call_var = create_variable( c_ctx, w_ctx, func, this );
             c_ctx.functions[func].vars[call_var].type = MirVariable::Type::symbol;
-            c_ctx.functions[func].vars[call_var].value_type.set_final_type( c_ctx.type_type );
+            c_ctx.functions[func].vars[call_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
             c_ctx.functions[func].vars[call_var].symbol_set = { c_ctx.type_table[c_ctx.itr_get_fn].symbol };
 
             op_id = create_call( c_ctx, w_ctx, func, named[AstChild::itr], call_var, 0, { iterator } );
@@ -1761,7 +1761,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Create call var
         call_var = create_variable( c_ctx, w_ctx, func, this );
         c_ctx.functions[func].vars[call_var].type = MirVariable::Type::symbol;
-        c_ctx.functions[func].vars[call_var].value_type.set_final_type( c_ctx.type_type );
+        c_ctx.functions[func].vars[call_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
         c_ctx.functions[func].vars[call_var].symbol_set = { c_ctx.type_table[c_ctx.itr_next_fn].symbol };
 
         op_id = create_call( c_ctx, w_ctx, func, *this, call_var, 0, { iterator } );
@@ -1847,7 +1847,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         ret = create_variable( c_ctx, w_ctx, func, this );
         auto &result_var = c_ctx.functions[func].vars[ret];
         result_var.type = MirVariable::Type::symbol;
-        result_var.value_type.set_final_type( c_ctx.type_type );
+        result_var.value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
         result_var.symbol_set.push_back( c_ctx.curr_self_type );
 
         break;
@@ -1862,8 +1862,6 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             auto &result_var = c_ctx.functions[func].vars[ret];
             result_var.type = MirVariable::Type::rvalue;
 
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::type, ret, struct_var );
-
             // Crate member values
             ParamContainer vars;
             vars.reserve( children.front().children.size() );
@@ -1874,12 +1872,13 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             }
 
             // Merge values into type
-            create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::merge, ret, vars );
+            MirVarId merge_op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::merge, ret, vars );
+            c_ctx.functions[func].ops[merge_op_id].symbol = struct_var;
 
             // Drop vars if necessary
-            for ( size_t i = vars.size() - 1; i >= 0; i-- ) {
+            /*for ( size_t i = vars.size() - 1; i >= 0; i-- ) {
                 drop_variable( c_ctx, w_ctx, func, children.front(), vars.get_param( i ) );
-            }
+            }*/
         }
 
         break;
@@ -1927,7 +1926,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Create call var
         auto type_var = create_variable( c_ctx, w_ctx, func, this );
         c_ctx.functions[func].vars[type_var].type = MirVariable::Type::symbol;
-        c_ctx.functions[func].vars[type_var].value_type.set_final_type( c_ctx.type_type );
+        c_ctx.functions[func].vars[type_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
         c_ctx.functions[func].vars[type_var].symbol_set = type_ids;
 
         // Type operation
@@ -2044,6 +2043,8 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         if ( struct_var != 0 ) {
             // Symbol found
 
+            c_ctx.functions[func].vars[struct_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
+
             // Bind member values
             for ( size_t i = 0; i < children.front().children.size(); i++ ) {
                 // Access the member
@@ -2091,7 +2092,7 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Create call var
         auto type_var = create_variable( c_ctx, w_ctx, func, this );
         c_ctx.functions[func].vars[type_var].type = MirVariable::Type::symbol;
-        c_ctx.functions[func].vars[type_var].value_type.set_final_type( c_ctx.type_type );
+        c_ctx.functions[func].vars[type_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
         c_ctx.functions[func].vars[type_var].symbol_set = type_ids;
 
         // Type operation
@@ -2230,7 +2231,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
         // Create call var
         auto call_var = create_variable( c_ctx, w_ctx, func, this );
         c_ctx.functions[func].vars[call_var].type = MirVariable::Type::symbol;
-        c_ctx.functions[func].vars[call_var].value_type.set_final_type( c_ctx.type_type );
+        c_ctx.functions[func].vars[call_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
         c_ctx.functions[func].vars[call_var].symbol_set = { c_ctx.type_table[c_ctx.equals_fn].symbol };
 
         auto op_id = create_call( c_ctx, w_ctx, func, *this, call_var, 0, params );
@@ -2247,7 +2248,9 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
         auto struct_var = named[AstChild::symbol].parse_mir( c_ctx, w_ctx, func );
         if ( struct_var != 0 ) {
             // Symbol found
-            
+
+            c_ctx.functions[func].vars[struct_var].value_type.set_final_type( &c_ctx, func, c_ctx.type_type );
+
             MirVarId eval_false_label = create_variable( c_ctx, w_ctx, func, this );
             c_ctx.functions[func].vars[eval_false_label].type = MirVariable::Type::label;
 

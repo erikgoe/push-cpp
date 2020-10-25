@@ -108,14 +108,13 @@ class TypeSelection {
 
 public:
     bool is_final() const { return final_type != 0; }
-    bool has_any_requirements() const { return final_type != 0 || !type_requirements.empty(); }
-    bool has_unfinalized_requirements() const { return final_type == 0 && !type_requirements.empty(); }
-    void set_final_type( TypeId type ) {
-        // assert( type != 0 );
-        assert( final_type == 0 );
-        final_type = type;
-        type_requirements.clear();
+    bool has_any_requirements( CrateCtx *c_ctx, FunctionImplId fn ) const {
+        return final_type != 0 || !get_all_requirements( c_ctx, fn ).empty();
     }
+    bool has_unfinalized_requirements( CrateCtx *c_ctx, FunctionImplId fn ) const {
+        return final_type == 0 && !get_all_requirements( c_ctx, fn ).empty();
+    }
+    void set_final_type( CrateCtx *c_ctx, FunctionImplId fn, TypeId type );
     TypeId get_final_type() const {
         assert( type_requirements.empty() );
         return final_type;
@@ -133,7 +132,9 @@ public:
         assert( final_type == 0 );
         type_requirements.insert( type_requirements.end(), types.begin(), types.end() );
     }
-    void reserve_requirement_memory( size_t size ) { type_requirements.reserve( type_requirements.size() + size ); }
+    void reserve_requirement_memory( size_t additional_size ) {
+        type_requirements.reserve( type_requirements.size() + additional_size );
+    }
 
     // Returns all type requirements including those of the type group and respecting if the type is already final
     const std::vector<TypeId> get_all_requirements( CrateCtx *c_ctx, FunctionImplId fn ) const;

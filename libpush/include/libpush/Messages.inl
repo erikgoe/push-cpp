@@ -71,7 +71,6 @@ enum class MessageType {
     err_method_is_a_free_function,
     err_self_in_free_function,
     err_self_not_first_parameter,
-    err_instantiate_non_struct,
     err_wrong_struct_initializer_member_count,
     err_obj_deconstruction_check_expected,
     err_obj_deconstruction_check_not_allowed,
@@ -223,8 +222,6 @@ MESSAGE_DEFINITION( MessageType::err_self_in_free_function, MessageClass::Error,
                     "Self may not be used in a non-member function", "can not deduce type" );
 MESSAGE_DEFINITION( MessageType::err_self_not_first_parameter, MessageClass::Error, "C",
                     "Self may only be the first parameter", "not the first parameter" );
-MESSAGE_DEFINITION( MessageType::err_instantiate_non_struct, MessageClass::Error, "C",
-                    "Tried to instantiate a type which is not a struct", "this is not a struct", "defined here" );
 MESSAGE_DEFINITION( MessageType::err_wrong_struct_initializer_member_count, MessageClass::Error, "C",
                     "The passed values do not match the amount struct members. Expected " + to_string( GET_ARG( 0 ) ) +
                         ", found " + to_string( GET_ARG( 1 ) ),

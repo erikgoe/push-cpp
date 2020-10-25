@@ -40,6 +40,19 @@ bool SymbolIdentifier::ParamSig::operator==( const ParamSig &other ) const {
            type == other.type; // type == 0 means the type of this is not known, so it's a candidate
 }
 
+void TypeSelection::set_final_type( CrateCtx *c_ctx, FunctionImplId fn, TypeId type ) {
+    // assert( type != 0 );
+    assert( final_type == 0 );
+    final_type = type;
+    type_requirements.clear();
+
+    // Set also type_group vars
+    for ( auto &var : type_group ) {
+        c_ctx->functions[fn].vars[var].value_type.final_type = type;
+        c_ctx->functions[fn].vars[var].value_type.type_requirements.clear();
+    }
+}
+
 void TypeSelection::add_requirement( const TypeSelection &type ) {
     if ( type.is_final() ) {
         if ( type.final_type == final_type )

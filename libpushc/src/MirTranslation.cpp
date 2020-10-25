@@ -586,7 +586,7 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "UNKNOWN COMMAND";
 
                 if ( op.symbol != 0 )
-                    str += " s" + to_string( op.symbol );
+                    str += get_var_name( op.symbol );
 
                 if ( op.intrinsic != MirIntrinsic::none )
                     str += " intrinsic " + to_string( static_cast<u32>( op.intrinsic ) );
@@ -778,24 +778,24 @@ bool is_where_clause_fulfilled( CrateCtx &c_ctx, Worker &w_ctx, AstNode *clause,
 bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
     auto *fn = &c_ctx.functions[function];
     for ( auto &op : fn->ops ) {
-        // Infer types
-        if ( fn->vars[op.ret].type != MirVariable::Type::symbol ) {
-            infer_type( c_ctx, w_ctx, function, op.ret );
-            if ( !enforce_type_of_variable( c_ctx, w_ctx, function, op.ret ) )
-                return false;
-            fn = &c_ctx.functions[function]; // update ref
-        }
+        // Infer types (don't enforce types when not necessary)
+        infer_type( c_ctx, w_ctx, function, op.ret );
+        fn = &c_ctx.functions[function]; // update ref
         for ( auto &var : op.params ) {
-            if ( fn->vars[var].type != MirVariable::Type::symbol ) {
-                infer_type( c_ctx, w_ctx, function, var );
-                if ( !enforce_type_of_variable( c_ctx, w_ctx, function, var ) )
-                    return false;
-                fn = &c_ctx.functions[function]; // update ref
-            }
+            infer_type( c_ctx, w_ctx, function, var );
+            fn = &c_ctx.functions[function]; // update ref
         }
 
         // Check if call is unambiguous and finalize it
         if ( op.type == MirEntry::Type::call ) {
+            // Enforce the types for a call earlier
+            if ( !enforce_type_of_variable( c_ctx, w_ctx, function, op.ret ) )
+                return false;
+            for ( auto &var : op.params ) {
+                if ( !enforce_type_of_variable( c_ctx, w_ctx, function, var ) )
+                    return false;
+            }
+
             if ( !infer_function_call( c_ctx, w_ctx, function, op ) )
                 return false;
             fn = &c_ctx.functions[function]; // update ref
@@ -819,6 +819,16 @@ bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function )
                 LOG_ERR( "call inference error; exactly one symbol but not finished" );
                 return false;
             }
+        }
+    }
+
+    // Enforce the types now
+    for ( auto &op : fn->ops ) {
+        if ( !enforce_type_of_variable( c_ctx, w_ctx, function, op.ret ) )
+            return false;
+        for ( auto &var : op.params ) {
+            if ( !enforce_type_of_variable( c_ctx, w_ctx, function, var ) )
+                return false;
         }
     }
     return true;
@@ -931,7 +941,7 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
                         break;
                     }
                 }
-                if ( !param_matches && fn.vars[call_op.ret].value_type.has_any_requirements() )
+                if ( !param_matches && fn.vars[call_op.ret].value_type.has_any_requirements( &c_ctx, function ) )
                     fn_matches = false; // contains no matching type
             }
         }
@@ -975,8 +985,9 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
                             break;
                         }
                     }
-                    if ( !param_matches && fn.vars[call_op.params.get_param( parameter_permutation[i] )]
-                                               .value_type.has_any_requirements() )
+                    if ( !param_matches &&
+                         fn.vars[call_op.params.get_param( parameter_permutation[i] )].value_type.has_any_requirements(
+                             &c_ctx, function ) )
                         fn_matches = false; // contains no matching type
                 }
             }
@@ -1087,6 +1098,7 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
     return true;
 }
 
+// Infers if the operation is a attribute access or a function call
 bool resolve_member_access( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &op ) {
     if ( !enforce_type_of_variable( c_ctx, w_ctx, function, op.params.get_param( 0 ) ) )
         return false;
@@ -1166,6 +1178,48 @@ bool resolve_member_access( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId funct
     return true;
 }
 
+// Selects the appropriate struct type and does member checks
+bool infer_struct_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &op ) {
+    auto &fn = c_ctx.functions[function];
+    auto &symbol_var = fn.vars[op.symbol];
+
+    // Remove symbols whose member count or member types don't match
+    symbol_var.symbol_set.erase(
+        std::remove_if( symbol_var.symbol_set.begin(), symbol_var.symbol_set.end(),
+                        [&]( auto &&s ) {
+                            auto &members = c_ctx.type_table[c_ctx.symbol_graph[s].value].members;
+                            if ( members.size() != op.params.size() )
+                                return true;
+
+                            // Check the type of every member
+                            for ( size_t i = 0; i < members.size(); i++ ) {
+                                for ( auto &requirement :
+                                      fn.vars[op.params.get_param( i )].value_type.get_all_requirements( &c_ctx,
+                                                                                                         function ) ) {
+                                    if ( !type_has_trait( c_ctx, w_ctx, members[i].value, requirement ) ) {
+                                        return true;
+                                    }
+                                }
+                            }
+
+                            return false;
+                        } ),
+        symbol_var.symbol_set.end() );
+
+    // Select one symbol
+    if ( !expect_exactly_one_symbol( c_ctx, w_ctx, symbol_var.symbol_set, *op.original_expr ) )
+        return false;
+
+    // Add type requirements
+    auto &final_type = c_ctx.type_table[c_ctx.symbol_graph[symbol_var.symbol_set.front()].value];
+    fn.vars[op.ret].value_type.add_requirement( c_ctx.symbol_graph[symbol_var.symbol_set.front()].value );
+    for ( size_t i = 0; i < op.params.size(); i++ ) {
+        fn.vars[op.params.get_param( i )].value_type.add_requirement( final_type.members[i].value );
+    }
+
+    return true;
+}
+
 bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var,
                  std::vector<MirVarId> infer_stack ) {
     if ( var == 0 )
@@ -1204,7 +1258,7 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                         break;
                     fn = &c_ctx.functions[function]; // update ref
                 }
-                if ( op.type == MirEntry::Type::member )
+                if ( op.type != MirEntry::Type::call )
                     break;
                 // fallthrough if type == MirEntry::Type::call
             case MirEntry::Type::call:
@@ -1229,6 +1283,9 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                 infer_type( c_ctx, w_ctx, function, op.params.get_param( 0 ), infer_stack );
                 fn = &c_ctx.functions[function]; // update ref
                 fn->vars[var].value_type.bind_variable( &c_ctx, function, op.params.get_param( 0 ), var );
+                break;
+            case MirEntry::Type::merge:
+                infer_struct_type( c_ctx, w_ctx, function, op ); // This will also handle parameter types
                 break;
             case MirEntry::Type::inv:
                 // fn->vars[var].value_type.add_requirement( c_ctx.boolean_type ); // TODO
@@ -1316,7 +1373,7 @@ bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId fu
     if ( fn.vars[var].value_type.is_final() )
         return true; // Final type was already specified
 
-    if ( fn.vars[var].value_type.has_unfinalized_requirements() ) {
+    if ( fn.vars[var].value_type.has_unfinalized_requirements( &c_ctx, function ) ) {
         auto typeset =
             find_common_types( c_ctx, w_ctx, fn.vars[var].value_type.get_all_requirements( &c_ctx, function ) );
         typeset.erase(
@@ -1332,7 +1389,7 @@ bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId fu
             return false;
         }
 
-        fn.vars[var].value_type.set_final_type( choose_final_type( c_ctx, w_ctx, typeset ) );
+        fn.vars[var].value_type.set_final_type( &c_ctx, function, choose_final_type( c_ctx, w_ctx, typeset ) );
     } else {
         // Still no suitable type
         w_ctx.print_msg<MessageType::err_no_suitable_type_found>(
