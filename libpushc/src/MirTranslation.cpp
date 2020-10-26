@@ -281,6 +281,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
                     }
 
                     new_parameter.type = c_ctx.symbol_graph[symbol.parent].value;
+                    new_parameter.name = "self"; // TODO load from prelude
                 } else {
                     // Normal parameter
                     auto symbol_chain = parameter_symbol->get_symbol_chain( c_ctx, w_ctx );
@@ -1168,11 +1169,12 @@ bool resolve_member_access( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId funct
             return false;
         }
 
-        op.type = MirEntry::Type::call;
+        op.type = MirEntry::Type::nop; // invalidate operation
         result_var.type = MirVariable::Type::symbol;
+        result_var.value_type.set_final_type( &c_ctx, function, c_ctx.type_type );
         result_var.base_ref = op.params.get_param( 0 );
         for ( auto &s : methods ) {
-            result_var.value_type.add_requirement( c_ctx.symbol_graph[s].value );
+            result_var.symbol_set.push_back( s );
         }
     }
     return true;
@@ -1275,9 +1277,7 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                         break;
                     fn = &c_ctx.functions[function]; // update ref
                 }
-                if ( op.type != MirEntry::Type::call )
-                    break;
-                // fallthrough if type == MirEntry::Type::call
+                break;
             case MirEntry::Type::call:
                 if ( infer_function_call( c_ctx, w_ctx, function, op, infer_stack ) ) {
                     fn = &c_ctx.functions[function]; // update ref
@@ -1343,6 +1343,10 @@ bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVar
                     }
                 }
                 fn = &c_ctx.functions[function]; // update ref
+                break;
+            case MirEntry::Type::member:
+                // The return variable will handle the member typeing
+                infer_type( c_ctx, w_ctx, function, op.ret, infer_stack );
                 break;
             case MirEntry::Type::bind:
                 // The return variable will create the binding

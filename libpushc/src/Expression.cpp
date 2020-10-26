@@ -50,6 +50,7 @@ void parse_params( CrateCtx &c_ctx, Worker &w_ctx, AstNode &node, std::vector<Sy
             if ( p.type == ExprType::self ||
                  ( p.type == ExprType::typed_op && p.named[AstChild::left_expr].type == ExprType::self ) ) {
                 sig.tmp_type_symbol = c_ctx.curr_self_type_symbol_stack.top();
+                sig.name = "self"; // TODO load from prelude
             } else {
                 if ( p.type == ExprType::typed_op ) {
                     name = &p.named[AstChild::left_expr];
