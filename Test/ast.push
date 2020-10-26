@@ -9,6 +9,9 @@ impl std::num::Integer for u16{}
 impl std::num::Integer for u32{}
 impl std::num::Integer for u64{}
 
+struct DummyIterator{}
+impl std::base::Iterator for DummyIterator{}
+
 #stub()
 #drop_handler()
 std::drop<T>(to_drop:T) -> () {
@@ -72,7 +75,13 @@ fn() -> u32 {
     let b = A{3,4};
     a.add(b);
     a.method(42);
+    fn_t(a.bar, a.foo);
     a.foo
+}
+
+fn_t<T, S> ( param1:&T, param2:&S ) -> T
+    where (T: std::num::Integer) {
+    param1
 }
 
 inc(val:u32) -> u32 { val + 1 }

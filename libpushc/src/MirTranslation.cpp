@@ -823,15 +823,18 @@ bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function )
         }
     }
 
-    // Enforce the types now
-    for ( auto &op : fn->ops ) {
-        if ( !enforce_type_of_variable( c_ctx, w_ctx, function, op.ret ) )
-            return false;
-        for ( auto &var : op.params ) {
-            if ( !enforce_type_of_variable( c_ctx, w_ctx, function, var ) )
-                return false;
-        }
+    // Infer variables which are not used
+    for ( size_t i = 1; i < fn->vars.size(); i++ ) {
+        if ( !fn->vars[i].type_inference_finished )
+            infer_type( c_ctx, w_ctx, function, i );
     }
+
+    // Enforce the types now
+    for ( size_t i = 1; i < fn->vars.size(); i++ ) {
+        if ( !enforce_type_of_variable( c_ctx, w_ctx, function, i ) )
+            return false;
+    }
+    
     return true;
 }
 
@@ -1385,8 +1388,6 @@ bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId fu
 
     if ( var == 0 )
         return false; // invalid variable
-    else if ( var == 1 )
-        return true; // unit type is already well-defined
 
     if ( fn.vars[var].type == MirVariable::Type::label )
         return true; // Skip typeless variables (labels)
