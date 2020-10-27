@@ -820,7 +820,7 @@ bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function )
     return true;
 }
 
-void resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
+bool resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
     auto *fn = &c_ctx.functions[function];
 
     // New operation container
@@ -829,6 +829,7 @@ void resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
 
     // Management data
     std::vector<MirVarId> living_vars;
+    std::vector<MirEntryId> drops_to_infer;
     for ( auto p : fn->params ) {
         living_vars.push_back( p );
     }
@@ -849,6 +850,7 @@ void resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
             c_ctx.functions[function].vars[call_var].symbol_set = c_ctx.drop_fn;
 
             new_ops.push_back( MirEntry{ fn->vars[var].original_expr, MirEntry::Type::call, 1, { var }, call_var } );
+            drops_to_infer.push_back( new_ops.size() - 1 );
 
             living_vars.erase( pos );
         }
@@ -915,6 +917,13 @@ void resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
 
     // Swap operation containers
     fn->ops.swap( new_ops );
+
+    // Infer drops
+    for ( auto v : drops_to_infer )
+        if ( !infer_function_call( c_ctx, w_ctx, function, fn->ops[v] ) )
+            return false;
+
+    return true;
 }
 
 bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,

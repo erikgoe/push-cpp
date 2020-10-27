@@ -43,7 +43,7 @@ void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId functi
 bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function );
 
 // Resolves the dropping of variables
-void resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function );
+bool resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function );
 
 // Decide which function overloading to call
 bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,
