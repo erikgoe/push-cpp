@@ -132,56 +132,30 @@ MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
     return id;
 }
 
-void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
-                    MirVarId variable ) {
-    return; // dead code TODO delete this method and all occurrences
-    /*if ( variable == 0 || variable == 1 )
-        return;
+void purge_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
+                     std::vector<MirVarId> variables ) {
+    ParamContainer params;
+    params.reserve( variables.size() );
+    for ( auto &v : variables ) {
+        if ( v != 0 && v != 1 )
+            params.push_back( v );
 
-    auto &var = c_ctx.functions[function].vars[variable];
-
-    // Create drop operation
-    if ( var.type == MirVariable::Type::value || var.type == MirVariable::Type::rvalue ) {
-        auto op = MirEntry{ &original_expr, MirEntry::Type::call, 1, { variable }, c_ctx.drop_fn };
-        c_ctx.functions[function].ops.push_back( op );
-    }
-
-    // Remove from living variables
-    remove_from_local_living_vars( c_ctx, w_ctx, function, original_expr, variable );*/
-}
-
-void remove_from_local_living_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
-                                    MirVarId variable ) {
-    if ( variable == 0 || variable == 1 )
-        return;
-
-    auto &var = c_ctx.functions[function].vars[variable];
-
-    for ( auto itr = c_ctx.curr_living_vars.rbegin(); itr != c_ctx.curr_living_vars.rend(); itr++ ) {
-        if ( auto var_itr = std::find( itr->begin(), itr->end(), variable ); var_itr != itr->end() ) {
-            itr->erase( var_itr );
-            break;
-        }
-    }
-
-    // Remove from name mapping
-    if ( !var.name.empty() ) {
-        for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
-            if ( auto var_itr = itr->find( var.name ); var_itr != itr->end() ) {
-                var_itr->second.pop_back();
-                if ( var_itr->second.empty() )
-                    itr->erase( var_itr );
-                break;
+        // Remove from name mapping
+        auto &var = c_ctx.functions[function].vars[v];
+        if ( !var.name.empty() ) {
+            for ( auto itr = c_ctx.curr_name_mapping.rbegin(); itr != c_ctx.curr_name_mapping.rend(); itr++ ) {
+                if ( auto var_itr = itr->find( var.name ); var_itr != itr->end() ) {
+                    var_itr->second.pop_back();
+                    if ( var_itr->second.empty() )
+                        itr->erase( var_itr );
+                    break;
+                }
             }
         }
     }
 
-    // Add to drop list
-    if ( c_ctx.functions[function].drop_list.size() <= variable )
-        c_ctx.functions[function].drop_list.resize( variable + 1 );
-    if ( c_ctx.functions[function].drop_list[variable].second == nullptr )
-        c_ctx.functions[function].drop_list[variable] =
-            std::make_pair( c_ctx.functions[function].vars[variable].name, &original_expr );
+    auto op = MirEntry{ &original_expr, MirEntry::Type::purge, 1, params };
+    c_ctx.functions[function].ops.push_back( op );
 }
 
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function ) {
@@ -428,24 +402,26 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
     c_ctx.functions[func_id].ret = expr.children.front().parse_mir( c_ctx, w_ctx, func_id );
     function = &c_ctx.functions[func_id]; // update ref
 
-    // Add return operation
-    create_operation( c_ctx, w_ctx, func_id, *function->vars[function->ret].original_expr, MirEntry::Type::ret,
-                      function->ret, {} );
-
     // Drop parameters
     bool annotation_is_drop = std::find( symbol.compiler_annotations.begin(), symbol.compiler_annotations.end(),
                                          "drop_handler" ) != symbol.compiler_annotations.end();
     if ( !annotation_is_drop ) {
         for ( auto p_itr = function->params.rbegin(); p_itr != function->params.rend(); p_itr++ ) {
-            drop_variable( c_ctx, w_ctx, func_id, expr, *p_itr );
+            if ( *p_itr != function->ret && function->vars[*p_itr].type != MirVariable::Type::p_ref )
+                purge_variable( c_ctx, w_ctx, func_id, expr, { *p_itr } );
         }
     }
+
+    // Add return operation
+    create_operation( c_ctx, w_ctx, func_id, *function->vars[function->ret].original_expr, MirEntry::Type::ret,
+                      function->ret, {} );
 
     // Infer all types and function calls
     infer_operations( c_ctx, w_ctx, func_id );
     function = &c_ctx.functions[func_id]; // update ref
 
-    // TODO handle drops
+    // Handle drops
+    resolve_drops( c_ctx, w_ctx, func_id );
 
     // Check and set signature
     bool annotation_is_stub = std::find( symbol.compiler_annotations.begin(), symbol.compiler_annotations.end(),
@@ -569,6 +545,8 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "call";
                 else if ( op.type == MirEntry::Type::bind )
                     str = "bind";
+                else if ( op.type == MirEntry::Type::purge )
+                    str = "purge";
                 else if ( op.type == MirEntry::Type::member )
                     str = "member";
                 else if ( op.type == MirEntry::Type::merge )
@@ -587,7 +565,11 @@ void get_mir( JobsBuilder &jb, UnitCtx &parent_ctx ) {
                     str = "UNKNOWN COMMAND";
 
                 if ( op.symbol != 0 )
-                    str += get_var_name( op.symbol );
+                    str += get_var_name( op.symbol ) + "\"" +
+                           ( fn.vars[op.symbol].symbol_set.empty()
+                                 ? "<none>"
+                                 : get_full_symbol_name( *c_ctx, w_ctx, fn.vars[op.symbol].symbol_set.front() ) ) +
+                           "\"";
 
                 if ( op.intrinsic != MirIntrinsic::none )
                     str += " intrinsic " + to_string( static_cast<u32>( op.intrinsic ) );
@@ -834,8 +816,105 @@ bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function )
         if ( !enforce_type_of_variable( c_ctx, w_ctx, function, i ) )
             return false;
     }
-    
+
     return true;
+}
+
+void resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
+    auto *fn = &c_ctx.functions[function];
+
+    // New operation container
+    std::vector<MirEntry> new_ops;
+    new_ops.reserve( fn->ops.size() + fn->vars.size() );
+
+    // Management data
+    std::vector<MirVarId> living_vars;
+    for ( auto p : fn->params ) {
+        living_vars.push_back( p );
+    }
+
+    // Helper functions
+    auto remove_from_living_vars = [&]( MirVarId var ) {
+        auto pos = std::find( living_vars.begin(), living_vars.end(), var );
+        if ( pos != living_vars.end() )
+            living_vars.erase( pos );
+    };
+    auto drop_var = [&]( MirVarId var ) {
+        auto pos = std::find( living_vars.begin(), living_vars.end(), var );
+        if ( pos != living_vars.end() ) {
+            // Create call var
+            auto call_var = create_variable( c_ctx, w_ctx, function, fn->vars[var].original_expr );
+            c_ctx.functions[function].vars[call_var].type = MirVariable::Type::symbol;
+            c_ctx.functions[function].vars[call_var].value_type.set_final_type( &c_ctx, function, c_ctx.type_type );
+            c_ctx.functions[function].vars[call_var].symbol_set = c_ctx.drop_fn;
+
+            new_ops.push_back( MirEntry{ fn->vars[var].original_expr, MirEntry::Type::call, 1, { var }, call_var } );
+
+            living_vars.erase( pos );
+        }
+    };
+
+    for ( auto &op : fn->ops ) {
+        // Copy the operation if reasonable
+        if ( op.type != MirEntry::Type::nop && op.type != MirEntry::Type::purge )
+            new_ops.push_back( op );
+
+        // Manage variables of the operation
+        switch ( op.type ) {
+        case MirEntry::Type::purge:
+            // Handle drops
+            for ( size_t i = 0; i < op.params.size(); i++ ) {
+                if ( op.params.get_param( i ) > 1 )
+                    drop_var( op.params.get_param( i ) );
+            }
+            break;
+        case MirEntry::Type::intrinsic:
+        case MirEntry::Type::literal:
+        case MirEntry::Type::call:
+        case MirEntry::Type::bind:
+        case MirEntry::Type::merge:
+            // Handle parameter life
+            if ( op.type == MirEntry::Type::call ) {
+                if ( fn->vars[op.symbol].symbol_set.size() != 1 )
+                    break;
+                auto &symbol = c_ctx.symbol_graph[fn->vars[op.symbol].symbol_set.front()];
+
+                for ( size_t i = 0; i < op.params.size(); i++ ) {
+                    if ( op.params.get_param( i ) > 1 && !symbol.identifier.parameters[i].ref ) {
+                        // Variable has been moved
+
+                        // Drop referenced vars
+                        if ( fn->vars[op.params.get_param( i )].type == MirVariable::Type::l_ref ) {
+                            remove_from_living_vars( fn->vars[op.params.get_param( i )].ref );
+                        }
+
+                        remove_from_living_vars( op.params.get_param( i ) );
+                    } else if ( fn->vars[op.params.get_param( i )].type == MirVariable::Type::rvalue ) {
+                        // Rvalues require an additional drop
+                        drop_var( op.params.get_param( i ) );
+                    }
+                }
+            } else if ( op.type == MirEntry::Type::bind || op.type == MirEntry::Type::merge ) {
+                for ( auto &p : op.params ) {
+                    if ( p > 1 ) {
+                        // Variable has been moved
+                        remove_from_living_vars( p );
+                    }
+                }
+            }
+
+            // Introduce new variables
+            if ( op.ret > 1 )
+                living_vars.push_back( op.ret );
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    // Swap operation containers
+    fn->ops.swap( new_ops );
 }
 
 bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,

@@ -32,19 +32,18 @@ MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_f
 MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode *original_expr,
                           const String &name = "" );
 
-// Destroys a local variable in a function
-void drop_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
-                    MirVarId variable );
-
-// Call this e. g. when a variable is moved
-void remove_from_local_living_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
-                                    MirVarId variable );
+// Removes one or multiple variables from the context
+void purge_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, AstNode &original_expr,
+                     std::vector<MirVarId> variables );
 
 // Analyses the function signature and updates the type if necessary
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function );
 
 // Resolves the mir operations of a function and initiates type inference
 bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function );
+
+// Resolves the dropping of variables
+void resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function );
 
 // Decide which function overloading to call
 bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,

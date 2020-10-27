@@ -1293,7 +1293,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             for ( auto expr = children.begin(); expr != children.end() - 1; expr++ ) {
                 auto var = expr->parse_mir( c_ctx, w_ctx, func );
                 if ( c_ctx.functions[func].vars[var].type == MirVariable::Type::rvalue ) {
-                    drop_variable( c_ctx, w_ctx, func, *expr, var ); // drop dangling rvalue
+                    purge_variable( c_ctx, w_ctx, func, *expr, { var } ); // drop dangling rvalue
                 }
             }
         }
@@ -1302,12 +1302,13 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         }
         ret = children.back().parse_mir( c_ctx, w_ctx, func );
 
-        // Drop all created variables
-        for ( auto var_itr = c_ctx.curr_living_vars.back().rbegin(); var_itr != c_ctx.curr_living_vars.back().rend();
-              var_itr++ ) {
-            if ( *var_itr != ret )
-                drop_variable( c_ctx, w_ctx, func, *this, *var_itr );
-        }
+        // Drop all created variables (except ret) in reverse order
+        std::vector<MirVarId> to_drop;
+        to_drop.reserve( c_ctx.curr_living_vars.back().size() );
+        for ( auto itr = c_ctx.curr_living_vars.back().rbegin(); itr != c_ctx.curr_living_vars.back().rend(); itr++ )
+            if ( *itr != ret )
+                to_drop.push_back( *itr );
+        purge_variable( c_ctx, w_ctx, func, *this, to_drop );
 
         c_ctx.curr_name_mapping.pop_back();
         c_ctx.curr_living_vars.pop_back();
@@ -1501,12 +1502,12 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Body
         auto head = named[AstChild::cond].bind_vars( c_ctx, w_ctx, func, var, *this, true );
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
-        drop_variable( c_ctx, w_ctx, func, *this, head );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
+        purge_variable( c_ctx, w_ctx, func, *this, { head } );
 
         // Insert label
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label, {} );
-        drop_variable( c_ctx, w_ctx, func, *this, cond );
+        purge_variable( c_ctx, w_ctx, func, *this, { cond } );
 
         break; // return the unit var
     }
@@ -1528,18 +1529,18 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Body
         auto head = named[AstChild::cond].bind_vars( c_ctx, w_ctx, func, var, *this, true );
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
-        drop_variable( c_ctx, w_ctx, func, *this, head );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
+        purge_variable( c_ctx, w_ctx, func, *this, { head } );
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label2, {} );
 
         // Else block
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label1, {} );
         body_var = children[1].parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
 
         // Insert label
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label2, {} );
-        drop_variable( c_ctx, w_ctx, func, *this, cond );
+        purge_variable( c_ctx, w_ctx, func, *this, { cond } );
 
         break; // return the unit var
     }
@@ -1556,11 +1557,11 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Body
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
 
         // Insert label
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label, {} );
-        drop_variable( c_ctx, w_ctx, func, *this, cond );
+        purge_variable( c_ctx, w_ctx, func, *this, { cond } );
 
         break; // return the unit var
     }
@@ -1579,17 +1580,17 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Body
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label2, {} );
 
         // Else block
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label1, {} );
         body_var = children[1].parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
 
         // Insert label
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, label2, {} );
-        drop_variable( c_ctx, w_ctx, func, *this, cond );
+        purge_variable( c_ctx, w_ctx, func, *this, { cond } );
 
         break; // return the unit var
     }
@@ -1607,16 +1608,16 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Insert conditional jump
         if ( !continue_eval ) {
             auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { cond } );
-            drop_variable( c_ctx, w_ctx, func, *this, cond );
+            purge_variable( c_ctx, w_ctx, func, *this, { cond } );
             cond = c_ctx.functions[func].ops[op_id].ret;
         }
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, label2, { cond } );
 
         // Body
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
 
-        drop_variable( c_ctx, w_ctx, func, *this, cond );
+        purge_variable( c_ctx, w_ctx, func, *this, { cond } );
 
         // Jump back to condition
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label1, {} );
@@ -1632,7 +1633,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Body
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
 
         // Evaluate expr
         auto cond = named[AstChild::cond].parse_mir( c_ctx, w_ctx, func );
@@ -1640,11 +1641,11 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         // Insert conditional jump
         if ( continue_eval ) {
             auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { cond } );
-            drop_variable( c_ctx, w_ctx, func, *this, cond );
+            purge_variable( c_ctx, w_ctx, func, *this, { cond } );
             cond = c_ctx.functions[func].ops[op_id].ret;
         }
         auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::cond], MirEntry::Type::bind, 0, { cond } );
-        drop_variable( c_ctx, w_ctx, func, *this, cond );
+        purge_variable( c_ctx, w_ctx, func, *this, { cond } );
         cond = c_ctx.functions[func].ops[op_id].ret;
         c_ctx.functions[func].vars[cond].type =
             MirVariable::Type::not_dropped; // temporary var which must not be dropped
@@ -1660,7 +1661,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Body
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
 
         // Infinit jump back
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, label, {} );
@@ -1727,7 +1728,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         auto cond = create_call( c_ctx, w_ctx, func, named[AstChild::itr], call_var, 0, { iterator } );
 
         auto op_id = create_operation( c_ctx, w_ctx, func, named[AstChild::itr], MirEntry::Type::bind, 0, { cond } );
-        drop_variable( c_ctx, w_ctx, func, named[AstChild::itr], cond );
+        purge_variable( c_ctx, w_ctx, func, named[AstChild::itr], { cond } );
         cond = c_ctx.functions[func].ops[op_id].ret;
         c_ctx.functions[func].vars[cond].type =
             MirVariable::Type::not_dropped; // temporary var which must not be dropped
@@ -1750,11 +1751,11 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Body
         auto body_var = children.front().parse_mir( c_ctx, w_ctx, func );
-        drop_variable( c_ctx, w_ctx, func, *this, body_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { body_var } );
 
         // Drop binding
         if ( binding != 0 ) {
-            drop_variable( c_ctx, w_ctx, func, *this, binding );
+            purge_variable( c_ctx, w_ctx, func, *this, { binding } );
         }
 
         // Increment iterator
@@ -1766,7 +1767,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         c_ctx.functions[func].vars[call_var].symbol_set = { c_ctx.type_table[c_ctx.itr_next_fn].symbol };
 
         op_id = create_call( c_ctx, w_ctx, func, *this, call_var, 0, { iterator } );
-        drop_variable( c_ctx, w_ctx, func, *this, c_ctx.functions[func].ops[op_id].ret );
+        purge_variable( c_ctx, w_ctx, func, *this, { c_ctx.functions[func].ops[op_id].ret } );
 
         // Jump back loop
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, loop_label, {} );
@@ -1775,9 +1776,9 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, end_label, {} );
 
         // Drop stuff
-        drop_variable( c_ctx, w_ctx, func, *this, iterator );
+        purge_variable( c_ctx, w_ctx, func, *this, { iterator } );
         if ( binding != 0 ) {
-            drop_variable( c_ctx, w_ctx, func, *this, right_result );
+            purge_variable( c_ctx, w_ctx, func, *this, { right_result } );
         }
 
         break; // return the unit var
@@ -1809,7 +1810,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 entry.named[AstChild::left_expr].check_deconstruction( c_ctx, w_ctx, func, tmp_selector, *this );
 
             auto op_id = create_operation( c_ctx, w_ctx, func, entry, MirEntry::Type::bind, 0, { check_var } );
-            drop_variable( c_ctx, w_ctx, func, *this, check_var );
+            purge_variable( c_ctx, w_ctx, func, *this, { check_var } );
             check_var = c_ctx.functions[func].ops[op_id].ret;
             c_ctx.functions[func].vars[check_var].type =
                 MirVariable::Type::not_dropped; // temporary var which must not be dropped
@@ -1820,7 +1821,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             entry.named[AstChild::left_expr].bind_vars( c_ctx, w_ctx, func, tmp_selector, *this, true );
             auto result = entry.named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, ret, { result } );
-            drop_variable( c_ctx, w_ctx, func, *this, result );
+            purge_variable( c_ctx, w_ctx, func, *this, { result } );
 
             // Jump out
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::jmp, end_label, {} );
@@ -1830,7 +1831,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, end_label, {} );
 
-        remove_from_local_living_vars( c_ctx, w_ctx, func, *this, selector );
+        purge_variable( c_ctx, w_ctx, func, *this, { selector } );
         break;
     }
     case ExprType::self: {
@@ -1886,9 +1887,11 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             c_ctx.functions[func].ops[merge_op_id].symbol = struct_var;
 
             // Drop vars if necessary
-            /*for ( size_t i = vars.size() - 1; i >= 0; i-- ) {
-                drop_variable( c_ctx, w_ctx, func, children.front(), vars.get_param( i ) );
-            }*/
+            for ( size_t i = vars.size() - 1; i >= 0; i-- ) {
+                purge_variable( c_ctx, w_ctx, func, children.front(), { vars.get_param( i ) } );
+                if ( i == 0 )
+                    break;
+            }
         }
 
         break;
@@ -2023,7 +2026,7 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     case ExprType::scope_access:
     case ExprType::array_access:
     case ExprType::template_postfix: {
-        remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { in_var } );
         break; // allowed but return 0
     }
     case ExprType::atomic_symbol: {
@@ -2039,7 +2042,7 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Bind var
         create_operation( c_ctx, w_ctx, func, bind_expr, MirEntry::Type::bind, ret, { in_var } );
-        remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
+        purge_variable( c_ctx, w_ctx, func, *this, { in_var } );
 
         c_ctx.functions[func].vars[ret].type = MirVariable::Type::value;
 
@@ -2076,7 +2079,7 @@ MirVarId AstNode::bind_vars( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
                 entry.bind_vars( c_ctx, w_ctx, func, c_ctx.functions[func].ops[op_id].ret, *this,
                                  checked_deconstruction );
             }
-            remove_from_local_living_vars( c_ctx, w_ctx, func, *this, in_var );
+            purge_variable( c_ctx, w_ctx, func, *this, { in_var } );
         }
 
         break;
@@ -2139,7 +2142,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
 
             auto right_result = named[AstChild::right_expr].parse_mir( c_ctx, w_ctx, func );
             auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, 0, { right_result } );
-            drop_variable( c_ctx, w_ctx, func, *this, right_result );
+            purge_variable( c_ctx, w_ctx, func, *this, { right_result } );
             right_result = c_ctx.functions[func].ops[op_id].ret;
             c_ctx.functions[func].vars[right_result].type =
                 MirVariable::Type::not_dropped; // temporary var which must not be dropped
@@ -2161,7 +2164,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
             c_ctx.functions[func].ops[op_id].data = c_ctx.false_val;
 
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
-            drop_variable( c_ctx, w_ctx, func, *this, left_result );
+            purge_variable( c_ctx, w_ctx, func, *this, { left_result } );
 
             break;
         } else if ( token.content == "||" ) { // TODO move this into the prelude
@@ -2185,7 +2188,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
 
             if ( right_result != 0 ) {
                 auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::inv, 0, { right_result } );
-                drop_variable( c_ctx, w_ctx, func, *this, right_result );
+                purge_variable( c_ctx, w_ctx, func, *this, { right_result } );
                 c_ctx.functions[func].vars[c_ctx.functions[func].ops[op_id].ret].type =
                     MirVariable::Type::not_dropped; // temporary var which must not be dropped
                 create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::cond_jmp_z, eval_true_label,
@@ -2211,7 +2214,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
             create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::label, eval_end_label, {} );
 
             if ( left_result != 0 )
-                drop_variable( c_ctx, w_ctx, func, *this, left_result );
+                purge_variable( c_ctx, w_ctx, func, *this, { left_result } );
             break;
         }
 
@@ -2288,7 +2291,7 @@ MirVarId AstNode::check_deconstruction( CrateCtx &c_ctx, Worker &w_ctx, Function
                 // Handle check
                 if ( binding != 0 ) {
                     auto op_id = create_operation( c_ctx, w_ctx, func, *this, MirEntry::Type::bind, 0, { binding } );
-                    drop_variable( c_ctx, w_ctx, func, *this, binding );
+                    purge_variable( c_ctx, w_ctx, func, *this, { binding } );
                     binding = c_ctx.functions[func].ops[op_id].ret;
                     c_ctx.functions[func].vars[binding].type =
                         MirVariable::Type::not_dropped; // temporary var which must not be dropped

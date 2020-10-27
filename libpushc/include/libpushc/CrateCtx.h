@@ -291,6 +291,7 @@ struct MirEntry {
         type, // type binding
         call, // function call
         bind, // assign/move a variable into another
+        purge, // remove given variables
         member, // member access
         merge, // combine vars to a struct
         label, // label declaration

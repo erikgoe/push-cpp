@@ -64,17 +64,18 @@ impl op::Add for A {
 }
 
 impl A {
-    method(self:&Self) -> () {}
-    method(self:&Self, var:u32) -> () {}
+    method(self:&Self) {}
+    method(self:&Self, var:u32) {}
 }
 
-//println(str:std::str::String) -> () {}
+//println(str:std::str::String) {}
 
 fn() -> u32 {
     let a = A{1,2};
     let b = A{3,4};
     a.add(b);
-    a.method(42);
+    let a = A{1,2};
+    a.method();
     fn_t(a.bar, a.foo);
     a.foo
 }
