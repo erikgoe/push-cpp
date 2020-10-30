@@ -830,17 +830,19 @@ bool resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
     // Management data
     std::vector<MirVarId> living_vars;
     std::vector<MirEntryId> drops_to_infer;
+    std::vector<MirEntryId> drop_positions( fn->vars.size() );
     for ( auto p : fn->params ) {
         living_vars.push_back( p );
     }
 
     // Helper functions
-    auto remove_from_living_vars = [&]( MirVarId var ) {
+    auto remove_from_living_vars = [&]( MirVarId var, MirEntryId position ) {
         auto pos = std::find( living_vars.begin(), living_vars.end(), var );
         if ( pos != living_vars.end() )
             living_vars.erase( pos );
+        drop_positions[var] = position;
     };
-    auto drop_var = [&]( MirVarId var ) {
+    auto drop_var = [&]( MirVarId var, MirEntryId position ) {
         auto pos = std::find( living_vars.begin(), living_vars.end(), var );
         if ( pos != living_vars.end() ) {
             // Create call var
@@ -853,10 +855,13 @@ bool resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
             drops_to_infer.push_back( new_ops.size() - 1 );
 
             living_vars.erase( pos );
+            drop_positions[var] = position;
         }
     };
 
-    for ( auto &op : fn->ops ) {
+    for ( size_t op_i = 0; op_i < fn->ops.size(); op_i++ ) {
+        auto &op = fn->ops[op_i];
+
         // Copy the operation if reasonable
         if ( op.type != MirEntry::Type::nop && op.type != MirEntry::Type::purge )
             new_ops.push_back( op );
@@ -867,7 +872,7 @@ bool resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
             // Handle drops
             for ( size_t i = 0; i < op.params.size(); i++ ) {
                 if ( op.params.get_param( i ) > 1 )
-                    drop_var( op.params.get_param( i ) );
+                    drop_var( op.params.get_param( i ), op_i );
             }
             break;
         case MirEntry::Type::intrinsic:
@@ -875,6 +880,7 @@ bool resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
         case MirEntry::Type::call:
         case MirEntry::Type::bind:
         case MirEntry::Type::merge:
+        case MirEntry::Type::member:
             // Handle parameter life
             if ( op.type == MirEntry::Type::call ) {
                 if ( fn->vars[op.symbol].symbol_set.size() != 1 )
@@ -882,25 +888,38 @@ bool resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function ) {
                 auto &symbol = c_ctx.symbol_graph[fn->vars[op.symbol].symbol_set.front()];
 
                 for ( size_t i = 0; i < op.params.size(); i++ ) {
-                    if ( op.params.get_param( i ) > 1 && !symbol.identifier.parameters[i].ref ) {
-                        // Variable has been moved
-
-                        // Drop referenced vars
-                        if ( fn->vars[op.params.get_param( i )].type == MirVariable::Type::l_ref ) {
-                            remove_from_living_vars( fn->vars[op.params.get_param( i )].ref );
+                    if ( op.params.get_param( i ) > 1 ) {
+                        // First check if variable is still living
+                        if ( std::find( living_vars.begin(), living_vars.end(), op.params.get_param( i ) ) ==
+                             living_vars.end() ) {
+                            w_ctx.print_msg<MessageType::err_var_not_living>(
+                                MessageInfo( *op.original_expr, 0, FmtStr::Color::Red ),
+                                { MessageInfo( *fn->ops[drop_positions[op.params.get_param( i )]].original_expr,
+                                               1 ) } );
+                            continue;
                         }
 
-                        remove_from_living_vars( op.params.get_param( i ) );
-                    } else if ( fn->vars[op.params.get_param( i )].type == MirVariable::Type::rvalue ) {
-                        // Rvalues require an additional drop
-                        drop_var( op.params.get_param( i ) );
+                        // Handle drop
+                        if ( !symbol.identifier.parameters[i].ref ) {
+                            // Variable has been moved
+
+                            // Drop referenced vars
+                            if ( fn->vars[op.params.get_param( i )].type == MirVariable::Type::l_ref ) {
+                                remove_from_living_vars( fn->vars[op.params.get_param( i )].ref, op_i );
+                            }
+
+                            remove_from_living_vars( op.params.get_param( i ), op_i );
+                        } else if ( fn->vars[op.params.get_param( i )].type == MirVariable::Type::rvalue ) {
+                            // Rvalues require an additional drop
+                            drop_var( op.params.get_param( i ), op_i );
+                        }
                     }
                 }
             } else if ( op.type == MirEntry::Type::bind || op.type == MirEntry::Type::merge ) {
                 for ( auto &p : op.params ) {
                     if ( p > 1 ) {
                         // Variable has been moved
-                        remove_from_living_vars( p );
+                        remove_from_living_vars( p, op_i );
                     }
                 }
             }

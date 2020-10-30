@@ -199,7 +199,7 @@ MESSAGE_DEFINITION( MessageType::err_member_in_invalid_scope, MessageClass::Erro
 MESSAGE_DEFINITION( MessageType::err_multiple_fn_definitions, MessageClass::Error, "C",
                     "Found multiple definitions of the same function", "first definition", "other definition" );
 MESSAGE_DEFINITION( MessageType::err_var_not_living, MessageClass::Error, "C",
-                    "Tried to access a variable outside of its lifetime", "this variable", "dropped here" );
+                    "Tried to access a variable outside of its lifetime", "in this operation", "dropped here" );
 MESSAGE_DEFINITION( MessageType::err_local_variable_scoped, MessageClass::Error, "C",
                     "Local variable name with scope operator", "only simple identifiers allowed" );
 MESSAGE_DEFINITION(
