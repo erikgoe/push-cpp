@@ -39,23 +39,11 @@ void purge_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, As
 // Analyses the function signature and updates the type if necessary
 void analyse_function_signature( CrateCtx &c_ctx, Worker &w_ctx, SymbolId function );
 
+// Creates a function from a FuncExpr specified by @param symbolId
+void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol_id );
+
 // Resolves the mir operations of a function and initiates type inference
 bool infer_operations( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function );
 
 // Resolves the dropping of variables
 bool resolve_drops( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function );
-
-// Decide which function overloading to call
-bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirEntry &call_op,
-                          std::vector<MirVarId> infer_stack = std::vector<MirVarId>() );
-
-// Checks and infers types of variables inside a function. Returns false on error
-bool infer_type( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var,
-                 std::vector<MirVarId> infer_stack = std::vector<MirVarId>() );
-
-// Chooses the final type of possible candidates, returns 0 when no selection can be done
-TypeId choose_final_type( CrateCtx &c_ctx, Worker &w_ctx, std::vector<TypeId> types );
-
-// Finally selects a type for a variable with a minimal bounds. Requires that infer_type has already be called on the
-// variable
-bool enforce_type_of_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId function, MirVarId var );

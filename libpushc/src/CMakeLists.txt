@@ -13,6 +13,7 @@ add_library(${LIB_NAME}
     Prelude.cpp
     SymbolParser.cpp
     SymbolUtil.cpp
+    TypeInference.cpp
     Util.cpp
 )
 
