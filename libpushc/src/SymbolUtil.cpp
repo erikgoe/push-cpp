@@ -375,7 +375,6 @@ void delete_symbol( CrateCtx &c_ctx, Worker &w_ctx, SymbolId to_delete ) {
             fn.type = 0;
             fn.ops.clear();
             fn.vars.clear();
-            fn.drop_list.clear();
         }
         type.function_body = 0;
     }

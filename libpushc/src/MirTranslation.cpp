@@ -25,31 +25,6 @@ MirEntryId create_operation( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
         return_var = create_variable( c_ctx, w_ctx, function, &original_expr, "" );
     }
 
-    // Check if parameters are valid
-    /*for ( auto &param : parameters ) {
-        bool valid = false;
-        for ( auto itr = c_ctx.curr_living_vars.rbegin(); itr != c_ctx.curr_living_vars.rend(); itr++ ) {
-            if ( std::find( itr->begin(), itr->end(), param ) != itr->end() ) {
-                // Variable is accessible
-                valid = true;
-                break;
-            }
-        }
-        if ( !valid ) {
-            auto original_expr = c_ctx.functions[function].vars[param].original_expr;
-            auto drop_expr = c_ctx.functions[function].drop_list[param].second;
-            if ( !original_expr ) {
-                LOG_ERR( "Unit variable accessed out of its lifetime" );
-            } else if ( !drop_expr ) {
-                LOG_ERR( "Variable dropped at unknown expr" );
-            } else {
-                // TODO test this
-                w_ctx.print_msg<MessageType::err_var_not_living>( MessageInfo( *original_expr, 0, FmtStr::Color::Red ),
-                                                                  { MessageInfo( *drop_expr, 1 ) } );
-            }
-        }
-    }*/
-
     auto operation = MirEntry{ &original_expr, type, return_var, parameters };
     c_ctx.functions[function].ops.push_back( operation );
     return c_ctx.functions[function].ops.size() - 1;
@@ -76,46 +51,6 @@ MirEntryId create_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId calling_f
     op.symbol = symbol_var;
     caller->vars[op.ret].type = MirVariable::Type::rvalue;
 
-    // Infer the function call as good as possible
-    /*if ( infer_function_call( c_ctx, w_ctx, calling_function, op ) ) {
-        caller = &c_ctx.functions[calling_function]; // update ref
-
-        // Handle parameter remains
-        for ( size_t i = 0; i < parameters.size(); i++ ) {
-            bool is_ref = c_ctx.symbol_graph[caller->ops[op_id].symbols.front()].identifier.parameters[i].ref;
-            // Test if the borrowing behaviour of all possible functions match
-            for ( auto &s : caller->ops[op_id].symbols ) {
-                if ( is_ref != c_ctx.symbol_graph[s].identifier.parameters[i].ref ) {
-                    // Function signatures differ to much
-                    w_ctx.print_msg<MessageType::err_multiple_suitable_functions_for_parameter_ref>(
-                        MessageInfo( original_expr, 0, FmtStr::Color::Red ),
-                        generate_error_messages_of_symbols( c_ctx, w_ctx, caller->ops[op_id].symbols ), i );
-                    break;
-                    // TODO maybe add an enforce_type_of_variable() enforcement to still be able to select a function
-                }
-            }
-
-            if ( is_ref ) {
-                // Reference parameter expected
-                if ( caller->vars[parameters.get_param( i )].type == MirVariable::Type::rvalue ) {
-                    drop_variable( c_ctx, w_ctx, calling_function, original_expr, parameters.get_param( i ) );
-                }
-            } else {
-                // Parameter moved
-
-                // Drop referenced vars
-                if ( caller->vars[parameters.get_param( i )].type == MirVariable::Type::l_ref ) {
-                    remove_from_local_living_vars( c_ctx, w_ctx, calling_function, original_expr,
-                                                   caller->vars[parameters.get_param( i )].ref );
-                }
-
-                // Remove from living variables
-                remove_from_local_living_vars( c_ctx, w_ctx, calling_function, original_expr,
-                                               parameters.get_param( i ) );
-            }
-        }
-    }*/
-
     return op_id;
 }
 
@@ -125,7 +60,7 @@ MirVarId create_variable( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
     c_ctx.functions[function].vars.emplace_back();
     c_ctx.functions[function].vars[id].name = name;
     c_ctx.functions[function].vars[id].original_expr = original_expr;
-    c_ctx.curr_living_vars.back().push_back( id );
+    c_ctx.curr_vars_stack.back().push_back( id );
     if ( !name.empty() ) {
         c_ctx.curr_name_mapping.back()[name].push_back( id );
     }
@@ -350,8 +285,8 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
         return;
     }
 
-    c_ctx.curr_living_vars.clear();
-    c_ctx.curr_living_vars.emplace_back();
+    c_ctx.curr_vars_stack.clear();
+    c_ctx.curr_vars_stack.emplace_back();
     c_ctx.curr_name_mapping.clear();
     c_ctx.curr_name_mapping.emplace_back();
 
@@ -383,7 +318,7 @@ void generate_mir_function_impl( CrateCtx &c_ctx, Worker &w_ctx, SymbolId symbol
             function->vars[id].type = MirVariable::Type::value;
 
         c_ctx.curr_name_mapping.back()[function->vars[id].name].push_back( id );
-        c_ctx.curr_living_vars.back().push_back( id );
+        c_ctx.curr_vars_stack.back().push_back( id );
     }
 
     // Self parameter
@@ -635,35 +570,6 @@ bool type_has_trait( CrateCtx &c_ctx, Worker &w_ctx, TypeId type, TypeId trait )
         return false;
     }
 }
-
-/*
-// Creates the set intersection of all types of the @param types and find the widest matching trait. This _is_ a
-// projection! i. e. f^2==f
-std::vector<TypeId> find_widest_common_traits( CrateCtx &c_ctx, Worker &w_ctx, std::vector<TypeId> types ) {
-    std::vector<TypeId> typeset;
-    auto common_types = find_common_types( c_ctx, w_ctx, types );
-
-    // Select the supertypes whose subtypes match exactly common_types
-    for ( auto t : common_types ) {
-        for ( auto supertype : c_ctx.type_table[t].supertypes ) {
-            if ( common_types.size() == c_ctx.type_table[supertype].subtypes.size() ) {
-                auto &subtypes = c_ctx.type_table[supertype].subtypes;
-                std::sort( subtypes.begin(), subtypes.end() );
-                subtypes.erase( std::unique( subtypes.begin(), subtypes.end() ), subtypes.end() );
-                if ( subtypes == common_types ) {
-                    // sets match
-                    typeset.push_back( supertype );
-                }
-            }
-        }
-    }
-
-    // Sort and filter set
-    std::sort( typeset.begin(), typeset.end() );
-    typeset.erase( std::unique( typeset.begin(), typeset.end() ), typeset.end() );
-
-    return typeset;
-}*/
 
 // Creates the set intersection of all subtypes of the @param types. This is not a projection! i. e. f^2!=f
 std::vector<TypeId> find_common_types( CrateCtx &c_ctx, Worker &w_ctx, std::vector<TypeId> types ) {
@@ -1002,7 +908,7 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
                     if ( !c_ctx.symbol_graph[s].signature_evaluation_ongoing ) {
                         // TODO fix this better
                         // Save context to restore
-                        auto tmp_curr_living_vars = c_ctx.curr_living_vars;
+                        auto tmp_curr_living_vars = c_ctx.curr_vars_stack;
                         auto tmp_curr_name_mapping = c_ctx.curr_name_mapping;
                         auto tmp_curr_self_var = c_ctx.curr_self_var;
                         auto tmp_curr_self_type = c_ctx.curr_self_type;
@@ -1010,7 +916,7 @@ bool infer_function_call( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId functio
                         generate_mir_function_impl( c_ctx, w_ctx, s );
 
                         // Restore context
-                        c_ctx.curr_living_vars = tmp_curr_living_vars;
+                        c_ctx.curr_vars_stack = tmp_curr_living_vars;
                         c_ctx.curr_name_mapping = tmp_curr_name_mapping;
                         c_ctx.curr_self_var = tmp_curr_self_var;
                         c_ctx.curr_self_type = tmp_curr_self_type;

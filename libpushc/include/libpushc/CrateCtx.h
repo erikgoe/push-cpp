@@ -354,7 +354,6 @@ struct FunctionImpl {
 
     std::vector<MirEntry> ops; // instructions
     std::vector<MirVariable> vars; // variables
-    std::vector<std::pair<String, AstNode *>> drop_list; // stores where a variable was dropped
 };
 
 
@@ -398,7 +397,7 @@ struct CrateCtx {
     std::vector<std::vector<SymbolSubstitution>> current_substitutions; // Substitution rules for each new scope
     SymbolId first_adhoc_symbol = 0; // the first symbol which does not occur in the source code
 
-    std::vector<std::vector<MirVarId>> curr_living_vars;
+    std::vector<std::vector<MirVarId>> curr_vars_stack;
     std::vector<std::map<String, std::vector<MirVarId>>> curr_name_mapping; // mappes names to stacks of shaddowned vars
     MirVarId curr_self_var = 0; // describes the current self parameter var
     TypeId curr_self_type = 0; // describes which type is the current object type

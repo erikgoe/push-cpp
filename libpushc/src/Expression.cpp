@@ -1285,7 +1285,7 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
     // Create the mir instructions
     switch ( type ) {
     case ExprType::imp_scope: {
-        c_ctx.curr_living_vars.emplace_back();
+        c_ctx.curr_vars_stack.emplace_back();
         c_ctx.curr_name_mapping.emplace_back();
 
         // Handle all expressions
@@ -1304,14 +1304,14 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
 
         // Drop all created variables (except ret) in reverse order
         std::vector<MirVarId> to_drop;
-        to_drop.reserve( c_ctx.curr_living_vars.back().size() );
-        for ( auto itr = c_ctx.curr_living_vars.back().rbegin(); itr != c_ctx.curr_living_vars.back().rend(); itr++ )
+        to_drop.reserve( c_ctx.curr_vars_stack.back().size() );
+        for ( auto itr = c_ctx.curr_vars_stack.back().rbegin(); itr != c_ctx.curr_vars_stack.back().rend(); itr++ )
             if ( *itr != ret )
                 to_drop.push_back( *itr );
         purge_variable( c_ctx, w_ctx, func, *this, to_drop );
 
         c_ctx.curr_name_mapping.pop_back();
-        c_ctx.curr_living_vars.pop_back();
+        c_ctx.curr_vars_stack.pop_back();
         break;
     }
     case ExprType::unit: {
@@ -1402,18 +1402,6 @@ MirVarId AstNode::parse_mir( CrateCtx &c_ctx, Worker &w_ctx, FunctionImplId func
             }
         }
 
-        if ( !found ) {
-            // Check if the symbol was just dropped earlier
-            for ( auto itr = c_ctx.functions[func].drop_list.rbegin(); itr != c_ctx.functions[func].drop_list.rend();
-                  itr++ ) {
-                if ( itr->first == name_chain->front().name ) {
-                    w_ctx.print_msg<MessageType::err_var_not_living>( MessageInfo( *this, 0, FmtStr::Color::Red ),
-                                                                      { MessageInfo( *itr->second, 1 ) } );
-                    found = true;
-                    break;
-                }
-            }
-        }
         if ( !found ) {
             // Symbol actually not found
             w_ctx.print_msg<MessageType::err_symbol_not_found>(
